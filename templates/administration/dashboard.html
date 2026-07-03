@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord admin{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Pilotage admin</span>
+            <h1>Vue globale du personnel</h1>
+            <p>Suivi des soldes, des comptes et des demandes de l'ensemble des employes sans surcharger l'ecran.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'administration:requests' %}" class="btn-secondary">Voir les demandes</a>
+            <a href="{% url 'administration:settings' %}" class="btn-primary">Parametres</a>
+        </div>
+    </div>
+
+    <div class="stats-scroll">
+        <div class="stats-grid fixed-four">
+            <article class="card stat-card accent-green">
+                <span>Employes</span>
+                <strong id="admin-employee-count">{{ employee_count }}</strong>
+                <small>Total des profils suivis</small>
+            </article>
+            <article class="card stat-card accent-slate">
+                <span>Demandes en attente</span>
+                <strong id="admin-pending-count">{{ pending_count }}</strong>
+                <small>Demandes a traiter en priorite</small>
+            </article>
+            <article class="card stat-card accent-amber">
+                <span>Conge &lt; 2</span>
+                <strong id="admin-low-leave-count">{{ low_leave_count }}</strong>
+                <small>Employe(s) avec un solde faible</small>
+            </article>
+            <article class="card stat-card accent-slate soft">
+                <span>Recuperation &lt; 2</span>
+                <strong id="admin-low-recovery-count">{{ low_recovery_count }}</strong>
+                <small>Employe(s) a surveiller</small>
+            </article>
+        </div>
+    </div>
+
+    <div class="chart-grid">
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Repartition par solde de conge</h2>
+                    <p class="helper">Nombre de personnes pour chaque niveau de conge disponible.</p>
+                </div>
+            </div>
+            <div class="chart-panel">
+                <canvas id="leaveBalanceChart" height="180"></canvas>
+            </div>
+        </article>
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Repartition par recuperation</h2>
+                    <p class="helper">Nombre de personnes pour chaque niveau de recuperation disponible.</p>
+                </div>
+            </div>
+            <div class="chart-panel">
+                <canvas id="recoveryBalanceChart" height="180"></canvas>
+            </div>
+        </article>
+    </div>
+
+    <article class="card">
+        <div class="card-head">
+            <div>
+                <h2>Soldes des employes</h2>
+                <p class="helper">En-tete figee et zone de scroll interne pour eviter le long defilement de la page.</p>
+            </div>
+        </div>
+        <div class="table-toolbar">
+            <label class="table-search-field">
+                <i class="bi bi-search"></i>
+                <input type="search" placeholder="Rechercher un employe, un poste ou un solde" data-table-search="admin-employees-table">
+            </label>
+        </div>
+        <div class="table-shell table-shell-dashboard">
+            <div class="table-wrap sticky-table">
+                <table id="admin-employees-table">
+                    <thead>
+                        <tr>
+                            <th>Employe</th>
+                            <th>Poste</th>
+                            <th>Conge</th>
+                            <th>Recuperation</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for employee in employees %}
+                            <tr>
+                                <td data-label="Employe">{{ employee.display_name }}</td>
+                                <td data-label="Poste">{{ employee.position|default:"-" }}</td>
+                                <td data-label="Conge">{{ employee.leave_balance }}</td>
+                                <td data-label="Recuperation">{{ employee.recovery_balance }}</td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="4">Aucun employe enregistre.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </article>
+</section>
+
+<script>
+    const buildPalette = (length, colors) => Array.from({ length }, (_, index) => colors[index % colors.length]);
+
+    if (window.ChartDataLabels) {
+        Chart.register(ChartDataLabels);
+    }
+
+    const leaveBalanceChart = document.getElementById("leaveBalanceChart");
+    let leaveBalanceChartInstance = null;
+    if (leaveBalanceChart) {
+        const leaveLabels = {{ leave_chart_labels|safe }};
+        leaveBalanceChartInstance = new Chart(leaveBalanceChart, {
+            type: "doughnut",
+            data: {
+                labels: leaveLabels,
+                datasets: [{
+                    data: {{ leave_chart_values|safe }},
+                    backgroundColor: buildPalette(leaveLabels.length, ["#255c3a", "#9c6b1c", "#3d4d5f", "#6f8f72", "#d8b36b", "#8aa1b2"]),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    },
+                    datalabels: {
+                        color: "#ffffff",
+                        font: { weight: "700", size: 12 },
+                        formatter: (value, ctx) => {
+                            const label = ctx.chart.data.labels?.[ctx.dataIndex] ?? "";
+                            return `${label}\n${value}`;
+                        }
+                    }
+                }
+            },
+        });
+    }
+
+    const recoveryBalanceChart = document.getElementById("recoveryBalanceChart");
+    let recoveryBalanceChartInstance = null;
+    if (recoveryBalanceChart) {
+        const recoveryLabels = {{ recovery_chart_labels|safe }};
+        recoveryBalanceChartInstance = new Chart(recoveryBalanceChart, {
+            type: "doughnut",
+            data: {
+                labels: recoveryLabels,
+                datasets: [{
+                    data: {{ recovery_chart_values|safe }},
+                    backgroundColor: buildPalette(recoveryLabels.length, ["#3d4d5f", "#255c3a", "#9c6b1c", "#8aa1b2", "#6f8f72", "#d8b36b"]),
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    },
+                    datalabels: {
+                        color: "#ffffff",
+                        font: { weight: "700", size: 12 },
+                        formatter: (value, ctx) => {
+                            const label = ctx.chart.data.labels?.[ctx.dataIndex] ?? "";
+                            return `${label}\n${value}`;
+                        }
+                    }
+                }
+            },
+        });
+    }
+
+    const refreshAdminDashboard = async () => {
+        if (document.hidden) {
+            return;
+        }
+        try {
+            const response = await fetch("{% url 'administration:dashboard_data' %}", { headers: { "X-Requested-With": "fetch" } });
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json();
+
+            const employeeCount = document.getElementById("admin-employee-count");
+            const pendingCount = document.getElementById("admin-pending-count");
+            const lowLeaveCount = document.getElementById("admin-low-leave-count");
+            const lowRecoveryCount = document.getElementById("admin-low-recovery-count");
+
+            if (employeeCount) employeeCount.innerText = data.employee_count;
+            if (pendingCount) pendingCount.innerText = data.pending_count;
+            if (lowLeaveCount) lowLeaveCount.innerText = data.low_leave_count;
+            if (lowRecoveryCount) lowRecoveryCount.innerText = data.low_recovery_count;
+
+            if (leaveBalanceChartInstance && Array.isArray(data.leave_chart_values) && Array.isArray(data.leave_chart_labels)) {
+                leaveBalanceChartInstance.data.labels = data.leave_chart_labels;
+                leaveBalanceChartInstance.data.datasets[0].data = data.leave_chart_values;
+                leaveBalanceChartInstance.update();
+            }
+            if (recoveryBalanceChartInstance && Array.isArray(data.recovery_chart_values) && Array.isArray(data.recovery_chart_labels)) {
+                recoveryBalanceChartInstance.data.labels = data.recovery_chart_labels;
+                recoveryBalanceChartInstance.data.datasets[0].data = data.recovery_chart_values;
+                recoveryBalanceChartInstance.update();
+            }
+        } catch (error) {
+            return;
+        }
+    };
+
+    if (leaveBalanceChartInstance || recoveryBalanceChartInstance || document.getElementById("admin-employee-count")) {
+        refreshAdminDashboard();
+        window.setInterval(refreshAdminDashboard, 60000);
+    }
+</script>
+{% endblock %}

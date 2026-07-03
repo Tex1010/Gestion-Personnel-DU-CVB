@@ -1,0 +1,437 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="format-detection" content="telephone=no">
+    <title>{% block title %}Gestion du personnel{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+</head>
+<body class="{% block body_class %}{% endblock %}{% if request.user.is_authenticated %}{% with portal_role=request.session.portal_role|default:request.user.profile.role %} role-{{ request.user.profile.role }} portal-{{ portal_role }}{% endwith %}{% endif %}">
+    {% if request.user.is_authenticated %}
+        <div class="app-layout">
+            <aside class="sidebar offcanvas offcanvas-start" tabindex="-1" id="mobileSidebar" aria-labelledby="mobileSidebarLabel">
+                <div class="sidebar-main">
+                    <div class="sidebar-brand">
+                        <div class="brand-mark">
+                            {% if branding and branding.logo_image %}
+                                <img src="{{ branding.logo_image.url }}" alt="Logo {{ branding.site_name|default:'Centre ValBio' }}" class="brand-logo-image">
+                            {% else %}
+                                <span class="brand-pill">CVB</span>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <div class="sidebar-mobile-head">
+                                <strong id="mobileSidebarLabel">{{ branding.site_name|default:"Centre ValBio" }}</strong>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#mobileSidebar" aria-label="Fermer le menu"></button>
+                            </div>
+                            <strong class="sidebar-brand-title">{{ branding.site_name|default:"Centre ValBio" }}</strong>
+                            <p class="sidebar-brand-subtitle">Gestion du personnel</p>
+                        </div>
+                    </div>
+                    <nav class="sidebar-nav">
+                        {% with portal_role=request.session.portal_role|default:request.user.profile.role %}
+                            {% if portal_role == "user" %}
+                                <a href="{% url 'personnel:dashboard' %}" class="{% if request.resolver_match.app_name == 'personnel' %}is-active{% endif %}"><i class="bi bi-house-door"></i><span>Accueil employe</span></a>
+                                <a href="{% url 'requests_management:absence_create' %}" class="{% if request.resolver_match.url_name == 'absence_create' %}is-active{% endif %}"><i class="bi bi-calendar2-x"></i><span>Demande d'absence</span></a>
+                                <a href="{% url 'requests_management:leave_create' %}" class="{% if request.resolver_match.url_name == 'leave_create' %}is-active{% endif %}"><i class="bi bi-calendar2-check"></i><span>Demande de conge</span></a>
+                                <a href="{% url 'requests_management:recovery_create' %}" class="{% if request.resolver_match.url_name == 'recovery_create' %}is-active{% endif %}"><i class="bi bi-arrow-repeat"></i><span>Demande de recuperation</span></a>
+                            {% elif portal_role == "hierarchical" or portal_role == "direction" %}
+                                <a href="{% url 'administration:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-speedometer2"></i><span>Validation des demandes</span></a>
+                                <a href="{% url 'administration:requests' %}" class="{% if request.resolver_match.url_name == 'requests' or request.resolver_match.url_name == 'request_action' %}is-active{% endif %}"><i class="bi bi-ui-checks-grid"></i><span>Demandes a valider</span></a>
+                            {% else %}
+                                <a href="{% url 'administration:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-speedometer2"></i><span>Tableau de bord admin</span></a>
+                                <a href="{% url 'administration:requests' %}" class="{% if request.resolver_match.url_name == 'requests' or request.resolver_match.url_name == 'request_action' %}is-active{% endif %}"><i class="bi bi-ui-checks-grid"></i><span>Demandes</span></a>
+                                <a href="{% url 'administration:settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}is-active{% endif %}"><i class="bi bi-sliders"></i><span>Parametres</span></a>
+                            {% endif %}
+                        {% endwith %}
+                        <a href="{% url 'accounts:password_change' %}" class="{% if request.resolver_match.url_name == 'password_change' %}is-active{% endif %}"><i class="bi bi-key"></i><span>Changer le mot de passe</span></a>
+                        <form method="post" action="{% url 'accounts:logout' %}" class="sidebar-nav-form">
+                            {% csrf_token %}
+                            <button type="submit" class="sidebar-nav-button" data-confirm-action="1" data-confirm-title="Se deconnecter" data-confirm-message="Voulez-vous vraiment vous deconnecter ?" data-confirm-label="Oui, me deconnecter" data-confirm-class="btn-primary">
+                                <i class="bi bi-box-arrow-right"></i><span>Deconnexion</span>
+                            </button>
+                        </form>
+                    </nav>
+                </div>
+                <div class="sidebar-footer">
+                    <div class="sidebar-user">
+                        {% if request.user.profile.photo %}
+                            <img src="{{ request.user.profile.photo.url }}" alt="{{ request.user.profile.display_name }}" class="sidebar-user-photo">
+                        {% else %}
+                            <span class="avatar-fallback">{{ request.user.profile.display_name|slice:":1"|upper }}</span>
+                        {% endif %}
+                        <div>
+                            <span>{{ request.user.profile.display_name }}</span>
+                            <small>{{ request.user.profile.dashboard_role_label }}</small>
+                        </div>
+                    </div>
+                </div>
+            </aside>
+            <main class="content">
+                <header class="topbar">
+                    <div class="topbar-main">
+                        <button class="topbar-menu-button" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar" aria-label="Ouvrir le menu">
+                            <i class="bi bi-list"></i>
+                            <span>Menu</span>
+                        </button>
+                        <span class="eyebrow">Espace interne</span>
+                        <h1 class="topbar-title">{{ branding.site_name|default:"Centre ValBio" }}</h1>
+                    </div>
+                    <div class="topbar-meta">
+                        <span class="topbar-role">{{ request.user.profile.dashboard_role_label }}</span>
+                        {% if branding and branding.announcement %}
+                            <span class="topbar-note">{{ branding.announcement }}</span>
+                        {% endif %}
+                    </div>
+                </header>
+                {% if messages %}
+                    <div class="messages notifications">
+                        {% for message in messages %}
+                            <div class="message {{ message.tags }}" role="status">
+                                <div class="message-body">
+                                    <span class="message-icon" aria-hidden="true"></span>
+                                    <span>{{ message }}</span>
+                                </div>
+                                <button type="button" class="message-close" aria-label="Fermer la notification">×</button>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    {% else %}
+        {% if messages %}
+            <div class="messages notifications login-messages">
+                {% for message in messages %}
+                    <div class="message {{ message.tags }}" role="status">
+                        <div class="message-body">
+                            <span class="message-icon" aria-hidden="true"></span>
+                            <span>{{ message }}</span>
+                        </div>
+                        <button type="button" class="message-close" aria-label="Fermer la notification">×</button>
+                    </div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% block public_content %}{% endblock %}
+    {% endif %}
+    <div class="modal fade" id="actionConfirmModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content confirm-modal-content">
+                <div class="modal-header border-0 pb-0">
+                    <div>
+                        <span class="eyebrow">Confirmation</span>
+                        <h5 class="modal-title mt-2" id="actionConfirmTitle">Confirmer l'action</h5>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                </div>
+                <div class="modal-body pt-2">
+                    <p id="actionConfirmMessage" class="mb-0 helper">Merci de confirmer cette action.</p>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                    <button type="button" class="btn-primary" id="actionConfirmSubmit">Confirmer</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        document.addEventListener("DOMContentLoaded", () => {
+            const passwordInputs = document.querySelectorAll('input[type="password"]');
+            passwordInputs.forEach((input) => {
+                if (input.dataset.passwordToggleReady === "1") {
+                    return;
+                }
+                input.dataset.passwordToggleReady = "1";
+                const wrapper = document.createElement("div");
+                wrapper.className = "password-toggle-group";
+                input.parentNode.insertBefore(wrapper, input);
+                wrapper.appendChild(input);
+
+                const toggleButton = document.createElement("button");
+                toggleButton.type = "button";
+                toggleButton.className = "password-toggle-button";
+                toggleButton.setAttribute("aria-label", "Afficher ou masquer le mot de passe");
+                toggleButton.innerHTML = '<i class="bi bi-eye"></i>';
+                toggleButton.addEventListener("click", () => {
+                    const isPassword = input.getAttribute("type") === "password";
+                    input.setAttribute("type", isPassword ? "text" : "password");
+                    toggleButton.innerHTML = isPassword
+                        ? '<i class="bi bi-eye-slash"></i>'
+                        : '<i class="bi bi-eye"></i>';
+                });
+                wrapper.appendChild(toggleButton);
+            });
+
+            const modalElement = document.getElementById("actionConfirmModal");
+            const titleElement = document.getElementById("actionConfirmTitle");
+            const messageElement = document.getElementById("actionConfirmMessage");
+            const submitElement = document.getElementById("actionConfirmSubmit");
+            const confirmationModal = modalElement ? new bootstrap.Modal(modalElement) : null;
+            let pendingForm = null;
+            let pendingSubmitter = null;
+
+            const resetConfirmButton = () => {
+                submitElement.className = "btn-primary";
+                submitElement.textContent = "Confirmer";
+            };
+
+            document.querySelectorAll("[data-confirm-action]").forEach((button) => {
+                button.addEventListener("click", (event) => {
+                    const form = button.form;
+                    if (!form || !confirmationModal) {
+                        return;
+                    }
+                    event.preventDefault();
+                    pendingForm = form;
+                    pendingSubmitter = button;
+                    titleElement.textContent = button.dataset.confirmTitle || "Confirmer l'action";
+                    messageElement.textContent = button.dataset.confirmMessage || "Merci de confirmer cette action.";
+                    resetConfirmButton();
+                    if (button.dataset.confirmClass) {
+                        submitElement.className = button.dataset.confirmClass;
+                    }
+                    submitElement.textContent = button.dataset.confirmLabel || "Confirmer";
+                    confirmationModal.show();
+                });
+            });
+
+            if (submitElement) {
+                submitElement.addEventListener("click", () => {
+                    if (!pendingForm) {
+                        return;
+                    }
+                    confirmationModal.hide();
+                    if (pendingForm.requestSubmit) {
+                        pendingForm.requestSubmit(pendingSubmitter);
+                    } else {
+                        pendingForm.submit();
+                    }
+                    pendingForm = null;
+                    pendingSubmitter = null;
+                    resetConfirmButton();
+                });
+            }
+
+            const dismissNotification = (messageElement) => {
+                messageElement.classList.add("message-hidden");
+                window.setTimeout(() => {
+                    if (messageElement.parentNode) {
+                        messageElement.parentNode.removeChild(messageElement);
+                    }
+                }, 300);
+            };
+
+            document.querySelectorAll(".message-close").forEach((closeButton) => {
+                closeButton.addEventListener("click", () => {
+                    const messageElement = closeButton.closest(".message");
+                    if (messageElement) {
+                        dismissNotification(messageElement);
+                    }
+                });
+            });
+
+            document.querySelectorAll(".messages.notifications .message").forEach((messageElement) => {
+                if (messageElement.closest(".login-messages")) {
+                    return;
+                }
+                window.setTimeout(() => dismissNotification(messageElement), 7000);
+            });
+
+            const autosaveForms = Array.from(document.querySelectorAll("form.stack-form")).filter(
+                (form) => !form.querySelector('input[type="password"]')
+            );
+            autosaveForms.forEach((form, index) => {
+                const key = `autosave:${window.location.pathname}:${form.getAttribute("action") || ""}:${form.id || index}`;
+                const restore = () => {
+                    const raw = window.sessionStorage.getItem(key);
+                    if (!raw) {
+                        return;
+                    }
+                    let data = null;
+                    try {
+                        data = JSON.parse(raw);
+                    } catch (error) {
+                        return;
+                    }
+                    if (!data) {
+                        return;
+                    }
+                    form.dispatchEvent(
+                        new CustomEvent("trae:before-form-restore", {
+                            detail: { key, data },
+                        })
+                    );
+                    Object.entries(data).forEach(([name, value]) => {
+                        const fields = Array.from(form.querySelectorAll(`[name="${CSS.escape(name)}"]`));
+                        fields.forEach((field) => {
+                            if (field.type === "checkbox") {
+                                field.checked = value === true || value === "true" || value === "on";
+                                return;
+                            }
+                            if (field.type === "radio") {
+                                field.checked = String(field.value) === String(value);
+                                return;
+                            }
+                            if (!field.value) {
+                                field.value = value;
+                            }
+                        });
+                    });
+                    form.dispatchEvent(
+                        new CustomEvent("trae:form-restored", {
+                            detail: { key, data },
+                        })
+                    );
+                };
+                restore();
+                const persist = () => {
+                    const payload = {};
+                    form.querySelectorAll("input, textarea, select").forEach((field) => {
+                        if (!field.name) {
+                            return;
+                        }
+                        if (
+                            field.type === "password" ||
+                            field.type === "file" ||
+                            field.type === "hidden" ||
+                            field.type === "submit" ||
+                            field.type === "button" ||
+                            field.name === "csrfmiddlewaretoken"
+                        ) {
+                            return;
+                        }
+                        if (field.type === "checkbox") {
+                            payload[field.name] = field.checked;
+                            return;
+                        }
+                        if (field.type === "radio") {
+                            if (field.checked) {
+                                payload[field.name] = field.value;
+                            }
+                            return;
+                        }
+                        payload[field.name] = field.value;
+                    });
+                    window.sessionStorage.setItem(key, JSON.stringify(payload));
+                    form.dispatchEvent(
+                        new CustomEvent("trae:form-persisted", {
+                            detail: { key, data: payload },
+                        })
+                    );
+                };
+                form.addEventListener("input", persist);
+                form.addEventListener("change", persist);
+                form.addEventListener("submit", () => window.sessionStorage.removeItem(key));
+            });
+
+            const normalizeSearchText = (value) => value
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
+
+            document.querySelectorAll("input[data-table-search]").forEach((input) => {
+                const target = document.getElementById(input.dataset.tableSearch);
+                if (!target) {
+                    return;
+                }
+
+                const tbody = target.querySelector("tbody");
+                if (!tbody) {
+                    const cards = Array.from(target.querySelectorAll(".request-card-item"));
+                    const emptyState = target.querySelector(".empty-state");
+                    let helperCard = target.querySelector('[data-search-helper="1"]');
+
+                    if (!cards.length && !emptyState) {
+                        return;
+                    }
+
+                    if (!helperCard) {
+                        helperCard = document.createElement("div");
+                        helperCard.dataset.searchHelper = "1";
+                        helperCard.className = "empty-state";
+                        helperCard.hidden = true;
+                        helperCard.innerText = "Aucun resultat pour cette recherche.";
+                        target.appendChild(helperCard);
+                    }
+
+                    const filterCards = () => {
+                        const term = normalizeSearchText(input.value.trim());
+                        let visibleCount = 0;
+
+                        if (emptyState) {
+                            emptyState.hidden = term.length > 0;
+                        }
+
+                        cards.forEach((card) => {
+                            const cardText = normalizeSearchText(card.innerText);
+                            const isVisible = !term || cardText.includes(term);
+                            card.hidden = !isVisible;
+                            if (isVisible) {
+                                visibleCount += 1;
+                            }
+                        });
+
+                        helperCard.hidden = !term || visibleCount > 0 || cards.length === 0;
+                    };
+
+                    input.addEventListener("input", filterCards);
+                    filterCards();
+                    return;
+                }
+
+                const headerCount = target.querySelectorAll("thead th").length || 1;
+                let helperRow = tbody.querySelector('tr[data-search-helper="1"]');
+
+                if (!helperRow) {
+                    helperRow = document.createElement("tr");
+                    helperRow.dataset.searchHelper = "1";
+                    helperRow.hidden = true;
+                    helperRow.innerHTML = `<td colspan="${headerCount}">Aucun resultat pour cette recherche.</td>`;
+                    tbody.appendChild(helperRow);
+                }
+
+                const filterTable = () => {
+                    const term = normalizeSearchText(input.value.trim());
+                    const rows = Array.from(tbody.querySelectorAll("tr")).filter(
+                        (row) => row.dataset.searchHelper !== "1"
+                    );
+                    let visibleCount = 0;
+                    let hasDataRows = false;
+
+                    rows.forEach((row) => {
+                        const singleCell = row.cells.length === 1 ? row.cells[0] : null;
+                        const isEmptyState = Boolean(singleCell && singleCell.colSpan > 1);
+
+                        if (isEmptyState) {
+                            row.hidden = term.length > 0;
+                            return;
+                        }
+
+                        hasDataRows = true;
+                        const rowText = normalizeSearchText(row.innerText);
+                        const isVisible = !term || rowText.includes(term);
+                        row.hidden = !isVisible;
+                        if (isVisible) {
+                            visibleCount += 1;
+                        }
+                    });
+
+                    helperRow.hidden = !term || visibleCount > 0 || !hasDataRows;
+                };
+
+                input.addEventListener("input", filterTable);
+                filterTable();
+            });
+        });
+    </script>
+</body>
+</html>

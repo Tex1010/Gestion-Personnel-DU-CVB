@@ -1,0 +1,357 @@
+{% extends "base.html" %}
+
+{% block title %}Tableau de bord employe{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Accueil employe</span>
+            <h1>Bonjour {{ profile.display_name }}</h1>
+            <p>Consultez vos soldes, suivez vos demandes et accedez rapidement aux formulaires utiles.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'requests_management:absence_create' %}" class="btn-secondary">Nouvelle absence</a>
+            <a href="{% url 'requests_management:leave_create' %}" class="btn-secondary">Nouveau conge</a>
+            <a href="{% url 'requests_management:recovery_create' %}" class="btn-primary">Nouvelle recuperation</a>
+        </div>
+    </div>
+
+    <div class="stats-grid employee-stats-grid">
+        <article class="card profile-card">
+            <div class="avatar-block">
+                {% if profile.photo %}
+                    <img src="{{ profile.photo.url }}" alt="Photo de profil" class="avatar-image">
+                {% else %}
+                    <div class="avatar-fallback">{{ profile.user.first_name|first|default:"E" }}{{ profile.user.last_name|first|default:"P" }}</div>
+                {% endif %}
+                <div>
+                    <h3>{{ profile.display_name }}</h3>
+                    <p>{{ profile.position|default:"Poste non renseigne" }}</p>
+                    <small>Matricule: {{ profile.employee_number|default:"-" }}</small>
+                    <br><small>Type de contrat: {{ profile.contract_type_label }}</small>
+                </div>
+            </div>
+        </article>
+        <article class="card stat-card accent-green">
+            <span>Conge restant</span>
+            <strong id="employee-leave-balance">{{ profile.leave_balance }} jours</strong>
+            <small>Solde disponible aujourd'hui</small>
+        </article>
+        <article class="card stat-card accent-amber">
+            <span>Recuperation disponible</span>
+            <strong id="employee-recovery-balance">{{ profile.recovery_balance }} jours</strong>
+            <small>Disponible pour vos prochaines demandes</small>
+        </article>
+        <article class="card stat-card accent-slate">
+            <span>Demandes recentes</span>
+            <strong id="employee-recent-count">{{ recent_requests|length }}</strong>
+            <small>12 dernieres demandes affichees</small>
+        </article>
+    </div>
+
+    <div class="content-grid employee-dashboard-grid">
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Vue d'ensemble des demandes</h2>
+                    <p class="helper">Lecture rapide de vos demandes par categorie.</p>
+                </div>
+            </div>
+            <div class="chart-panel">
+                <canvas id="employeeChart" height="180"></canvas>
+            </div>
+        </article>
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Etat de vos dossiers</h2>
+                    <p class="helper">Suivez ce qui attend encore une validation.</p>
+                </div>
+            </div>
+            <div class="employee-status-grid">
+                <div class="status-chip-card">
+                    <span class="badge submitted">En attente</span>
+                    <strong id="employee-submitted-count">{{ submitted_count }}</strong>
+                    <small>Demande(s) en cours de traitement</small>
+                </div>
+                <div class="status-chip-card">
+                    <span class="badge approved">Approuvees</span>
+                    <strong id="employee-approved-count">{{ approved_count }}</strong>
+                    <small>Demande(s) validee(s)</small>
+                </div>
+                <div class="status-chip-card">
+                    <span class="badge rejected">Rejetees</span>
+                    <strong id="employee-rejected-count">{{ rejected_count }}</strong>
+                    <small>Demande(s) refusee(s)</small>
+                </div>
+            </div>
+        </article>
+    </div>
+
+    <article class="card">
+        <div class="card-head">
+            <div>
+                <h2>Historique recent</h2>
+                <p class="helper">Retrouvez rapidement vos 12 dernieres demandes grace a la recherche integree.</p>
+            </div>
+        </div>
+        <div class="table-toolbar">
+            <label class="table-search-field">
+                <i class="bi bi-search"></i>
+                <input type="search" placeholder="Rechercher dans l'historique recent" data-table-search="employee-recent-requests-table">
+            </label>
+        </div>
+        <div class="table-shell">
+            <div class="table-wrap sticky-table">
+                <table id="employee-recent-requests-table">
+                    <thead>
+                        <tr>
+                            <th>Type</th>
+                            <th>Date</th>
+                            <th>Periode</th>
+                            <th>Statut</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in recent_requests %}
+                            <tr>
+                                <td data-label="Type">{{ item.type_label }}</td>
+                                <td data-label="Date">{{ item.created_at|date:"d/m/Y" }}</td>
+                                <td data-label="Periode">{% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %}{% if item.end_date %} - {{ item.end_date|date:"d/m/Y" }}{% endif %}</td>
+                                <td data-label="Statut"><span class="badge {{ item.status }}">{{ item.status_label }}</span></td>
+                                <td data-label="Action">
+                                    <div class="row-actions">
+                                        <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
+                                        {% if item.status == "submitted" %}
+                                            <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette demande" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                            </form>
+                                        {% endif %}
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5">Aucune demande pour le moment.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </article>
+
+    <div class="triple-grid employee-table-grid">
+        <article class="card employee-request-card">
+            <div class="card-head">
+                <div>
+                    <h2>Absences envoyees</h2>
+                    <p class="helper">Toutes vos demandes d'absence en un seul endroit.</p>
+                </div>
+            </div>
+            <div class="table-toolbar">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher une absence" data-table-search="employee-absence-table">
+                </label>
+            </div>
+            <div class="request-card-list" id="employee-absence-table">
+                {% for item in absence_requests %}
+                    <article class="request-card-item">
+                        <div class="request-card-main">
+                            <div>
+                                <strong>{% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %}</strong>
+                                <div class="request-card-subtitle">Absence • {{ item.total_days }} jour{{ item.total_days|pluralize }}</div>
+                            </div>
+                            <div class="request-card-meta">
+                                <span class="meta-pill"><i class="bi bi-calendar3"></i> {{ item.start_date|date:"d/m/Y" }}</span>
+                                <span class="meta-pill"><i class="bi bi-clock-history"></i> {{ item.total_days }} j</span>
+                            </div>
+                        </div>
+                        <div class="request-card-actions">
+                            <span class="badge {{ item.status }}">{{ item.status_label }}</span>
+                            <div class="row-actions">
+                                <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
+                                {% if item.status == "submitted" %}
+                                    <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette absence" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </article>
+                {% empty %}
+                    <div class="empty-state">Aucune demande d'absence.</div>
+                {% endfor %}
+            </div>
+        </article>
+        <article class="card employee-request-card">
+            <div class="card-head">
+                <div>
+                    <h2>Recuperations envoyees</h2>
+                    <p class="helper">Suivi des recuperations deja saisies.</p>
+                </div>
+            </div>
+            <div class="table-toolbar">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher une recuperation" data-table-search="employee-recovery-table">
+                </label>
+            </div>
+            <div class="request-card-list" id="employee-recovery-table">
+                {% for item in recovery_requests %}
+                    <article class="request-card-item">
+                        <div class="request-card-main">
+                            <div>
+                                <strong>{{ item.created_at|date:"d/m/Y" }}</strong>
+                                <div class="request-card-subtitle">Récupération • {{ item.project_name|default:"Sans projet" }}</div>
+                            </div>
+                            <div class="request-card-meta">
+                                <span class="meta-pill"><i class="bi bi-folder2-open"></i> {{ item.project_name|default:"Sans projet" }}</span>
+                                <span class="meta-pill"><i class="bi bi-hourglass-split"></i> {{ item.total_days }} j</span>
+                            </div>
+                        </div>
+                        <div class="request-card-actions">
+                            <span class="badge {{ item.status }}">{{ item.status_label }}</span>
+                            <div class="row-actions">
+                                <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
+                                {% if item.status == "submitted" %}
+                                    <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette recuperation" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </article>
+                {% empty %}
+                    <div class="empty-state">Aucune fiche de recuperation.</div>
+                {% endfor %}
+            </div>
+        </article>
+        <article class="card employee-request-card">
+            <div class="card-head">
+                <div>
+                    <h2>Conges enregistres</h2>
+                    <p class="helper">Historique des demandes de conge envoyees.</p>
+                </div>
+            </div>
+            <div class="table-toolbar">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher un conge" data-table-search="employee-leave-table">
+                </label>
+            </div>
+            <div class="request-card-list" id="employee-leave-table">
+                {% for item in leave_requests %}
+                    <article class="request-card-item">
+                        <div class="request-card-main">
+                            <div>
+                                <strong>{% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %} → {% if item.end_date %}{{ item.end_date|date:"d/m/Y" }}{% else %}-{% endif %}</strong>
+                                <div class="request-card-subtitle">Congé • {{ item.total_days }} jour{{ item.total_days|pluralize }}</div>
+                            </div>
+                            <div class="request-card-meta">
+                                <span class="meta-pill"><i class="bi bi-calendar2-week"></i> {{ item.total_days }} j</span>
+                                <span class="meta-pill"><i class="bi bi-flag"></i> {{ item.status_label }}</span>
+                            </div>
+                        </div>
+                        <div class="request-card-actions">
+                            <span class="badge {{ item.status }}">{{ item.status_label }}</span>
+                            <div class="row-actions">
+                                <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
+                                {% if item.status == "submitted" %}
+                                    <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer ce conge" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                    </form>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </article>
+                {% empty %}
+                    <div class="empty-state">Aucun conge enregistre.</div>
+                {% endfor %}
+            </div>
+        </article>
+    </div>
+</section>
+
+<script>
+    const employeeChart = document.getElementById("employeeChart");
+    let employeeChartInstance = null;
+    if (employeeChart) {
+        if (window.ChartDataLabels) {
+            Chart.register(ChartDataLabels);
+        }
+        employeeChartInstance = new Chart(employeeChart, {
+            type: "doughnut",
+            data: {
+                labels: {{ chart_labels|safe }},
+                datasets: [{
+                    data: {{ chart_values|safe }},
+                    backgroundColor: ["#255c3a", "#9c6b1c", "#3d4d5f"],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: "bottom"
+                    },
+                    datalabels: {
+                        color: "#ffffff",
+                        font: { weight: "700", size: 12 },
+                        formatter: (value, ctx) => {
+                            const label = ctx.chart.data.labels?.[ctx.dataIndex] ?? "";
+                            return `${label}\n${value}`;
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    const refreshEmployeeDashboard = async () => {
+        if (document.hidden) {
+            return;
+        }
+        try {
+            const response = await fetch("{% url 'personnel:dashboard_data' %}", { headers: { "X-Requested-With": "fetch" } });
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json();
+            const leaveBalance = document.getElementById("employee-leave-balance");
+            const recoveryBalance = document.getElementById("employee-recovery-balance");
+            const recentCount = document.getElementById("employee-recent-count");
+            const submittedCount = document.getElementById("employee-submitted-count");
+            const approvedCount = document.getElementById("employee-approved-count");
+            const rejectedCount = document.getElementById("employee-rejected-count");
+
+            if (leaveBalance) leaveBalance.innerText = data.leave_balance;
+            if (recoveryBalance) recoveryBalance.innerText = data.recovery_balance;
+            if (recentCount) recentCount.innerText = data.recent_count;
+            if (submittedCount) submittedCount.innerText = data.submitted_count;
+            if (approvedCount) approvedCount.innerText = data.approved_count;
+            if (rejectedCount) rejectedCount.innerText = data.rejected_count;
+
+            if (employeeChartInstance && Array.isArray(data.chart_values)) {
+                employeeChartInstance.data.datasets[0].data = data.chart_values;
+                employeeChartInstance.update();
+            }
+        } catch (error) {
+            return;
+        }
+    };
+
+    if (employeeChart || document.getElementById("employee-leave-balance")) {
+        refreshEmployeeDashboard();
+        window.setInterval(refreshEmployeeDashboard, 60000);
+    }
+</script>
+{% endblock %}

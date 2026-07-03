@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Impression demande</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 14mm;
+        }
+
+        :root {
+            color-scheme: light;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            color: #1b1f1c;
+            background: #eef2ec;
+        }
+
+        .print-toolbar {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            padding: 16px;
+            background: rgba(238, 242, 236, 0.96);
+            backdrop-filter: blur(10px);
+        }
+
+        .print-button,
+        .back-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 12px 18px;
+            border-radius: 999px;
+            border: 1px solid #255c3a;
+            background: #255c3a;
+            color: #ffffff;
+            text-decoration: none;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .back-link {
+            background: #ffffff;
+            color: #255c3a;
+        }
+
+        .sheet {
+            width: 210mm;
+            min-height: 297mm;
+            margin: 16px auto 28px;
+            padding: 18mm 16mm;
+            background: #ffffff;
+            box-shadow: 0 18px 48px rgba(18, 30, 22, 0.12);
+        }
+
+        .sheet-header {
+            display: flex;
+            justify-content: space-between;
+            gap: 24px;
+            align-items: flex-start;
+            border-bottom: 2px solid #255c3a;
+            padding-bottom: 16px;
+            margin-bottom: 20px;
+        }
+
+        .brand {
+            display: flex;
+            gap: 14px;
+            align-items: center;
+        }
+
+        .brand img {
+            width: 82px;
+            height: 82px;
+            object-fit: contain;
+        }
+
+        .brand-fallback {
+            width: 82px;
+            height: 82px;
+            border-radius: 20px;
+            display: grid;
+            place-items: center;
+            background: #255c3a;
+            color: #ffffff;
+            font-size: 26px;
+            font-weight: 800;
+        }
+
+        .brand-copy h1,
+        .section h2 {
+            margin: 0;
+        }
+
+        .brand-copy p,
+        .meta-line,
+        .subtitle {
+            margin: 4px 0 0;
+            color: #576159;
+        }
+
+        .request-badge {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: #edf4ef;
+            color: #255c3a;
+            font-weight: 700;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .panel {
+            border: 1px solid #d9e2da;
+            border-radius: 16px;
+            padding: 16px;
+            background: #fbfcfb;
+        }
+
+        .panel strong,
+        .section h2 {
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .meta-list {
+            display: grid;
+            gap: 8px;
+        }
+
+        .meta-list div {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .section {
+            margin-bottom: 20px;
+        }
+
+        .reason-box {
+            min-height: 84px;
+            border: 1px solid #d9e2da;
+            border-radius: 16px;
+            padding: 14px;
+            background: #fbfcfb;
+            white-space: pre-wrap;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        th,
+        td {
+            border: 1px solid #dbe4dc;
+            padding: 10px 12px;
+            text-align: left;
+            vertical-align: top;
+            font-size: 14px;
+        }
+
+        th {
+            background: #f1f6f2;
+        }
+
+        .status-chip {
+            display: inline-flex;
+            padding: 6px 12px;
+            border-radius: 999px;
+            font-weight: 700;
+            background: #eef3ff;
+            color: #29426c;
+        }
+
+        .footer-note {
+            margin-top: 28px;
+            color: #576159;
+            font-size: 13px;
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+            }
+
+            .print-toolbar {
+                display: none;
+            }
+
+            .sheet {
+                width: auto;
+                min-height: auto;
+                margin: 0;
+                padding: 0;
+                box-shadow: none;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="print-toolbar">
+        <a href="javascript:window.close()" class="back-link">Fermer</a>
+        <button type="button" class="print-button" onclick="window.print()">Imprimer en A4</button>
+    </div>
+
+    <main class="sheet">
+        <header class="sheet-header">
+            <div class="brand">
+                {% if branding and branding.logo_image %}
+                    <img src="{{ branding.logo_image.url }}" alt="Logo {{ branding.site_name|default:'Centre ValBio' }}">
+                {% else %}
+                    <div class="brand-fallback">CVB</div>
+                {% endif %}
+                <div class="brand-copy">
+                    <h1>{{ branding.site_name|default:"Centre ValBio" }}</h1>
+                    <p>{{ branding.subtitle|default:"Centre International pour la Valorisation de la Biodiversite" }}</p>
+                    <p class="meta-line">{{ branding.address|default:"BP 33 Ranomafana Ifanadiana 312" }}</p>
+                    <p class="meta-line">{{ branding.email|default:"centrevalbio@gmail.com" }} | {{ branding.website|default:"www.centrevalbio.org" }}</p>
+                </div>
+            </div>
+            <div>
+                <div class="request-badge">{{ request_item.type_label }}</div>
+                <p class="subtitle">Reference: DEM-{{ request_item.id }}</p>
+                <p class="subtitle">Creee le {{ request_item.created_at|date:"d/m/Y H:i" }}</p>
+            </div>
+        </header>
+
+        <section class="grid">
+            <article class="panel">
+                <strong>Informations employe</strong>
+                <div class="meta-list">
+                    <div><span>Nom complet</span><span>{{ request_item.employee.display_name }}</span></div>
+                    <div><span>Matricule</span><span>{{ request_item.employee.employee_number|default:"-" }}</span></div>
+                    <div><span>Poste</span><span>{{ request_item.employee.position|default:"-" }}</span></div>
+                    <div><span>Type de contrat</span><span>{{ request_item.employee.contract_type_label }}</span></div>
+                    <div><span>Departement</span><span>{{ request_item.employee.department_name }}</span></div>
+                </div>
+            </article>
+            <article class="panel">
+                <strong>Informations demande</strong>
+                <div class="meta-list">
+                    <div><span>Statut global</span><span>{{ request_item.status_label }}</span></div>
+                    <div><span>Etape en cours</span><span>{{ request_item.get_approval_stage_display }}</span></div>
+                    <div><span>Date debut</span><span>{{ request_item.start_date|date:"d/m/Y"|default:"-" }}</span></div>
+                    <div><span>Date fin</span><span>{{ request_item.end_date|date:"d/m/Y"|default:"-" }}</span></div>
+                    <div><span>Total jours</span><span>{{ request_item.total_days }}</span></div>
+                    <div><span>Projet</span><span>{{ request_item.project_name|default:"-" }}</span></div>
+                </div>
+            </article>
+        </section>
+
+        <section class="section">
+            <h2>Motif</h2>
+            <div class="reason-box">{{ request_item.reason|default:"-" }}</div>
+        </section>
+
+        {% if recovery_lines %}
+            <section class="section">
+                <h2>Details de recuperation</h2>
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Nature de travaux</th>
+                            <th>Debut</th>
+                            <th>Fin</th>
+                            <th>Duree</th>
+                            <th>Ferie</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for line in recovery_lines %}
+                            <tr>
+                                <td>{{ line.work_date|date:"d/m/Y" }}</td>
+                                <td>{{ line.work_description }}</td>
+                                <td>{{ line.start_time|time:"H:i" }}</td>
+                                <td>{{ line.end_time|time:"H:i" }}</td>
+                                <td>{{ line.duration_hours }} jour(s)</td>
+                                <td>{% if line.is_holiday %}Oui{% else %}Non{% endif %}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </section>
+        {% endif %}
+
+        <section class="section">
+            <h2>Suivi des validations</h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Etape</th>
+                        <th>Nom utilisateur</th>
+                        <th>Statut</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for stage in stage_statuses %}
+                        <tr>
+                            <td>{{ stage.label }}</td>
+                            <td>{{ stage.username }}</td>
+                            <td><span class="status-chip">{{ stage.status }}</span></td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+
+        {% if request_item.admin_comment %}
+            <section class="section">
+                <h2>Commentaire de validation</h2>
+                <div class="reason-box">{{ request_item.admin_comment }}</div>
+            </section>
+        {% endif %}
+
+        <p class="footer-note">Document genere depuis la gestion du personnel du Centre ValBio.</p>
+    </main>
+</body>
+</html>

@@ -1,0 +1,172 @@
+from django.contrib.auth.models import User
+from django.test import TestCase
+from django.urls import reverse
+
+from apps.personnel.models import Department, EmployeeProfile
+from apps.requests_management.models import StaffRequest
+
+
+class RequestsTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(
+            username="agent",
+            password="TestPass123!",
+            first_name="Mamy",
+            last_name="Agent",
+        )
+        self.user.profile.role = EmployeeProfile.ROLE_USER
+        self.user.profile.leave_balance = 10
+        self.user.profile.recovery_balance = 4
+        self.user.profile.save()
+        self.client.login(username="agent", password="TestPass123!")
+
+    def test_absence_request_creation(self):
+        response = self.client.post(
+            reverse("requests_management:absence_create"),
+            {
+                "start_date": "2026-07-01",
+                "end_date": "2026-07-02",
+                "total_days": "2",
+                "remaining_days_for_reason": "5",
+                "reason": "Presence obligatoire a l'administration communale",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(StaffRequest.objects.count(), 1)
+        request_item = StaffRequest.objects.first()
+        self.assertEqual(request_item.request_type, StaffRequest.TYPE_ABSENCE)
+        self.assertEqual(request_item.remaining_days_for_reason, 2)
+
+    def test_leave_request_creation_uses_leave_type_and_remaining_balance(self):
+        response = self.client.post(
+            reverse("requests_management:leave_create"),
+            {
+                "start_date": "2026-07-10",
+                "end_date": "2026-07-12",
+                "total_days": "3",
+                "remaining_days_for_reason": "",
+                "reason": "Conge annuel",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        request_item = StaffRequest.objects.latest("id")
+        self.assertEqual(request_item.request_type, StaffRequest.TYPE_LEAVE)
+        self.assertEqual(request_item.remaining_days_for_reason, 7)
+
+    def test_employee_can_delete_own_request_from_history(self):
+        request_item = StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            total_days=2,
+            remaining_days_for_reason=8,
+            reason="Conge test",
+        )
+
+        response = self.client.post(
+            reverse("requests_management:delete", args=[request_item.id]),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(StaffRequest.objects.filter(id=request_item.id).exists())
+
+    def test_employee_cannot_delete_already_processed_request(self):
+        request_item = StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_APPROVED,
+            approval_stage=StaffRequest.APPROVAL_COMPLETED,
+            total_days=2,
+            remaining_days_for_reason=8,
+            reason="Conge approuve",
+        )
+
+        response = self.client.post(
+            reverse("requests_management:delete", args=[request_item.id]),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(StaffRequest.objects.filter(id=request_item.id).exists())
+        self.assertContains(response, "Seules les demandes encore en attente peuvent etre supprimees")
+
+    def test_hierarchical_approval_advances_request_to_next_stage(self):
+        department = Department.objects.create(name="Informatique")
+        self.user.profile.department = department
+        self.user.profile.save()
+        approver = User.objects.create_user(username="chef", password="TestPass123!")
+        approver_profile = approver.profile
+        approver_profile.role = EmployeeProfile.ROLE_HIERARCHICAL
+        approver_profile.department = department
+        approver_profile.save()
+        self.client.logout()
+        self.client.login(username="chef", password="TestPass123!")
+
+        request_item = StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_HIERARCHY,
+            total_days=2,
+            remaining_days_for_reason=8,
+            reason="Conge test",
+        )
+
+        response = self.client.post(
+            reverse("administration:request_action", args=[request_item.id, "approve"]),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        request_item.refresh_from_db()
+        self.assertEqual(request_item.approval_stage, StaffRequest.APPROVAL_ADMINISTRATION)
+        self.assertEqual(request_item.status, StaffRequest.STATUS_SUBMITTED)
+
+    def test_direction_approval_finalizes_request_and_updates_balance(self):
+        request_item = StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_RECOVERY,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_DIRECTION,
+            total_days=2,
+            remaining_days_for_reason=0,
+            reason="Recuperation test",
+        )
+        direction_user = User.objects.create_user(username="direction", password="TestPass123!")
+        direction_profile = direction_user.profile
+        direction_profile.role = EmployeeProfile.ROLE_DIRECTION
+        direction_profile.save()
+        self.client.logout()
+        self.client.login(username="direction", password="TestPass123!")
+
+        response = self.client.post(
+            reverse("administration:request_action", args=[request_item.id, "approve"]),
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        request_item.refresh_from_db()
+        self.user.profile.refresh_from_db()
+        self.assertEqual(request_item.status, StaffRequest.STATUS_APPROVED)
+        self.assertEqual(request_item.approval_stage, StaffRequest.APPROVAL_COMPLETED)
+        self.assertEqual(self.user.profile.recovery_balance, 6)
+
+    def test_employee_can_open_printable_request(self):
+        request_item = StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_ABSENCE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_HIERARCHY,
+            total_days=1,
+            remaining_days_for_reason=3,
+            reason="Absence ponctuelle",
+        )
+
+        response = self.client.get(reverse("requests_management:print", args=[request_item.id]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Suivi des validations")

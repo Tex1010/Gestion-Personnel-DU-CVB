@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Demandes du personnel{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Demandes</span>
+            <h1>Conge, absence et recuperation</h1>
+            <p>{{ pending_count }} demande(s) en attente de traitement.</p>
+        </div>
+        <div class="header-actions">
+            {% if show_history %}
+                <a href="{% url 'administration:requests' %}" class="btn-secondary"><i class="bi bi-clock-history"></i>Masquer l'historique</a>
+            {% else %}
+                <a href="{% url 'administration:requests' %}?show_history=1" class="btn-secondary"><i class="bi bi-clock-history"></i>Historique</a>
+            {% endif %}
+        </div>
+    </div>
+
+    <article class="card">
+        <div class="card-head">
+            <div>
+                <h2>Demandes a traiter</h2>
+                <p class="helper">Acceptez ou refusez chaque demande. Les soldes se mettent a jour automatiquement si necessaire.</p>
+            </div>
+        </div>
+        <div class="table-toolbar">
+            <label class="table-search-field">
+                <i class="bi bi-search"></i>
+                <input type="search" placeholder="Rechercher une demande, un employe ou un motif" data-table-search="pending-requests-table">
+            </label>
+        </div>
+        <div class="table-shell">
+            <div class="table-wrap sticky-table">
+                <table id="pending-requests-table">
+                    <thead>
+                        <tr>
+                            <th>Employe</th>
+                            <th>Type</th>
+                            <th>Periode / date</th>
+                            <th>Motif</th>
+                            <th>Etape</th>
+                            <th>Commentaire</th>
+                            <th>Actions</th>
+                            <th>Statut</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in requests %}
+                            <tr>
+                                <td data-label="Employe">{{ item.employee.display_name }}</td>
+                                <td data-label="Type">{{ item.type_label }}</td>
+                                <td data-label="Periode / date">{{ item.start_date|default:item.created_at|date:"d/m/Y" }}{% if item.end_date %} - {{ item.end_date|date:"d/m/Y" }}{% endif %}</td>
+                                <td data-label="Motif">{{ item.reason|default:item.project_name|truncatechars:70 }}</td>
+                                <td data-label="Etape"><span class="badge approved">{{ item.get_approval_stage_display }}</span></td>
+                                <td data-label="Commentaire">
+                                    <textarea name="admin_comment" rows="2" placeholder="Commentaire optionnel" form="request-review-{{ item.id }}">{{ item.admin_comment }}</textarea>
+                                </td>
+                                <td data-label="Actions">
+                                    <form method="post" action="{% url 'administration:request_action' item.id 'approve' %}" class="row-actions" id="request-review-{{ item.id }}">
+                                        {% csrf_token %}
+                                        <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Accepter cette demande" data-confirm-message="Cette demande sera approuvee et le solde sera mis a jour si necessaire." data-confirm-label="Oui, accepter" data-confirm-class="btn-primary"><i class="bi bi-check2-circle"></i></button>
+                                        <button type="submit" formaction="{% url 'administration:request_action' item.id 'reject' %}" class="btn-danger" data-confirm-action="1" data-confirm-title="Refuser cette demande" data-confirm-message="Cette demande sera marquee comme rejetee dans l'historique." data-confirm-label="Oui, refuser" data-confirm-class="btn-danger"><i class="bi bi-x-circle"></i></button>
+                                    </form>
+                                </td>
+                                <td data-label="Statut">
+                                    <span class="badge {{ item.status }}">{{ item.status_label }}</span>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="8">Aucune demande en attente pour le moment.</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </article>
+
+    {% if show_history %}
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Historique des actions</h2>
+                    <p class="helper">Chaque ligne indique si la demande a ete acceptee ou refusee ainsi que l'utilisateur ayant fait l'action.</p>
+                </div>
+            </div>
+            <div class="table-toolbar">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher dans l'historique des demandes" data-table-search="requests-history-table">
+                </label>
+            </div>
+            <div class="table-shell">
+                <div class="table-wrap sticky-table">
+                    <table id="requests-history-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Employe</th>
+                                <th>Type</th>
+                                <th>Action</th>
+                                <th>Utilisateur</th>
+                                <th>Commentaire</th>
+                                <th>Supprimer</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in history_entries %}
+                                <tr>
+                                    <td data-label="Date">{{ entry.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td data-label="Employe">{{ entry.request.employee.display_name }}</td>
+                                    <td data-label="Type">{{ entry.request.type_label }}</td>
+                                    <td data-label="Action"><span class="badge {{ entry.action }}">{{ entry.get_action_display }}</span></td>
+                                    <td data-label="Utilisateur">{{ entry.actor.username|default:"-" }}</td>
+                                    <td data-label="Commentaire">{{ entry.comment|default:"-" }}</td>
+                                    <td data-label="Supprimer">
+                                        {% if request.user.profile.role == "admin" %}
+                                            <form method="post" action="{% url 'administration:request_history_delete' entry.id %}" class="inline-action-form">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette entree" data-confirm-message="Cette entree sera retiree de l'historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                            </form>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="7">Aucune action enregistree.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+    {% endif %}
+</section>
+{% endblock %}

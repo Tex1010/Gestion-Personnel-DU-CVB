@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title|default:"Demande d'absence" }}{% endblock %}
+
+{% block content %}
+<section class="page-section narrow">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Formulaire metier</span>
+            <h1>{{ heading|default:"Demande d'autorisation d'absence" }}</h1>
+            <p>{{ description|default:"Formulaire inspire de la fiche papier fournie pour le Centre ValBio." }}</p>
+        </div>
+    </div>
+
+    <article class="card printable-form">
+        <div class="institution-header">
+            <div>
+                <h2>{{ branding.site_name|default:"Centre ValBio" }}</h2>
+                <p>{{ branding.subtitle|default:"Centre International pour la Valorisation de la Biodiversite" }}</p>
+            </div>
+            <div class="meta-copy">
+                <span>Nom et Prenom: {{ profile.display_name }}</span>
+                <span>Fonction: {{ profile.position|default:"-" }}</span>
+                <span>Fin de contrat: {{ profile.contract_end_date|default:"-" }}</span>
+            </div>
+        </div>
+        <form method="post" class="stack-form">
+            {% csrf_token %}
+            <div class="form-grid two">
+                <div>
+                    {{ form.start_date.label_tag }}
+                    {{ form.start_date }}
+                </div>
+                <div>
+                    {{ form.end_date.label_tag }}
+                    {{ form.end_date }}
+                </div>
+            </div>
+            <div class="stats-grid compact">
+                <div class="card accent-slate stat-card">
+                    <span>Total jours</span>
+                    <strong id="totalDaysDisplay">0</strong>
+                </div>
+                <div class="card accent-amber stat-card">
+                    <span>Jours restants</span>
+                    <strong id="remainingDaysDisplay">0</strong>
+                    <small>Calcul automatique apres cette demande.</small>
+                </div>
+            </div>
+            <div class="balance-hidden-fields">
+                {{ form.total_days }}
+                {{ form.remaining_days_for_reason }}
+            </div>
+            {% for error in form.total_days.errors %}
+                <small class="error-text">{{ error }}</small>
+            {% endfor %}
+            <div class="form-grid single">
+                {{ form.reason.label_tag }}
+                {{ form.reason }}
+            </div>
+            {% if form.errors %}
+                <div class="error-box">{{ form.errors }}</div>
+            {% endif %}
+            <div class="signature-row">
+                <span>Demandeur</span>
+                <span>Chef hierarchique</span>
+                <span>Administration</span>
+                <span>Direction</span>
+            </div>
+            <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="{{ confirm_title }}" data-confirm-message="{{ confirm_message }}" data-confirm-label="Oui, envoyer" data-confirm-class="btn-primary"><i class="bi bi-send-check"></i>{{ submit_label }}</button>
+        </form>
+    </article>
+</section>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const startDateInput = document.querySelector("#id_start_date");
+        const endDateInput = document.querySelector("#id_end_date");
+        const totalDaysInput = document.querySelector("[data-total-days]");
+        const remainingInput = document.querySelector("[data-remaining-balance]");
+        const totalDaysDisplay = document.getElementById("totalDaysDisplay");
+        const remainingDaysDisplay = document.getElementById("remainingDaysDisplay");
+        if (!startDateInput || !endDateInput || !totalDaysInput || !remainingInput) {
+            return;
+        }
+
+        const parseValue = (value) => {
+            const parsed = Number.parseFloat(String(value).replace(",", "."));
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
+
+        const formatValue = (value) => {
+            const normalized = Math.max(0, value);
+            return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(1);
+        };
+
+        const updateDaysAndRemaining = () => {
+            const startDate = startDateInput.value;
+            const endDate = endDateInput.value;
+            if (startDate && endDate) {
+                const start = new Date(`${startDate}T00:00:00`);
+                const end = new Date(`${endDate}T00:00:00`);
+                if (end >= start) {
+                    const diffDays = Math.round((end - start) / 86400000) + 1;
+                    totalDaysInput.value = diffDays;
+                }
+            }
+
+            const currentBalance = parseValue(remainingInput.dataset.currentBalance);
+            const totalDays = parseValue(totalDaysInput.value);
+            remainingInput.value = formatValue(currentBalance - totalDays);
+            if (totalDaysDisplay) {
+                totalDaysDisplay.textContent = formatValue(totalDays);
+            }
+            if (remainingDaysDisplay) {
+                remainingDaysDisplay.textContent = remainingInput.value;
+            }
+        };
+
+        [startDateInput, endDateInput].forEach((field) => field.addEventListener("change", updateDaysAndRemaining));
+        [startDateInput, endDateInput].forEach((field) => field.addEventListener("input", updateDaysAndRemaining));
+        updateDaysAndRemaining();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,431 @@
+{% extends "base.html" %}
+
+{% block title %}Parametres admin{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Parametres</span>
+            <h1>Comptes, logo et personnalisation</h1>
+            <p>Les sections s'affichent une par une pour garder un espace admin plus clair et plus professionnel.</p>
+        </div>
+    </div>
+
+    <div class="panel-switcher">
+        <a href="{% url 'administration:settings' %}?panel=create" class="switch-pill {% if panel == 'create' %}is-active{% endif %}"><i class="bi bi-person-plus"></i>Creer un compte employe</a>
+        <a href="{% url 'administration:settings' %}?panel=accounts" class="switch-pill {% if panel == 'accounts' %}is-active{% endif %}"><i class="bi bi-people"></i>Comptes existants</a>
+        <a href="{% url 'administration:settings' %}?panel=departments" class="switch-pill {% if panel == 'departments' %}is-active{% endif %}"><i class="bi bi-diagram-3"></i>Departements</a>
+        <a href="{% url 'administration:settings' %}?panel=projects" class="switch-pill {% if panel == 'projects' %}is-active{% endif %}"><i class="bi bi-folder2-open"></i>Projets</a>
+        <a href="{% url 'administration:settings' %}?panel=branding" class="switch-pill {% if panel == 'branding' %}is-active{% endif %}"><i class="bi bi-palette"></i>Logo et identite</a>
+    </div>
+
+    {% if panel == "create" %}
+        <article class="card">
+            <div class="card-head">
+                <h2>Creer un compte employe</h2>
+            </div>
+            <form method="post" enctype="multipart/form-data" class="stack-form">
+                {% csrf_token %}
+                <input type="hidden" name="panel" value="create">
+                <input type="hidden" name="create-account" value="1">
+                <div class="form-grid two">
+                    {% for field in account_form %}
+                        <div>
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <small class="error-text">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Creer ce compte employe" data-confirm-message="Le nouveau compte sera enregistre et apparaitra dans les comptes existants." data-confirm-label="Oui, creer" data-confirm-class="btn-primary"><i class="bi bi-person-check"></i>Creer le compte</button>
+            </form>
+        </article>
+    {% elif panel == "accounts" %}
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Comptes existants</h2>
+                    <p class="helper">Modifiez ou supprimez les comptes depuis cette section sans afficher les autres panneaux.</p>
+                </div>
+                <div class="header-actions">
+                    {% if show_history %}
+                        <a href="{% url 'administration:settings' %}?panel=accounts" class="btn-secondary"><i class="bi bi-clock-history"></i>Masquer l'historique</a>
+                    {% else %}
+                        <a href="{% url 'administration:settings' %}?panel=accounts&show_history=1" class="btn-secondary"><i class="bi bi-clock-history"></i>Historique</a>
+                    {% endif %}
+                </div>
+            </div>
+            {% if edit_account_form and edit_profile %}
+                <div class="edit-panel">
+                    <div class="card-head">
+                        <div>
+                            <h3>Modifier {{ edit_profile.display_name }}</h3>
+                            <p class="helper">Les changements sont appliques immediatement sur le compte selectionne.</p>
+                        </div>
+                        <a href="{% url 'administration:settings' %}?panel=accounts" class="btn-secondary"><i class="bi bi-arrow-left"></i>Annuler</a>
+                    </div>
+                    <form method="post" enctype="multipart/form-data" class="stack-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="panel" value="accounts">
+                        <input type="hidden" name="profile_id" value="{{ edit_profile.id }}">
+                        <input type="hidden" name="update-account" value="1">
+                        <div class="form-grid two">
+                            {% for field in edit_account_form %}
+                                <div>
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {% if field.help_text %}
+                                        <small class="helper">{{ field.help_text }}</small>
+                                    {% endif %}
+                                    {% for error in field.errors %}
+                                        <small class="error-text">{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Enregistrer les modifications" data-confirm-message="Les informations du compte selectionne seront mises a jour." data-confirm-label="Oui, enregistrer" data-confirm-class="btn-primary"><i class="bi bi-save2"></i>Enregistrer les modifications</button>
+                    </form>
+                </div>
+            {% endif %}
+            <div class="table-toolbar">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher un compte, un poste ou un role" data-table-search="accounts-table">
+                </label>
+            </div>
+            <div class="table-shell">
+                <div class="table-wrap sticky-table">
+                    <table id="accounts-table">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Poste</th>
+                                <th>Departement</th>
+                                <th>Role</th>
+                                <th>Conge</th>
+                                <th>Recup</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for employee in employees %}
+                                <tr>
+                                    <td data-label="Nom">
+                                        {{ employee.display_name }}
+                                        <br><small class="helper">Matricule: {{ employee.employee_number|default:"-" }}</small>
+                                        <br><small class="helper">Contrat: {{ employee.contract_type_label }}</small>
+                                        {% if employee.user == request.user %}<br><small class="helper">Session en cours</small>{% endif %}
+                                    </td>
+                                    <td data-label="Poste">{{ employee.position|default:"-" }}</td>
+                                    <td data-label="Departement">{{ employee.department_name }}</td>
+                                    <td data-label="Role">{{ employee.dashboard_role_label }}</td>
+                                    <td data-label="Conge">{{ employee.leave_balance }}</td>
+                                    <td data-label="Recuperation">{{ employee.recovery_balance }}</td>
+                                    <td data-label="Actions">
+                                        {% if employee.user == request.user %}
+                                            <span class="helper">Protection active</span>
+                                        {% else %}
+                                            <div class="row-actions">
+                                                <a href="{% url 'administration:settings' %}?panel=accounts&edit={{ employee.id }}" class="btn-secondary"><i class="bi bi-pencil-square"></i></a>
+                                                <form method="post" class="inline-action-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="panel" value="accounts">
+                                                    <input type="hidden" name="show_history" value="{% if show_history %}1{% else %}0{% endif %}">
+                                                    <input type="hidden" name="profile_id" value="{{ employee.id }}">
+                                                    <input type="hidden" name="delete-account" value="1">
+                                                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer ce compte" data-confirm-message="Cette suppression est sensible. Le compte sera retire des comptes existants." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                                </form>
+                                            </div>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="7">Aucun compte disponible.</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+
+        {% if show_history %}
+            <article class="card">
+                <div class="card-head">
+                    <div>
+                        <h2>Historique des comptes</h2>
+                        <p class="helper">Le tableau indique l'action effectuee et l'utilisateur ayant modifie ou supprime le compte.</p>
+                    </div>
+                </div>
+                <div class="table-toolbar">
+                    <label class="table-search-field">
+                        <i class="bi bi-search"></i>
+                        <input type="search" placeholder="Rechercher dans l'historique des comptes" data-table-search="accounts-history-table">
+                    </label>
+                </div>
+                <div class="table-shell">
+                    <div class="table-wrap sticky-table">
+                        <table id="accounts-history-table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Compte</th>
+                                    <th>Action</th>
+                                    <th>Utilisateur</th>
+                                    <th>Supprimer</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for entry in account_history %}
+                                    <tr>
+                                        <td data-label="Date">{{ entry.created_at|date:"d/m/Y H:i" }}</td>
+                                        <td data-label="Compte">{{ entry.target_username }}</td>
+                                        <td data-label="Action">{{ entry.get_action_display }}</td>
+                                        <td data-label="Utilisateur">{{ entry.actor.username|default:"-" }}</td>
+                                        <td data-label="Supprimer">
+                                            {% if request.user.username == "cvbadmin" %}
+                                                <form method="post" action="{% url 'administration:account_history_delete' entry.id %}" class="inline-action-form">
+                                                    {% csrf_token %}
+                                                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette entree" data-confirm-message="Cette entree sera retiree de l'historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                                </form>
+                                            {% else %}
+                                                <span class="helper">-</span>
+                                            {% endif %}
+                                        </td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="5">Aucun historique disponible.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </article>
+        {% endif %}
+    {% elif panel == "departments" %}
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Departements</h2>
+                    <p class="helper">Ajoutez, modifiez ou supprimez les structures de votre organisme.</p>
+                </div>
+            </div>
+            {% if department_editor %}
+                <div class="edit-panel">
+                    <div class="card-head">
+                        <div>
+                            <h3>Modifier {{ department_editor.name }}</h3>
+                        </div>
+                        <a href="{% url 'administration:settings' %}?panel=departments" class="btn-secondary"><i class="bi bi-arrow-left"></i>Annuler</a>
+                    </div>
+                    <form method="post" class="stack-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="panel" value="departments">
+                        <input type="hidden" name="department_id" value="{{ department_editor.id }}">
+                        <input type="hidden" name="update-department" value="1">
+                        <div class="form-grid two">
+                            {% for field in department_form %}
+                                <div>
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {% for error in field.errors %}
+                                        <small class="error-text">{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn-primary"><i class="bi bi-save2"></i>Enregistrer le departement</button>
+                    </form>
+                </div>
+            {% endif %}
+            <form method="post" class="stack-form">
+                {% csrf_token %}
+                <input type="hidden" name="panel" value="departments">
+                <input type="hidden" name="save-department" value="1">
+                <div class="form-grid two">
+                    {% for field in department_form %}
+                        <div>
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <small class="error-text">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn-primary"><i class="bi bi-plus-lg"></i>Ajouter un departement</button>
+            </form>
+            <div class="table-shell" style="margin-top: 20px;">
+                <div class="table-wrap sticky-table">
+                    <table id="departments-table">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Code</th>
+                                <th>Description</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for department in departments %}
+                                <tr>
+                                    <td data-label="Nom">{{ department.name }}</td>
+                                    <td data-label="Code">{{ department.code|default:"-" }}</td>
+                                    <td data-label="Description">{{ department.description|default:"-" }}</td>
+                                    <td data-label="Statut">{% if department.is_active %}Actif{% else %}Inactif{% endif %}</td>
+                                    <td data-label="Actions">
+                                        <div class="row-actions">
+                                            <a href="{% url 'administration:settings' %}?panel=departments&edit_department={{ department.id }}" class="btn-secondary"><i class="bi bi-pencil-square"></i>Modifier</a>
+                                            <form method="post" class="inline-action-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="panel" value="departments">
+                                                <input type="hidden" name="department_id" value="{{ department.id }}">
+                                                <input type="hidden" name="delete-department" value="1">
+                                                <button type="submit" class="btn-danger"><i class="bi bi-trash3"></i>Supprimer</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="5">Aucun departement enregistre.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+    {% elif panel == "projects" %}
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Projets</h2>
+                    <p class="helper">Ajoutez, modifiez ou supprimez les projets disponibles dans la fiche de recuperation.</p>
+                </div>
+            </div>
+            {% if project_editor %}
+                <div class="edit-panel">
+                    <div class="card-head">
+                        <div>
+                            <h3>Modifier {{ project_editor.name }}</h3>
+                        </div>
+                        <a href="{% url 'administration:settings' %}?panel=projects" class="btn-secondary"><i class="bi bi-arrow-left"></i>Annuler</a>
+                    </div>
+                    <form method="post" class="stack-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="panel" value="projects">
+                        <input type="hidden" name="project_id" value="{{ project_editor.id }}">
+                        <input type="hidden" name="update-project" value="1">
+                        <div class="form-grid two">
+                            {% for field in project_form %}
+                                <div>
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {% for error in field.errors %}
+                                        <small class="error-text">{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn-primary"><i class="bi bi-save2"></i>Enregistrer le projet</button>
+                    </form>
+                </div>
+            {% endif %}
+            <form method="post" class="stack-form">
+                {% csrf_token %}
+                <input type="hidden" name="panel" value="projects">
+                <input type="hidden" name="save-project" value="1">
+                <div class="form-grid two">
+                    {% for field in project_form %}
+                        <div>
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <small class="error-text">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn-primary"><i class="bi bi-plus-lg"></i>Ajouter un projet</button>
+            </form>
+            <div class="table-toolbar" style="margin-top: 20px;">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher un projet" data-table-search="projects-table">
+                </label>
+            </div>
+            <div class="table-shell">
+                <div class="table-wrap sticky-table">
+                    <table id="projects-table">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Code</th>
+                                <th>Description</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for project in projects %}
+                                <tr>
+                                    <td data-label="Nom">{{ project.name }}</td>
+                                    <td data-label="Code">{{ project.code|default:"-" }}</td>
+                                    <td data-label="Description">{{ project.description|default:"-" }}</td>
+                                    <td data-label="Statut">{% if project.is_active %}Actif{% else %}Inactif{% endif %}</td>
+                                    <td data-label="Actions">
+                                        <div class="row-actions">
+                                            <a href="{% url 'administration:settings' %}?panel=projects&edit_project={{ project.id }}" class="btn-secondary"><i class="bi bi-pencil-square"></i>Modifier</a>
+                                            <form method="post" class="inline-action-form">
+                                                {% csrf_token %}
+                                                <input type="hidden" name="panel" value="projects">
+                                                <input type="hidden" name="project_id" value="{{ project.id }}">
+                                                <input type="hidden" name="delete-project" value="1">
+                                                <button type="submit" class="btn-danger"><i class="bi bi-trash3"></i>Supprimer</button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="5">Aucun projet enregistre.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+    {% else %}
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Logo et identite visuelle</h2>
+                    <p class="helper">Le logo est reutilise sur la connexion, la navigation et les entetes principaux.</p>
+                </div>
+            </div>
+            <form method="post" enctype="multipart/form-data" class="stack-form">
+                {% csrf_token %}
+                <input type="hidden" name="panel" value="branding">
+                <input type="hidden" name="save-branding" value="1">
+                <div class="form-grid two">
+                    {% for field in branding_form %}
+                        <div>
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <small class="error-text">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Enregistrer le logo et l'identite" data-confirm-message="Le nouveau logo sera applique a la connexion, a la navigation et aux entetes principaux." data-confirm-label="Oui, enregistrer" data-confirm-class="btn-primary"><i class="bi bi-stars"></i>Enregistrer l'identite</button>
+            </form>
+        </article>
+    {% endif %}
+</section>
+{% endblock %}

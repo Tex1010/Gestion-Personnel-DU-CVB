@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Connexion | Gestion du personnel{% endblock %}
+{% block body_class %}login-page{% endblock %}
+<style>
+    .employee-help-card{
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        align-items:center;
+        text-align:center;
+        padding:50px 35px;
+        border-radius:24px;
+        min-height:420px;
+    }
+
+    .help-icon{
+        width:90px;
+        height:90px;
+        border-radius:50%;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        background:#25D36620;
+        margin-bottom:25px;
+    }
+
+    .help-icon i{
+        font-size:48px;
+        color:#25D366;
+    }
+
+    .employee-help-card h2{
+        margin-bottom:15px;
+    }
+
+    .employee-help-card p{
+        max-width:420px;
+        line-height:1.7;
+        color:#666;
+    }
+
+    .btn-whatsapp{
+        margin-top:25px;
+        display:inline-flex;
+        align-items:center;
+        gap:10px;
+        padding:14px 28px;
+        border-radius:14px;
+        background:#25D366;
+        color:#fff;
+        font-weight:700;
+        text-decoration:none;
+        transition:.25s;
+    }
+
+    .btn-whatsapp:hover{
+        transform:translateY(-2px);
+        background:#1faa56;
+        color:#fff;
+    }
+
+    .btn-whatsapp i{
+        font-size:1.3rem;
+    }
+</style>
+{% block public_content %}
+<section class="login-shell">
+    <div class="login-card">
+        <div class="login-brand">
+            <div class="hero-copy">
+                <span class="eyebrow">Plateforme securisee</span>
+                {% if branding and branding.logo_image %}
+                    <img src="{{ branding.logo_image.url }}" alt="Logo {{ branding.site_name|default:'Centre ValBio' }}" class="login-logo">
+                {% endif %}
+                <h1>{{ branding.site_name|default:"Centre ValBio" }}</h1>
+                <p>{{ branding.subtitle|default:"Centre International pour la Valorisation de la Biodiversite" }}</p>
+                <div class="login-kpi-grid">
+                    <div class="login-kpi-card">
+                        <strong>1</strong>
+                        <span>Connexion centralisee</span>
+                    </div>
+                    <div class="login-kpi-card">
+                        <strong>3</strong>
+                        <span>Profils securises</span>
+                    </div>
+                    <div class="login-kpi-card">
+                        <strong>24/7</strong>
+                        <span>Acces interne</span>
+                    </div>
+                </div>
+                <ul class="brand-list">
+                    <li><i class="bi bi-geo-alt"></i><span>{{ branding.address|default:"BP 33 Ranomafana Ifanadiana 312" }}</span></li>
+                    <li><i class="bi bi-envelope"></i><span>{{ branding.email|default:"centrevalbio@gmail.com" }}</span></li>
+                    <li><i class="bi bi-globe2"></i><span>{{ branding.website|default:"www.centrevalbio.org" }}</span></li>
+                </ul>
+                {% if branding.announcement %}
+                    <div class="announcement">{{ branding.announcement }}</div>
+                {% endif %}
+            </div>
+            <div class="brand-panel">
+                {% if branding and branding.hero_image %}
+                    <img src="{{ branding.hero_image.url }}" alt="Illustration d'accueil" class="brand-image">
+                {% else %}
+                    <div class="brand-placeholder">
+                        <div class="brand-placeholder-content">
+                            <span class="eyebrow">Experience moderne</span>
+                            <h3>Un acces fluide pour les employes et l'administration.</h3>
+                            <p>Suivez les demandes, les soldes et les validations depuis une interface claire et professionnelle.</p>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="login-form-panel">
+            <div class="login-form-head">
+                <span class="eyebrow">Bienvenue</span>
+                <h2>Connexion sécurisée</h2>
+                <p>Sélectionnez votre profil, puis connectez-vous à votre espace dédié.</p>
+            </div>
+            <div class="role-pill-group" aria-label="Profils disponibles">
+                <span class="role-pill active"><i class="bi bi-person-badge"></i>Employé</span>
+                <span class="role-pill"><i class="bi bi-shield-check"></i>Administration</span>
+                <span class="role-pill"><i class="bi bi-people"></i>Chef hiérarchique</span>
+                <span class="role-pill"><i class="bi bi-diagram-3"></i>Direction</span>
+            </div>
+            <form method="post" class="stack-form">
+                {% csrf_token %}
+                <div class="form-grid single">
+                    {{ form.role.label_tag }}
+                    {{ form.role }}
+                </div>
+                <div class="form-grid single">
+                    {{ form.username.label_tag }}
+                    {{ form.username }}
+                </div>
+                <div class="form-grid single">
+                    {{ form.password.label_tag }}
+                    {{ form.password }}
+                </div>
+                <button type="submit" class="btn-primary full"><i class="bi bi-box-arrow-in-right"></i>Se connecter</button>
+            </form>
+            <div class="card employee-help-card">
+                <div class="help-icon">
+                    <i class="bi bi-whatsapp"></i>
+                </div>
+
+                <h2>Besoin d'aide ?</h2>
+
+                <p>
+                    Une question concernant votre demande d'absence, de congé,
+                    de récupération ou le fonctionnement de la plateforme ?
+                </p>
+
+                <p class="helper">
+                    Je suis disponible pour vous accompagner et répondre à vos questions.
+                </p>
+
+                <a href="https://wa.me/261347794791"
+                target="_blank"
+                class="btn-whatsapp">
+                    <i class="bi bi-whatsapp"></i>
+                    Contacter sur WhatsApp
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

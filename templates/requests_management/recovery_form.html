@@ -1,0 +1,269 @@
+{% extends "base.html" %}
+
+{% block title %}Fiche de recuperation{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Formulaire metier</span>
+            <h1>Fiche de recuperation</h1>
+            <p>Formulaire numerique reprenant la logique de la fiche papier de recuperation.</p>
+        </div>
+    </div>
+
+    <article class="card printable-form">
+        <div class="institution-header">
+            <div>
+                <h2>{{ branding.site_name|default:"Centre ValBio" }}</h2>
+                <p>{{ branding.subtitle|default:"Centre International pour la Valorisation de la Biodiversite" }}</p>
+            </div>
+            <div class="meta-copy">
+                <span>Nom et Prenom: {{ profile.display_name }}</span>
+                <span>Fonction: {{ profile.position|default:"-" }}</span>
+                <span>Matricule: {{ profile.employee_number|default:"-" }}</span>
+            </div>
+        </div>
+        <form method="post" class="stack-form">
+            {% csrf_token %}
+            {{ formset.management_form }}
+            <div class="form-grid two">
+                <div>
+                    {{ form.project_name.label_tag }}
+                    {{ form.project_name }}
+                </div>
+                <div>
+                    {{ form.reason.label_tag }}
+                    {{ form.reason }}
+                </div>
+            </div>
+            <div class="table-toolbar">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher une ligne de recuperation" data-table-search="recovery-lines-table">
+                </label>
+                <button type="button" class="btn-secondary" id="add-recovery-line">
+                    <i class="bi bi-plus-lg"></i>
+                    Ajouter une ligne
+                </button>
+            </div>
+            <div class="table-wrap recovery-lines-table-wrapper">
+                <table id="recovery-lines-table" class="recovery-lines-table">
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Nature de travaux</th>
+                            <th>Debut heure</th>
+                            <th>Fin d'heure</th>
+                            <th>Duree</th>
+                            <th>Ferie</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="recovery-lines-body">
+                        {% for line_form in formset %}
+                            <tr class="recovery-line-row">
+                                {% for hidden in line_form.hidden_fields %}{{ hidden }}{% endfor %}
+                                <td data-label="Date">{{ line_form.work_date }}</td>
+                                <td data-label="Nature de travaux">{{ line_form.work_description }}</td>
+                                <td data-label="Debut heure">{{ line_form.start_time }}</td>
+                                <td data-label="Fin d'heure">{{ line_form.end_time }}</td>
+                                <td data-label="Duree">{{ line_form.duration_hours }}</td>
+                                <td data-label="Ferie">{{ line_form.is_holiday }}</td>
+                                <td data-label="Action">
+                                    <div class="recovery-line-actions">
+                                        <button type="button" class="btn-secondary btn-remove-line" data-remove-line="1">
+                                            <i class="bi bi-trash3"></i>
+                                            <span></span>
+                                        </button>
+                                        <div class="delete-line-control">{{ line_form.DELETE }}</div>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% if form.errors or formset.errors %}
+                <div class="error-box">Veuillez corriger les informations du formulaire.</div>
+            {% endif %}
+            <div class="signature-row three">
+                <span>Administration</span>
+                <span>Le responsable hierarchique</span>
+                <span>L'employeur</span>
+            </div>
+            <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Enregistrer cette fiche de recuperation" data-confirm-message="La fiche sera envoyee a l'administration pour verification et traitement." data-confirm-label="Oui, enregistrer" data-confirm-class="btn-primary"><i class="bi bi-save2"></i>Enregistrer la fiche</button>
+        </form>
+    </article>
+</section>
+<template id="recovery-line-template">
+    <tr class="recovery-line-row">
+        {% for hidden in formset.empty_form.hidden_fields %}{{ hidden.as_widget }}{% endfor %}
+        <td data-label="Date">{{ formset.empty_form.work_date }}</td>
+        <td data-label="Nature de travaux">{{ formset.empty_form.work_description }}</td>
+        <td data-label="Debut heure">{{ formset.empty_form.start_time }}</td>
+        <td data-label="Fin d'heure">{{ formset.empty_form.end_time }}</td>
+        <td data-label="Duree">{{ formset.empty_form.duration_hours }}</td>
+        <td data-label="Ferie">{{ formset.empty_form.is_holiday }}</td>
+        <td data-label="Action">
+            <div class="recovery-line-actions">
+                <button type="button" class="btn-secondary btn-remove-line" data-remove-line="1">
+                    <i class="bi bi-trash3"></i>
+                    <span>Supprimer</span>
+                </button>
+                <div class="delete-line-control">{{ formset.empty_form.DELETE }}</div>
+            </div>
+        </td>
+    </tr>
+</template>
+<script>
+    (() => {
+        const formsetPrefix = "{{ formset.prefix }}";
+        const recoveryForm = document.querySelector("form.stack-form");
+        const totalFormsInput = document.querySelector(`input[name="${formsetPrefix}-TOTAL_FORMS"]`);
+        const linesBody = document.getElementById("recovery-lines-body");
+        const template = document.getElementById("recovery-line-template");
+        const addButton = document.getElementById("add-recovery-line");
+
+        if (!totalFormsInput || !linesBody || !template || !addButton) {
+            return;
+        }
+
+        const toMinutes = (timeValue) => {
+            if (!timeValue) {
+                return null;
+            }
+            const parts = String(timeValue).split(":");
+            if (parts.length < 2) {
+                return null;
+            }
+            const hours = Number.parseInt(parts[0], 10);
+            const minutes = Number.parseInt(parts[1], 10);
+            if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+                return null;
+            }
+            return hours * 60 + minutes;
+        };
+
+        const formatDayValue = (value) => {
+            const normalized = Number.isFinite(value) ? Math.max(0, value) : 0;
+            const rounded = Math.round(normalized * 10) / 10;
+            return rounded % 1 === 0 ? String(rounded.toFixed(1)).replace(/\.0$/, "") : String(rounded);
+        };
+
+        const computeDays = (startMinutes, endMinutes, isHoliday) => {
+            if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+                return "";
+            }
+            const pauseStart = 12 * 60;
+            const pauseEnd = 13 * 60;
+            const overlap = Math.max(0, Math.min(endMinutes, pauseEnd) - Math.max(startMinutes, pauseStart));
+            const workedMinutes = (endMinutes - startMinutes) - overlap;
+            const baseDays = (workedMinutes / 60) / 8;
+            const finalDays = isHoliday ? baseDays * 1.5 : baseDays;
+            return formatDayValue(finalDays);
+        };
+
+        const bindRow = (row) => {
+            if (row.dataset.boundRecoveryRow === "1") {
+                return;
+            }
+            row.dataset.boundRecoveryRow = "1";
+            const startInput = row.querySelector('[data-start-time="1"]');
+            const endInput = row.querySelector('[data-end-time="1"]');
+            const durationInput = row.querySelector('[data-duration-days="1"]');
+            const holidayInput = row.querySelector('[data-is-holiday="1"]');
+            const removeButton = row.querySelector('[data-remove-line="1"]');
+            const deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+
+            if (!startInput || !endInput || !durationInput) {
+                return;
+            }
+
+            const applyDeletionState = (isDeleted) => {
+                row.classList.toggle("is-deleted", isDeleted);
+                row.setAttribute("aria-hidden", String(isDeleted));
+                if (deleteInput) {
+                    deleteInput.checked = isDeleted;
+                }
+                row.querySelectorAll("input, select, textarea").forEach((control) => {
+                    if (control !== deleteInput && control !== removeButton) {
+                        control.disabled = isDeleted;
+                    }
+                });
+                if (removeButton) {
+                    removeButton.innerHTML = isDeleted
+                        ? '<i class="bi bi-arrow-counterclockwise"></i><span>Restaurer</span>'
+                        : '<i class="bi bi-trash3"></i><span>Supprimer</span>';
+                }
+            };
+            const toggleDeletion = () => applyDeletionState(!row.classList.contains("is-deleted"));
+
+            const update = () => {
+                const startMinutes = toMinutes(startInput.value);
+                const endMinutes = toMinutes(endInput.value);
+                const isHoliday = Boolean(holidayInput && holidayInput.checked);
+                durationInput.value = computeDays(startMinutes, endMinutes, isHoliday);
+            };
+
+            startInput.addEventListener("input", update);
+            endInput.addEventListener("input", update);
+            if (holidayInput) {
+                holidayInput.addEventListener("change", update);
+            }
+            if (removeButton) {
+                removeButton.addEventListener("click", toggleDeletion);
+            }
+            if (deleteInput && deleteInput.checked) {
+                applyDeletionState(true);
+            }
+            update();
+        };
+
+        const addLine = () => {
+            const currentTotal = Number.parseInt(totalFormsInput.value, 10);
+            const nextIndex = Number.isFinite(currentTotal) ? currentTotal : 0;
+            const fragment = template.content.cloneNode(true);
+            const wrapper = document.createElement("tbody");
+            wrapper.appendChild(fragment);
+            const row = wrapper.querySelector("tr");
+            if (!row) {
+                return;
+            }
+
+            row.innerHTML = row.innerHTML.replaceAll("__prefix__", String(nextIndex));
+            linesBody.appendChild(row);
+            totalFormsInput.value = String(nextIndex + 1);
+            bindRow(row);
+        };
+
+        const ensureRowsForAutosave = (payload) => {
+            const indexes = Object.keys(payload || {})
+                .map((name) => {
+                    const match = name.match(new RegExp(`^${formsetPrefix}-(\\d+)-`));
+                    return match ? Number.parseInt(match[1], 10) : null;
+                })
+                .filter((value) => Number.isFinite(value));
+            if (!indexes.length) {
+                return;
+            }
+            const maxIndex = Math.max(...indexes);
+            while (Number.parseInt(totalFormsInput.value, 10) <= maxIndex) {
+                addLine();
+            }
+        };
+
+        if (recoveryForm) {
+            recoveryForm.addEventListener("trae:before-form-restore", (event) => {
+                ensureRowsForAutosave(event.detail.data);
+            });
+            recoveryForm.addEventListener("trae:form-restored", () => {
+                Array.from(linesBody.querySelectorAll(".recovery-line-row")).forEach(bindRow);
+            });
+        }
+
+        addButton.addEventListener("click", addLine);
+        Array.from(linesBody.querySelectorAll(".recovery-line-row")).forEach(bindRow);
+    })();
+</script>
+{% endblock %}
