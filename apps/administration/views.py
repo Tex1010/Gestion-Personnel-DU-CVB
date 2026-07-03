@@ -64,6 +64,15 @@ def _requests_redirect(show_history=False):
     return url
 
 
+def _visible_employee_queryset(profile):
+    employees = EmployeeProfile.objects.select_related("user").exclude(
+        user__username="cvbadmin"
+    )
+    if profile and profile.role == EmployeeProfile.ROLE_HIERARCHICAL:
+        employees = employees.filter(department=profile.department)
+    return employees
+
+
 def _scoped_request_queryset(queryset, profile, actionable_only=False):
     if not profile:
         return queryset.none()
@@ -105,6 +114,61 @@ def _is_request_in_scope(request_item, profile):
     if profile.role == EmployeeProfile.ROLE_DIRECTION:
         return request_item.approval_stage == StaffRequest.APPROVAL_DIRECTION
     return False
+
+
+def _request_requires_hierarchy(request_item):
+    return request_item.employee.role == EmployeeProfile.ROLE_USER
+
+
+def _build_history_stage_statuses(request_item):
+    stage_order = [
+        StaffRequest.APPROVAL_HIERARCHY,
+        StaffRequest.APPROVAL_ADMINISTRATION,
+        StaffRequest.APPROVAL_DIRECTION,
+    ]
+    signature_map = {
+        StaffRequest.APPROVAL_HIERARCHY: request_item.hierarchical_signature,
+        StaffRequest.APPROVAL_ADMINISTRATION: request_item.administration_signature,
+        StaffRequest.APPROVAL_DIRECTION: request_item.direction_signature,
+    }
+    label_map = {
+        StaffRequest.APPROVAL_HIERARCHY: "Chef hierarchique",
+        StaffRequest.APPROVAL_ADMINISTRATION: "Administration",
+        StaffRequest.APPROVAL_DIRECTION: "Direction",
+    }
+    rejection_stage = request_item.approval_stage if request_item.status == StaffRequest.STATUS_REJECTED else ""
+    statuses = []
+
+    for stage_key in stage_order:
+        required = (
+            stage_key != StaffRequest.APPROVAL_HIERARCHY
+            or _request_requires_hierarchy(request_item)
+        )
+        signature = signature_map[stage_key]
+
+        if not required:
+            badge_class = "soft"
+            status_label = "Non requise"
+        elif rejection_stage == stage_key:
+            badge_class = StaffRequest.STATUS_REJECTED
+            status_label = "Rejetee"
+        elif signature:
+            badge_class = StaffRequest.STATUS_APPROVED
+            status_label = "Approuvee"
+        else:
+            badge_class = "soft"
+            status_label = "Aucune action"
+
+        statuses.append(
+            {
+                "label": label_map[stage_key],
+                "username": signature or "-",
+                "status": status_label,
+                "badge_class": badge_class,
+            }
+        )
+
+    return statuses
 
 
 def _record_account_history(actor, user, action, details=""):
@@ -156,9 +220,7 @@ def _apply_request_balance(request_item):
 @role_required(*APPROVAL_ROLES)
 def dashboard_view(request):
     current_profile = getattr(request.user, "profile", None)
-    employees = EmployeeProfile.objects.select_related("user")
-    if current_profile and current_profile.role == EmployeeProfile.ROLE_HIERARCHICAL:
-        employees = employees.filter(department=current_profile.department)
+    employees = _visible_employee_queryset(current_profile)
     actionable_requests = _scoped_request_queryset(StaffRequest.objects.all(), current_profile, actionable_only=True)
     leave_chart_labels, leave_chart_values = _build_balance_distribution(
         employees,
@@ -188,9 +250,7 @@ def dashboard_view(request):
 @role_required(*APPROVAL_ROLES)
 def dashboard_data_view(request):
     current_profile = getattr(request.user, "profile", None)
-    employees = EmployeeProfile.objects.select_related("user")
-    if current_profile and current_profile.role == EmployeeProfile.ROLE_HIERARCHICAL:
-        employees = employees.filter(department=current_profile.department)
+    employees = _visible_employee_queryset(current_profile)
     actionable_requests = _scoped_request_queryset(StaffRequest.objects.all(), current_profile, actionable_only=True)
     leave_chart_labels, leave_chart_values = _build_balance_distribution(
         employees,
@@ -222,20 +282,27 @@ def requests_overview_view(request):
     current_profile = getattr(request.user, "profile", None)
     requests = StaffRequest.objects.select_related("employee", "employee__user")
     submitted_requests = _scoped_request_queryset(requests, current_profile, actionable_only=True)
-    history_entries = RequestActionHistory.objects.select_related(
-        "request",
-        "actor",
-        "request__employee",
-        "request__employee__user",
+    history_requests = (
+        StaffRequest.objects.select_related("employee", "employee__user")
+        .filter(admin_history__isnull=False)
+        .distinct()
+        .order_by("-updated_at", "-created_at")
     )
     if current_profile and current_profile.role == EmployeeProfile.ROLE_HIERARCHICAL:
-        history_entries = history_entries.filter(request__employee__department=current_profile.department)
+        history_requests = history_requests.filter(employee__department=current_profile.department)
+    history_requests = [
+        {
+            "request": history_request,
+            "stage_statuses": _build_history_stage_statuses(history_request),
+        }
+        for history_request in history_requests
+    ]
     return render(
         request,
         "administration/requests_overview.html",
         {
             "requests": submitted_requests,
-            "history_entries": history_entries,
+            "history_requests": history_requests,
             "pending_count": submitted_requests.count(),
             "show_history": request.GET.get("show_history") == "1",
         },
@@ -389,12 +456,15 @@ def request_action_view(request, request_id, action):
 
 @login_required
 @role_required(*ADMIN_ROLES)
-def request_history_delete_view(request, entry_id):
+def request_history_delete_view(request, request_id):
     if request.method != "POST":
         return redirect(_requests_redirect(show_history=True))
-    entry = get_object_or_404(RequestActionHistory, pk=entry_id)
-    entry.delete()
-    messages.success(request, "L'entree d'historique a ete supprimee.")
+    request_item = get_object_or_404(StaffRequest, pk=request_id)
+    deleted_count, _ = RequestActionHistory.objects.filter(request=request_item).delete()
+    if deleted_count:
+        messages.success(request, "L'historique de la demande a ete supprime.")
+    else:
+        messages.info(request, "Aucune entree d'historique a supprimer pour cette demande.")
     return redirect(_requests_redirect(show_history=True))
 
 

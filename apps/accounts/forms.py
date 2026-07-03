@@ -14,10 +14,34 @@ class LoginForm(forms.Form):
             (EmployeeProfile.ROLE_HIERARCHICAL, "Chef hiérarchique"),
             (EmployeeProfile.ROLE_DIRECTION, "Direction"),
         ],
-        widget=forms.Select(attrs={"class": "form-select"}),
+        widget=forms.Select(
+            attrs={
+                "class": "form-select login-select-input",
+                "data-login-role-select": "1",
+            }
+        ),
     )
-    username = forms.CharField(label="Nom d'utilisateur", max_length=150)
-    password = forms.CharField(label="Mot de passe", widget=forms.PasswordInput)
+    username = forms.CharField(
+        label="Nom d'utilisateur",
+        max_length=150,
+        widget=forms.TextInput(
+            attrs={
+                "class": "login-text-input",
+                "placeholder": " ",
+                "autocomplete": "username",
+            }
+        ),
+    )
+    password = forms.CharField(
+        label="Mot de passe",
+        widget=forms.PasswordInput(
+            attrs={
+                "class": "login-text-input",
+                "placeholder": " ",
+                "autocomplete": "current-password",
+            }
+        ),
+    )
 
 
 class StyledPasswordChangeForm(PasswordChangeForm):

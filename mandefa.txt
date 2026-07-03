@@ -14,8 +14,14 @@ git pull
 git clone https://github.com/Tex1010/Gestion-Personnel-DU-CVB.git
 cd Gestion-Personnel-DU-CVB
 
+
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
 python manage.py makemigrations
 python manage.py migrate
+
+python manage.py createsuperuser
+python manage.py runserver
+
+python manage.py runserver 10.0.2.76:8000

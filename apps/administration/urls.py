@@ -14,7 +14,7 @@ urlpatterns = [
         name="request_action",
     ),
     path(
-        "demandes/historique/<int:entry_id>/supprimer/",
+        "demandes/historique/<int:request_id>/supprimer/",
         views.request_history_delete_view,
         name="request_history_delete",
     ),

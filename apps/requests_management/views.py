@@ -19,6 +19,36 @@ def _request_requires_hierarchy(request_item):
     return request_item.employee.role == EmployeeProfile.ROLE_USER
 
 
+def _restore_request_balance(request_item):
+    if request_item.status != StaffRequest.STATUS_APPROVED:
+        return True, ""
+
+    profile = request_item.employee
+    amount = request_item.total_days or Decimal("0.0")
+
+    if request_item.request_type == StaffRequest.TYPE_LEAVE:
+        profile.leave_balance += amount
+        profile.save(update_fields=["leave_balance", "updated_at"])
+        return True, "Le solde de conge a ete restaure."
+
+    if request_item.request_type == StaffRequest.TYPE_ABSENCE:
+        profile.recovery_balance += amount
+        profile.save(update_fields=["recovery_balance", "updated_at"])
+        return True, "Le solde de recuperation a ete restaure."
+
+    if request_item.request_type == StaffRequest.TYPE_RECOVERY:
+        if profile.recovery_balance < amount:
+            return (
+                False,
+                "Impossible de supprimer cette recuperation approuvee car son solde a deja ete utilise.",
+            )
+        profile.recovery_balance -= amount
+        profile.save(update_fields=["recovery_balance", "updated_at"])
+        return True, "Le solde de recuperation a ete ajuste."
+
+    return True, ""
+
+
 def _build_stage_statuses(request_item):
     current_stage = request_item.approval_stage
     stage_order = [
@@ -228,11 +258,19 @@ def delete_request_view(request, request_id):
         pk=request_id,
         employee=profile,
     )
-    if request_item.status != StaffRequest.STATUS_SUBMITTED:
-        messages.error(request, "Seules les demandes encore en attente peuvent etre supprimees.")
+    success, balance_message = _restore_request_balance(request_item)
+    if not success:
+        messages.error(request, balance_message)
         return redirect("personnel:dashboard")
     request_item.delete()
-    messages.success(request, "La demande a ete supprimee de votre historique.")
+    messages.success(
+        request,
+        " ".join(
+            item
+            for item in ["La demande a ete supprimee de votre historique.", balance_message]
+            if item
+        ),
+    )
     return redirect("personnel:dashboard")
 
 
@@ -263,13 +301,18 @@ def print_request_view(request, request_id):
     ):
         messages.error(request, "Vous n'avez pas acces a cette demande.")
         return redirect("administration:requests")
+    stage_statuses = _build_stage_statuses(request_item)
+    recovery_lines = list(request_item.recovery_lines.all())
+
+    if request.GET.get("download") == "1":
+        return _build_pdf_response(request_item, stage_statuses, recovery_lines)
 
     return render(
         request,
         "requests_management/request_print.html",
         {
             "request_item": request_item,
-            "stage_statuses": _build_stage_statuses(request_item),
-            "recovery_lines": request_item.recovery_lines.all(),
+            "stage_statuses": stage_statuses,
+            "recovery_lines": recovery_lines,
         },
     )

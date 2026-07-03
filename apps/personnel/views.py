@@ -17,7 +17,7 @@ def dashboard_view(request):
     if portal_role != EmployeeProfile.ROLE_USER and profile.role != EmployeeProfile.ROLE_USER:
         return redirect("administration:dashboard")
 
-    request_queryset = profile.requests.all().order_by("-created_at")
+    request_queryset = profile.requests.prefetch_related("recovery_lines").order_by("-created_at")
     stats_by_type = {
         item["request_type"]: item["total"]
         for item in request_queryset.values("request_type").annotate(total=Count("id"))

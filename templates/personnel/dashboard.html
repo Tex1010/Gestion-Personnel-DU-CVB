@@ -119,17 +119,20 @@
                             <tr>
                                 <td data-label="Type">{{ item.type_label }}</td>
                                 <td data-label="Date">{{ item.created_at|date:"d/m/Y" }}</td>
-                                <td data-label="Periode">{% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %}{% if item.end_date %} - {{ item.end_date|date:"d/m/Y" }}{% endif %}</td>
+                                <td data-label="Periode">
+                                    {% for period in item.period_entries %}
+                                        {{ period }}{% if not forloop.last %}<br>{% endif %}
+                                    {% endfor %}
+                                </td>
                                 <td data-label="Statut"><span class="badge {{ item.status }}">{{ item.status_label }}</span></td>
                                 <td data-label="Action">
                                     <div class="row-actions">
                                         <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
-                                        {% if item.status == "submitted" %}
-                                            <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
-                                                {% csrf_token %}
-                                                <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette demande" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
-                                            </form>
-                                        {% endif %}
+                                        <a href="{% url 'requests_management:print' item.id %}?download=1" class="btn-secondary" target="_blank" rel="noopener" title="Telecharger en PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                                        <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
+                                            {% csrf_token %}
+                                            <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette demande" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                        </form>
                                     </div>
                                 </td>
                             </tr>
@@ -175,12 +178,11 @@
                             <span class="badge {{ item.status }}">{{ item.status_label }}</span>
                             <div class="row-actions">
                                 <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
-                                {% if item.status == "submitted" %}
-                                    <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette absence" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
-                                    </form>
-                                {% endif %}
+                                <a href="{% url 'requests_management:print' item.id %}?download=1" class="btn-secondary" target="_blank" rel="noopener" title="Telecharger en PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                                <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette absence" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                </form>
                             </div>
                         </div>
                     </article>
@@ -207,7 +209,11 @@
                     <article class="request-card-item">
                         <div class="request-card-main">
                             <div>
-                                <strong>{{ item.created_at|date:"d/m/Y" }}</strong>
+                                <strong>
+                                    {% for period in item.period_entries %}
+                                        {{ period }}{% if not forloop.last %}<br>{% endif %}
+                                    {% endfor %}
+                                </strong>
                                 <div class="request-card-subtitle">Récupération • {{ item.project_name|default:"Sans projet" }}</div>
                             </div>
                             <div class="request-card-meta">
@@ -219,12 +225,11 @@
                             <span class="badge {{ item.status }}">{{ item.status_label }}</span>
                             <div class="row-actions">
                                 <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
-                                {% if item.status == "submitted" %}
-                                    <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette recuperation" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
-                                    </form>
-                                {% endif %}
+                                <a href="{% url 'requests_management:print' item.id %}?download=1" class="btn-secondary" target="_blank" rel="noopener" title="Telecharger en PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                                <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette recuperation" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                </form>
                             </div>
                         </div>
                     </article>
@@ -263,12 +268,11 @@
                             <span class="badge {{ item.status }}">{{ item.status_label }}</span>
                             <div class="row-actions">
                                 <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
-                                {% if item.status == "submitted" %}
-                                    <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
-                                        {% csrf_token %}
-                                        <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer ce conge" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
-                                    </form>
-                                {% endif %}
+                                <a href="{% url 'requests_management:print' item.id %}?download=1" class="btn-secondary" target="_blank" rel="noopener" title="Telecharger en PDF"><i class="bi bi-file-earmark-pdf"></i></a>
+                                <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer ce conge" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                                </form>
                             </div>
                         </div>
                     </article>

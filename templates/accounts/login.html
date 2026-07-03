@@ -2,68 +2,6 @@
 
 {% block title %}Connexion | Gestion du personnel{% endblock %}
 {% block body_class %}login-page{% endblock %}
-<style>
-    .employee-help-card{
-        display:flex;
-        flex-direction:column;
-        justify-content:center;
-        align-items:center;
-        text-align:center;
-        padding:50px 35px;
-        border-radius:24px;
-        min-height:420px;
-    }
-
-    .help-icon{
-        width:90px;
-        height:90px;
-        border-radius:50%;
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        background:#25D36620;
-        margin-bottom:25px;
-    }
-
-    .help-icon i{
-        font-size:48px;
-        color:#25D366;
-    }
-
-    .employee-help-card h2{
-        margin-bottom:15px;
-    }
-
-    .employee-help-card p{
-        max-width:420px;
-        line-height:1.7;
-        color:#666;
-    }
-
-    .btn-whatsapp{
-        margin-top:25px;
-        display:inline-flex;
-        align-items:center;
-        gap:10px;
-        padding:14px 28px;
-        border-radius:14px;
-        background:#25D366;
-        color:#fff;
-        font-weight:700;
-        text-decoration:none;
-        transition:.25s;
-    }
-
-    .btn-whatsapp:hover{
-        transform:translateY(-2px);
-        background:#1faa56;
-        color:#fff;
-    }
-
-    .btn-whatsapp i{
-        font-size:1.3rem;
-    }
-</style>
 {% block public_content %}
 <section class="login-shell">
     <div class="login-card">
@@ -119,27 +57,35 @@
                 <h2>Connexion sécurisée</h2>
                 <p>Sélectionnez votre profil, puis connectez-vous à votre espace dédié.</p>
             </div>
-            <div class="role-pill-group" aria-label="Profils disponibles">
-                <span class="role-pill active"><i class="bi bi-person-badge"></i>Employé</span>
-                <span class="role-pill"><i class="bi bi-shield-check"></i>Administration</span>
-                <span class="role-pill"><i class="bi bi-people"></i>Chef hiérarchique</span>
-                <span class="role-pill"><i class="bi bi-diagram-3"></i>Direction</span>
+            <div class="role-pill-group login-role-preview" aria-label="Profils disponibles">
+                <span class="role-pill" data-role-pill="user"><i class="bi bi-person-badge"></i>Employé</span>
+                <span class="role-pill" data-role-pill="admin"><i class="bi bi-shield-check"></i>Administration</span>
+                <span class="role-pill" data-role-pill="hierarchical"><i class="bi bi-people"></i>Chef hiérarchique</span>
+                <span class="role-pill" data-role-pill="direction"><i class="bi bi-diagram-3"></i>Direction</span>
             </div>
-            <form method="post" class="stack-form">
+            <form method="post" class="stack-form login-modern-form">
                 {% csrf_token %}
-                <div class="form-grid single">
-                    {{ form.role.label_tag }}
-                    {{ form.role }}
+                <div class="login-select-shell">
+                    <div class="login-select-head">
+                        <span class="login-select-caption">Méthode à sélectionner</span>
+                        <strong>{{ form.role.label }}</strong>
+                    </div>
+                    <div class="login-select-control">
+                        <i class="bi bi-person-workspace login-field-icon" aria-hidden="true"></i>
+                        {{ form.role }}
+                    </div>
                 </div>
-                <div class="form-grid single">
-                    {{ form.username.label_tag }}
+                <div class="login-floating-field">
+                    <i class="bi bi-person login-field-icon" aria-hidden="true"></i>
                     {{ form.username }}
+                    <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
                 </div>
-                <div class="form-grid single">
-                    {{ form.password.label_tag }}
+                <div class="login-floating-field">
+                    <i class="bi bi-lock login-field-icon" aria-hidden="true"></i>
                     {{ form.password }}
+                    <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
                 </div>
-                <button type="submit" class="btn-primary full"><i class="bi bi-box-arrow-in-right"></i>Se connecter</button>
+                <button type="submit" class="btn-primary full login-submit-button"><i class="bi bi-box-arrow-in-right"></i>Se connecter</button>
             </form>
             <div class="card employee-help-card">
                 <div class="help-icon">
@@ -167,4 +113,40 @@
         </div>
     </div>
 </section>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const roleSelect = document.querySelector("[data-login-role-select='1']");
+        const rolePills = document.querySelectorAll("[data-role-pill]");
+        const floatingFields = document.querySelectorAll(".login-floating-field input");
+
+        const syncRolePills = () => {
+            if (!roleSelect) {
+                return;
+            }
+            rolePills.forEach((pill) => {
+                pill.classList.toggle("active", pill.dataset.rolePill === roleSelect.value);
+            });
+        };
+
+        const syncFieldState = (input) => {
+            const wrapper = input.closest(".login-floating-field");
+            if (!wrapper) {
+                return;
+            }
+            wrapper.classList.toggle("has-value", input.value.trim().length > 0);
+        };
+
+        if (roleSelect) {
+            roleSelect.addEventListener("change", syncRolePills);
+            syncRolePills();
+        }
+
+        floatingFields.forEach((input) => {
+            ["focus", "blur", "input", "change"].forEach((eventName) => {
+                input.addEventListener(eventName, () => syncFieldState(input));
+            });
+            syncFieldState(input);
+        });
+    });
+</script>
 {% endblock %}

@@ -81,6 +81,24 @@ class AdministrationViewsTests(TestCase):
         self.assertIn("1.5 jour(s)", json.loads(response.context["leave_chart_labels"]))
         self.assertIn("1 unite(s)", json.loads(response.context["recovery_chart_labels"]))
 
+    def test_admin_dashboard_hides_cvbadmin_from_stats_and_tables(self):
+        hidden_admin = User.objects.create_user(
+            username="cvbadmin",
+            password="TestPass123!",
+            first_name="Compte",
+            last_name="Cache",
+        )
+        hidden_admin.profile.role = EmployeeProfile.ROLE_ADMIN
+        hidden_admin.profile.leave_balance = Decimal("0.0")
+        hidden_admin.profile.recovery_balance = Decimal("0.0")
+        hidden_admin.profile.save()
+
+        response = self.client.get(reverse("administration:dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.context["employee_count"], 3)
+        self.assertNotContains(response, "Compte Cache")
+
     def test_admin_transmits_leave_request_to_direction(self):
         staff_request = StaffRequest.objects.create(
             employee=self.employee.profile,
@@ -159,6 +177,74 @@ class AdministrationViewsTests(TestCase):
         self.assertEqual(staff_request.status, StaffRequest.STATUS_SUBMITTED)
         self.assertEqual(staff_request.approval_stage, StaffRequest.APPROVAL_DIRECTION)
         self.assertEqual(self.employee.profile.recovery_balance, Decimal("6.0"))
+
+    def test_request_history_groups_multiple_actions_on_single_row(self):
+        staff_request = StaffRequest.objects.create(
+            employee=self.employee.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_DIRECTION,
+            total_days=Decimal("2.0"),
+            reason="Conge annuel",
+            admin_comment="En attente de la direction.",
+            hierarchical_signature="chef-service",
+            administration_signature="admin",
+        )
+        RequestActionHistory.objects.create(
+            request=staff_request,
+            actor=self.admin,
+            action=RequestActionHistory.ACTION_APPROVED,
+            previous_status=StaffRequest.STATUS_SUBMITTED,
+            new_status=StaffRequest.STATUS_SUBMITTED,
+            comment="Validation admin.",
+        )
+        RequestActionHistory.objects.create(
+            request=staff_request,
+            actor=self.admin,
+            action=RequestActionHistory.ACTION_APPROVED,
+            previous_status=StaffRequest.STATUS_SUBMITTED,
+            new_status=StaffRequest.STATUS_SUBMITTED,
+            comment="Validation chef deja enregistree.",
+        )
+
+        response = self.client.get(
+            f"{reverse('administration:requests')}?show_history=1"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(len(response.context["history_requests"]), 1)
+        history_row = response.context["history_requests"][0]
+        self.assertEqual(history_row["request"].id, staff_request.id)
+        self.assertEqual(history_row["stage_statuses"][0]["status"], "Approuvee")
+        self.assertEqual(history_row["stage_statuses"][1]["status"], "Approuvee")
+        self.assertEqual(history_row["stage_statuses"][2]["status"], "Aucune action")
+
+    def test_requests_overview_displays_total_days_in_pending_and_history_tables(self):
+        pending_request = StaffRequest.objects.create(
+            employee=self.employee.profile,
+            request_type=StaffRequest.TYPE_ABSENCE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_ADMINISTRATION,
+            total_days=Decimal("4.0"),
+            reason="Mission terrain",
+            administration_signature="admin",
+        )
+        RequestActionHistory.objects.create(
+            request=pending_request,
+            actor=self.admin,
+            action=RequestActionHistory.ACTION_APPROVED,
+            previous_status=StaffRequest.STATUS_SUBMITTED,
+            new_status=StaffRequest.STATUS_SUBMITTED,
+            comment="Transmission en cours.",
+        )
+
+        response = self.client.get(
+            f"{reverse('administration:requests')}?show_history=1"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Nombre de jours")
+        self.assertContains(response, "4.0")
 
     def test_admin_can_create_account_with_contract_type(self):
         response = self.client.post(

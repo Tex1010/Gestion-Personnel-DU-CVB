@@ -178,6 +178,7 @@
             const confirmationModal = modalElement ? new bootstrap.Modal(modalElement) : null;
             let pendingForm = null;
             let pendingSubmitter = null;
+            let isConfirmingAction = false;
 
             const resetConfirmButton = () => {
                 submitElement.className = "btn-primary";
@@ -188,6 +189,10 @@
                 button.addEventListener("click", (event) => {
                     const form = button.form;
                     if (!form || !confirmationModal) {
+                        return;
+                    }
+                    if (button.dataset.confirmed === "1" || isConfirmingAction) {
+                        button.dataset.confirmed = "0";
                         return;
                     }
                     event.preventDefault();
@@ -209,6 +214,10 @@
                     if (!pendingForm) {
                         return;
                     }
+                    isConfirmingAction = true;
+                    if (pendingSubmitter) {
+                        pendingSubmitter.dataset.confirmed = "1";
+                    }
                     confirmationModal.hide();
                     if (pendingForm.requestSubmit) {
                         pendingForm.requestSubmit(pendingSubmitter);
@@ -218,6 +227,9 @@
                     pendingForm = null;
                     pendingSubmitter = null;
                     resetConfirmButton();
+                    window.setTimeout(() => {
+                        isConfirmingAction = false;
+                    }, 0);
                 });
             }
 

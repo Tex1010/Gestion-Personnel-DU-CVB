@@ -21,7 +21,7 @@
             <div class="meta-copy">
                 <span>Nom et Prenom: {{ profile.display_name }}</span>
                 <span>Fonction: {{ profile.position|default:"-" }}</span>
-                <span>Fin de contrat: {{ profile.contract_end_date|default:"-" }}</span>
+                <span>Type de contrat: {{ profile.contract_type_label }}</span>
             </div>
         </div>
         <form method="post" class="stack-form">

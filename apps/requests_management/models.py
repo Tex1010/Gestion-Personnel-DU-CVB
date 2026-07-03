@@ -84,6 +84,35 @@ class StaffRequest(models.Model):
     def status_label(self):
         return self.get_status_display()
 
+    @staticmethod
+    def _format_date(value):
+        return value.strftime("%d/%m/%Y") if value else "-"
+
+    @staticmethod
+    def _format_time(value):
+        return value.strftime("%H:%M") if value else "-"
+
+    @property
+    def period_entries(self):
+        if self.request_type == self.TYPE_RECOVERY:
+            entries = [
+                (
+                    f"{self._format_date(line.work_date)} "
+                    f"{self._format_time(line.start_time)} - {self._format_time(line.end_time)}"
+                )
+                for line in self.recovery_lines.all()
+            ]
+            return entries or ["-"]
+
+        start_label = self._format_date(self.start_date) if self.start_date else "-"
+        if self.end_date:
+            return [f"{start_label} - {self._format_date(self.end_date)}"]
+        return [start_label]
+
+    @property
+    def period_label(self):
+        return " | ".join(self.period_entries)
+
     def compute_recovery_hours(self):
         total_hours = sum(line.duration_hours for line in self.recovery_lines.all())
         return round(total_hours, 2)

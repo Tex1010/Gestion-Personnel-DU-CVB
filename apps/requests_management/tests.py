@@ -74,7 +74,7 @@ class RequestsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertFalse(StaffRequest.objects.filter(id=request_item.id).exists())
 
-    def test_employee_cannot_delete_already_processed_request(self):
+    def test_employee_can_delete_already_processed_request(self):
         request_item = StaffRequest.objects.create(
             employee=self.user.profile,
             request_type=StaffRequest.TYPE_LEAVE,
@@ -84,15 +84,18 @@ class RequestsTests(TestCase):
             remaining_days_for_reason=8,
             reason="Conge approuve",
         )
+        self.user.profile.leave_balance = 8
+        self.user.profile.save()
 
         response = self.client.post(
             reverse("requests_management:delete", args=[request_item.id]),
             follow=True,
         )
 
+        self.user.profile.refresh_from_db()
         self.assertEqual(response.status_code, 200)
-        self.assertTrue(StaffRequest.objects.filter(id=request_item.id).exists())
-        self.assertContains(response, "Seules les demandes encore en attente peuvent etre supprimees")
+        self.assertFalse(StaffRequest.objects.filter(id=request_item.id).exists())
+        self.assertEqual(self.user.profile.leave_balance, 10)
 
     def test_hierarchical_approval_advances_request_to_next_stage(self):
         department = Department.objects.create(name="Informatique")
@@ -170,3 +173,44 @@ class RequestsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Suivi des validations")
+
+    def test_employee_can_download_request_as_pdf(self):
+        request_item = StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_ABSENCE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_HIERARCHY,
+            total_days=1,
+            remaining_days_for_reason=3,
+            reason="Absence ponctuelle",
+        )
+
+        response = self.client.get(
+            f"{reverse('requests_management:print', args=[request_item.id])}?download=1"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response["Content-Type"], "application/pdf")
+        self.assertIn("attachment;", response["Content-Disposition"])
+        self.assertTrue(response.content.startswith(b"%PDF-1.4"))
+
+    def test_employee_dashboard_exposes_pdf_and_delete_actions_for_processed_request(self):
+        request_item = StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_APPROVED,
+            approval_stage=StaffRequest.APPROVAL_COMPLETED,
+            total_days=2,
+            remaining_days_for_reason=8,
+            reason="Conge approuve",
+        )
+
+        response = self.client.get(reverse("personnel:dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, reverse("requests_management:print", args=[request_item.id]))
+        self.assertContains(
+            response,
+            f"{reverse('requests_management:print', args=[request_item.id])}?download=1",
+        )
+        self.assertContains(response, reverse("requests_management:delete", args=[request_item.id]))

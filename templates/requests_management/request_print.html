@@ -12,6 +12,7 @@
 
         :root {
             color-scheme: light;
+            --print-scale: 1;
         }
 
         * {
@@ -64,6 +65,11 @@
             padding: 18mm 16mm;
             background: #ffffff;
             box-shadow: 0 18px 48px rgba(18, 30, 22, 0.12);
+            overflow: hidden;
+        }
+
+        .sheet-content {
+            transform-origin: top left;
         }
 
         .sheet-header {
@@ -210,11 +216,16 @@
             }
 
             .sheet {
-                width: auto;
-                min-height: auto;
+                width: 182mm;
+                height: 269mm;
                 margin: 0;
                 padding: 0;
                 box-shadow: none;
+            }
+
+            .sheet-content {
+                width: calc(100% / var(--print-scale));
+                transform: scale(var(--print-scale));
             }
         }
     </style>
@@ -222,10 +233,12 @@
 <body>
     <div class="print-toolbar">
         <a href="javascript:window.close()" class="back-link">Fermer</a>
-        <button type="button" class="print-button" onclick="window.print()">Imprimer en A4</button>
+        <button type="button" class="print-button" onclick="printRequestDocument()">Imprimer en A4</button>
+        <a href="?download=1" class="print-button">Telecharger PDF</a>
     </div>
 
     <main class="sheet">
+        <div class="sheet-content" id="sheet-content">
         <header class="sheet-header">
             <div class="brand">
                 {% if branding and branding.logo_image %}
@@ -263,8 +276,19 @@
                 <div class="meta-list">
                     <div><span>Statut global</span><span>{{ request_item.status_label }}</span></div>
                     <div><span>Etape en cours</span><span>{{ request_item.get_approval_stage_display }}</span></div>
-                    <div><span>Date debut</span><span>{{ request_item.start_date|date:"d/m/Y"|default:"-" }}</span></div>
-                    <div><span>Date fin</span><span>{{ request_item.end_date|date:"d/m/Y"|default:"-" }}</span></div>
+                    {% if request_item.request_type == "recovery" %}
+                        <div>
+                            <span>Periode</span>
+                            <span>
+                                {% for period in request_item.period_entries %}
+                                    {{ period }}{% if not forloop.last %}<br>{% endif %}
+                                {% endfor %}
+                            </span>
+                        </div>
+                    {% else %}
+                        <div><span>Date debut</span><span>{{ request_item.start_date|date:"d/m/Y"|default:"-" }}</span></div>
+                        <div><span>Date fin</span><span>{{ request_item.end_date|date:"d/m/Y"|default:"-" }}</span></div>
+                    {% endif %}
                     <div><span>Total jours</span><span>{{ request_item.total_days }}</span></div>
                     <div><span>Projet</span><span>{{ request_item.project_name|default:"-" }}</span></div>
                 </div>
@@ -312,7 +336,7 @@
                 <thead>
                     <tr>
                         <th>Etape</th>
-                        <th>Nom utilisateur</th>
+                        <th>Par</th>
                         <th>Statut</th>
                     </tr>
                 </thead>
@@ -336,6 +360,44 @@
         {% endif %}
 
         <p class="footer-note">Document genere depuis la gestion du personnel du Centre ValBio.</p>
+        </div>
     </main>
+    <script>
+        const fitDocumentToSingleA4Page = () => {
+            const sheet = document.querySelector(".sheet");
+            const content = document.getElementById("sheet-content");
+            if (!sheet || !content) {
+                return;
+            }
+
+            document.documentElement.style.setProperty("--print-scale", "1");
+
+            const availableWidth = sheet.clientWidth;
+            const availableHeight = sheet.clientHeight;
+            const contentWidth = content.scrollWidth;
+            const contentHeight = content.scrollHeight;
+
+            if (!availableWidth || !availableHeight || !contentWidth || !contentHeight) {
+                return;
+            }
+
+            const widthRatio = availableWidth / contentWidth;
+            const heightRatio = availableHeight / contentHeight;
+            const nextScale = Math.min(1, widthRatio, heightRatio);
+            document.documentElement.style.setProperty("--print-scale", String(nextScale));
+        };
+
+        const printRequestDocument = () => {
+            fitDocumentToSingleA4Page();
+            window.print();
+        };
+
+        window.addEventListener("load", () => {
+            fitDocumentToSingleA4Page();
+        });
+
+        window.addEventListener("resize", fitDocumentToSingleA4Page);
+        window.addEventListener("beforeprint", fitDocumentToSingleA4Page);
+    </script>
 </body>
 </html>
