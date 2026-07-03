@@ -1,3 +1,19 @@
+git init
+git remote add origin https://github.com/Tex1010/Gestion-Personnel-DU-CVB.git
+git branch -M main
+git push -u origin main
+git push -u origin main
+
+
+git add .
+git commit -m "Ok"
+git push
+
+git pull
+
+git clone https://github.com/Tex1010/Gestion-Personnel-DU-CVB.git
+cd Gestion-Personnel-DU-CVB
+
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
