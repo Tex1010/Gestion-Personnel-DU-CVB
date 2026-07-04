@@ -1,17 +1,16 @@
-import csv
 import io
 import json
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.core.cache import cache
 from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.utils.timezone import localtime
 
 from apps.accounts.utils import role_required
 from apps.administration.forms import (
@@ -109,24 +108,35 @@ def _export_request_rows(requests):
     headers = [
         "ID",
         "Employe",
+        "Matricule",
         "Type",
         "Date de creation",
+        "Date debut",
+        "Date fin",
         "Periode",
         "Nombre de jours",
         "Statut",
         "Etape",
-        "Motif",
-        "Commentaire",
+        "Motif / Projet",
+        "Commentaire admin",
     ]
     rows = []
     for item in requests:
+        created_label = (
+            localtime(item.created_at).strftime("%d/%m/%Y %H:%M")
+            if item.created_at
+            else ""
+        )
         rows.append(
             [
                 item.id,
                 getattr(item.employee, "display_name", ""),
+                getattr(item.employee, "employee_number", ""),
                 item.type_label,
-                item.created_at.strftime("%d/%m/%Y %H:%M") if item.created_at else "",
-                f"{item.start_date.strftime('%d/%m/%Y') if item.start_date else ''} - {item.end_date.strftime('%d/%m/%Y') if item.end_date else ''}",
+                created_label,
+                item.start_date.strftime("%d/%m/%Y") if item.start_date else "",
+                item.end_date.strftime("%d/%m/%Y") if item.end_date else "",
+                item.period_label,
                 item.total_days or "",
                 item.status_label,
                 item.get_approval_stage_display(),
@@ -139,39 +149,84 @@ def _export_request_rows(requests):
 
 def _build_requests_export_response(request, export_format, requests):
     headers, rows = _export_request_rows(requests)
-    if export_format == "excel":
-        try:
-            from openpyxl import Workbook
-        except Exception:
-            export_format = "csv"
+    from openpyxl import Workbook
+    from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
+    from openpyxl.utils import get_column_letter
 
-    if export_format == "excel":
-        workbook = Workbook()
-        sheet = workbook.active
-        sheet.title = "Demandes"
-        sheet.append(headers)
-        for row in rows:
-            sheet.append(row)
-        output = io.BytesIO()
-        workbook.save(output)
-        output.seek(0)
-        response = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
-        response["Content-Disposition"] = "attachment; filename=demandes.xlsx"
-        return response
+    workbook = Workbook()
+    sheet = workbook.active
+    sheet.title = "Demandes"
+    sheet.freeze_panes = "A2"
+    sheet.sheet_view.showGridLines = False
+    sheet.append(headers)
+    for row in rows:
+        sheet.append(row)
 
-    output = io.StringIO()
-    writer = csv.writer(output, delimiter=";", lineterminator="\n")
-    writer.writerow(headers)
-    writer.writerows(rows)
-    response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
-    response["Content-Disposition"] = "attachment; filename=demandes.csv"
+    header_fill = PatternFill("solid", fgColor="255C3A")
+    header_font = Font(color="FFFFFF", bold=True)
+    zebra_fill = PatternFill("solid", fgColor="F7FBF8")
+    clear_fill = PatternFill("solid", fgColor="FFFFFF")
+    border = Border(
+        left=Side(style="thin", color="D8E3DB"),
+        right=Side(style="thin", color="D8E3DB"),
+        top=Side(style="thin", color="D8E3DB"),
+        bottom=Side(style="thin", color="D8E3DB"),
+    )
+    top_alignment = Alignment(vertical="top", wrap_text=True)
+
+    for cell in sheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal="center", vertical="center", wrap_text=True)
+        cell.border = border
+
+    for row in sheet.iter_rows(min_row=2, max_row=sheet.max_row):
+        row_fill = zebra_fill if row[0].row % 2 == 0 else clear_fill
+        for cell in row:
+            cell.alignment = top_alignment
+            cell.border = border
+            cell.fill = row_fill
+
+    width_map = {
+        1: 8,
+        2: 26,
+        3: 16,
+        4: 16,
+        5: 20,
+        6: 18,
+        7: 34,
+        8: 14,
+        9: 16,
+        10: 20,
+        11: 34,
+        12: 30,
+    }
+    for column_index, width in width_map.items():
+        sheet.column_dimensions[get_column_letter(column_index)].width = width
+
+    sheet.row_dimensions[1].height = 28
+    for row_index in range(2, sheet.max_row + 1):
+        sheet.row_dimensions[row_index].height = 44
+
+    sheet.auto_filter.ref = sheet.dimensions
+
+    output = io.BytesIO()
+    workbook.save(output)
+    output.seek(0)
+    response = HttpResponse(
+        output.getvalue(),
+        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+    response["Content-Disposition"] = "attachment; filename=demandes.xlsx"
     return response
 
 
 def _send_request_email_alert(request_item, branding=None):
     if not branding:
         branding = LoginBranding.objects.first()
-    recipient = getattr(branding, "email", "") or "centrevalbio@gmail.com"
+    if not branding or not branding.request_submission_email_enabled:
+        return False
+    recipient = getattr(branding, "email", "").strip()
     if not recipient:
         return False
 
@@ -190,6 +245,16 @@ def _send_request_email_alert(request_item, branding=None):
         return True
     except Exception:
         return False
+
+
+def _queue_floating_notification(request, title, message, action_label="", action_url=""):
+    request.session["floating_notification"] = {
+        "title": title,
+        "message": message,
+        "action_label": action_label,
+        "action_url": action_url,
+    }
+    request.session.modified = True
 
 
 def _is_request_in_scope(request_item, profile):
@@ -407,16 +472,46 @@ def export_requests_view(request, export_format):
     requests = StaffRequest.objects.select_related("employee", "employee__user")
     requests = _scoped_request_queryset(requests, current_profile, actionable_only=False)
     requests = requests.order_by("-created_at")
-    if export_format not in {"csv", "excel"}:
-        export_format = "csv"
-    return _build_requests_export_response(request, export_format, requests)
+    return _build_requests_export_response(request, "excel", requests)
+
+
+@login_required
+@role_required(*APPROVAL_ROLES)
+def request_notifications_state_view(request):
+    current_profile = getattr(request.user, "profile", None)
+    actionable_requests = _scoped_request_queryset(
+        StaffRequest.objects.select_related("employee", "employee__user"),
+        current_profile,
+        actionable_only=True,
+    ).order_by("-updated_at", "-created_at")
+    pending_count = actionable_requests.count()
+    latest_request = actionable_requests.first()
+    latest_event_key = ""
+    latest_request_payload = None
+
+    if latest_request and latest_request.updated_at:
+        latest_event_key = (
+            f"{latest_request.id}:{int(localtime(latest_request.updated_at).timestamp())}"
+        )
+        latest_request_payload = {
+            "id": latest_request.id,
+            "employee_name": latest_request.employee.display_name,
+            "type_label": latest_request.type_label,
+            "period_label": latest_request.period_label,
+            "updated_at": localtime(latest_request.updated_at).strftime("%d/%m/%Y %H:%M"),
+        }
+
+    return JsonResponse(
+        {
+            "pending_count": pending_count,
+            "latest_event_key": latest_event_key,
+            "latest_request": latest_request_payload,
+        }
+    )
 
 
 @login_required
 def acknowledge_request_notification_view(request):
-    if request.method == "POST":
-        request.session["request_notification_pending"] = False
-        request.session.modified = True
     return JsonResponse({"ok": True})
 
 
@@ -686,7 +781,7 @@ def settings_view(request):
             )
             if branding_form.is_valid():
                 branding_form.save()
-                messages.success(request, "Le logo et l'identite visuelle ont ete mis a jour.")
+                messages.success(request, "L'identite visuelle et les preferences d'alerte email ont ete mises a jour.")
                 return redirect(_settings_redirect(panel="branding"))
 
         elif "save-department" in request.POST:

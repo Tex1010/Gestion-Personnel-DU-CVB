@@ -18,6 +18,10 @@ class LoginBranding(models.Model):
         blank=True,
         help_text="Texte libre modifiable par l'admin pour annoncer un evenement.",
     )
+    request_submission_email_enabled = models.BooleanField(
+        default=True,
+        help_text="Active l'envoi d'un email a l'adresse d'administration a chaque nouvelle demande.",
+    )
     logo_image = models.FileField(upload_to="branding/logos/", blank=True, null=True)
     hero_image = models.FileField(upload_to="branding/", blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)

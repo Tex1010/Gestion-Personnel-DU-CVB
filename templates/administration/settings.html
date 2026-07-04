@@ -405,8 +405,11 @@
             <div class="card-head">
                 <div>
                     <h2>Logo et identite visuelle</h2>
-                    <p class="helper">Le logo est reutilise sur la connexion, la navigation et les entetes principaux.</p>
+                    <p class="helper">Le logo est reutilise sur la connexion, la navigation et les entetes principaux. L'email saisi ici sert aussi aux alertes de nouvelles demandes si l'option est active.</p>
                 </div>
+            </div>
+            <div class="helper" style="margin-bottom: 18px;">
+                Activez ou desactivez l'alerte email selon vos besoins. Quand elle est active, chaque nouvelle demande envoie un message a l'adresse definie dans ce panneau.
             </div>
             <form method="post" enctype="multipart/form-data" class="stack-form">
                 {% csrf_token %}

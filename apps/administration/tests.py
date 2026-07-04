@@ -1,11 +1,12 @@
 import json
 from decimal import Decimal
+from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.administration.models import AccountActionHistory, RequestActionHistory
+from apps.administration.models import AccountActionHistory, LoginBranding, RequestActionHistory
 from apps.personnel.models import EmployeeProfile
 from apps.requests_management.models import StaffRequest
 
@@ -68,6 +69,7 @@ class AdministrationViewsTests(TestCase):
             employee=low_balance_user.profile,
             request_type=StaffRequest.TYPE_LEAVE,
             status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_ADMINISTRATION,
             total_days=Decimal("1.0"),
             reason="Conge court",
         )
@@ -244,7 +246,7 @@ class AdministrationViewsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Nombre de jours")
-        self.assertContains(response, "4.0")
+        self.assertContains(response, "4,0")
 
     def test_admin_can_create_account_with_contract_type(self):
         response = self.client.post(
@@ -328,3 +330,67 @@ class AdministrationViewsTests(TestCase):
                 actor=self.admin,
             ).exists()
         )
+
+    def test_export_requests_returns_excel_file_even_for_csv_route(self):
+        StaffRequest.objects.create(
+            employee=self.employee.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_ADMINISTRATION,
+            total_days=Decimal("2.0"),
+            reason="Conge test",
+        )
+
+        response = self.client.get(
+            reverse("administration:export_requests", args=["csv"])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("demandes.xlsx", response["Content-Disposition"])
+        self.assertTrue(response.content.startswith(b"PK"))
+
+    def test_request_notifications_state_returns_pending_request_summary(self):
+        request_item = StaffRequest.objects.create(
+            employee=self.employee.profile,
+            request_type=StaffRequest.TYPE_ABSENCE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_ADMINISTRATION,
+            total_days=Decimal("1.0"),
+            reason="Mission",
+        )
+
+        response = self.client.get(reverse("administration:request_notifications_state"))
+
+        self.assertEqual(response.status_code, 200)
+        payload = response.json()
+        self.assertEqual(payload["pending_count"], 1)
+        self.assertIn(str(request_item.id), payload["latest_event_key"])
+        self.assertEqual(payload["latest_request"]["employee_name"], "Mamy Agent")
+
+    def test_request_email_alert_respects_admin_toggle(self):
+        branding = LoginBranding.objects.create(
+            site_name="Centre ValBio",
+            subtitle="Gestion",
+            email="admin@example.com",
+            request_submission_email_enabled=False,
+        )
+        request_item = StaffRequest.objects.create(
+            employee=self.employee.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_ADMINISTRATION,
+            total_days=Decimal("1.0"),
+            reason="Conge court",
+        )
+
+        with patch("apps.administration.views.send_mail") as mocked_send_mail:
+            from apps.administration.views import _send_request_email_alert
+
+            result = _send_request_email_alert(request_item, branding=branding)
+
+        self.assertFalse(result)
+        mocked_send_mail.assert_not_called()

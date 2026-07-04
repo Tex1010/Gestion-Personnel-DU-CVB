@@ -10,4 +10,12 @@ def branding(request):
     ):
         branding_item.announcement = "Bienvenue dans la gestion du personnel du centre ValBio."
         branding_item.save(update_fields=["announcement"])
-    return {"branding": branding_item}
+    floating_notification = None
+    if hasattr(request, "session"):
+        floating_notification = request.session.pop("floating_notification", None)
+        if floating_notification is not None:
+            request.session.modified = True
+    return {
+        "branding": branding_item,
+        "floating_notification": floating_notification,
+    }

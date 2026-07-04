@@ -14,7 +14,7 @@ from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 
 from apps.accounts.utils import get_user_profile, role_required
 from apps.administration.models import LoginBranding
-from apps.administration.views import _send_request_email_alert
+from apps.administration.views import _queue_floating_notification, _send_request_email_alert
 from apps.personnel.models import EmployeeProfile
 from apps.requests_management.forms import (
     AbsenceRequestForm,
@@ -298,12 +298,17 @@ def _balance_request_view(request, request_type):
         balance_request.save()
         branding = LoginBranding.objects.first()
         _send_request_email_alert(balance_request, branding=branding)
-        request.session["request_notification_pending"] = True
-        request.session.modified = True
         success_message = (
             "La demande de conge a ete enregistree."
             if request_type == StaffRequest.TYPE_LEAVE
             else "La demande d'absence a ete enregistree."
+        )
+        _queue_floating_notification(
+            request,
+            "Demande envoyee",
+            success_message,
+            action_label="Voir mes demandes",
+            action_url=resolve_url("personnel:dashboard"),
         )
         messages.success(request, success_message)
         return redirect("personnel:dashboard")
@@ -387,8 +392,13 @@ def recovery_request_view(request):
         recovery_request.save(update_fields=["total_days", "updated_at"])
         branding = LoginBranding.objects.first()
         _send_request_email_alert(recovery_request, branding=branding)
-        request.session["request_notification_pending"] = True
-        request.session.modified = True
+        _queue_floating_notification(
+            request,
+            "Demande envoyee",
+            "La fiche de recuperation a ete enregistree.",
+            action_label="Voir mes demandes",
+            action_url=resolve_url("personnel:dashboard"),
+        )
         messages.success(request, "La fiche de recuperation a ete enregistree.")
         return redirect("personnel:dashboard")
 

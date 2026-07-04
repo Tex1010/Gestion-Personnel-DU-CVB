@@ -148,6 +148,35 @@
             </div>
         </div>
     </div>
+    {% if request.user.is_authenticated %}
+        {% with portal_role=request.session.portal_role|default:request.user.profile.role %}
+            <div
+                class="floating-notice"
+                id="floatingNotification"
+                hidden
+                data-portal-role="{{ portal_role }}"
+                data-username="{{ request.user.username }}"
+                data-admin-feed-url="{% url 'administration:request_notifications_state' %}"
+                data-admin-requests-url="{% url 'administration:requests' %}"
+                data-employee-dashboard-url="{% url 'personnel:dashboard' %}"
+            >
+                <div class="floating-notice-icon">
+                    <i class="bi bi-bell-fill" aria-hidden="true"></i>
+                </div>
+                <div class="floating-notice-body">
+                    <strong id="floatingNotificationTitle">Notification</strong>
+                    <p id="floatingNotificationMessage">Une nouvelle alerte est disponible.</p>
+                    <a href="#" class="floating-notice-link" id="floatingNotificationAction">Voir</a>
+                </div>
+                <button type="button" class="floating-notice-close" id="floatingNotificationClose" aria-label="Fermer">
+                    <i class="bi bi-x-lg" aria-hidden="true"></i>
+                </button>
+            </div>
+        {% endwith %}
+        {% if floating_notification %}
+            {{ floating_notification|json_script:"floatingNotificationPayload" }}
+        {% endif %}
+    {% endif %}
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
@@ -449,6 +478,325 @@
                 input.addEventListener("input", filterTable);
                 filterTable();
             });
+
+            const topbar = document.querySelector(".topbar");
+            const mobileSidebar = document.getElementById("mobileSidebar");
+            const mobileViewport = window.matchMedia("(max-width: 1024px)");
+
+            if (topbar) {
+                let lastScrollY = window.scrollY;
+                let downDistance = 0;
+                let upDistance = 0;
+                let ticking = false;
+
+                const setTopbarHidden = (shouldHide) => {
+                    topbar.classList.toggle("is-hidden-on-scroll", shouldHide);
+                };
+
+                const updateTopbarOffset = () => {
+                    if (!mobileViewport.matches) {
+                        document.documentElement.style.removeProperty("--mobile-topbar-offset");
+                        return;
+                    }
+
+                    const computedStyles = window.getComputedStyle(topbar);
+                    const topOffset = Number.parseFloat(computedStyles.top) || 0;
+                    const topbarHeight = topbar.offsetHeight || 0;
+                    const safeOffset = Math.ceil(topOffset + topbarHeight);
+                    document.documentElement.style.setProperty("--mobile-topbar-offset", `${safeOffset}px`);
+                };
+
+                const resetTopbarScrollState = () => {
+                    lastScrollY = window.scrollY;
+                    downDistance = 0;
+                    upDistance = 0;
+                };
+
+                const syncTopbarVisibility = () => {
+                    ticking = false;
+
+                    if (!mobileViewport.matches) {
+                        setTopbarHidden(false);
+                        updateTopbarOffset();
+                        resetTopbarScrollState();
+                        return;
+                    }
+
+                    if (mobileSidebar && mobileSidebar.classList.contains("show")) {
+                        setTopbarHidden(false);
+                        updateTopbarOffset();
+                        resetTopbarScrollState();
+                        return;
+                    }
+
+                    const currentScrollY = Math.max(window.scrollY, 0);
+                    const delta = currentScrollY - lastScrollY;
+
+                    if (currentScrollY <= 12) {
+                        setTopbarHidden(false);
+                        updateTopbarOffset();
+                        resetTopbarScrollState();
+                        return;
+                    }
+
+                    if (delta > 0) {
+                        downDistance += delta;
+                        upDistance = 0;
+
+                        if (currentScrollY > 80 && downDistance >= 28) {
+                            setTopbarHidden(true);
+                        }
+                    } else if (delta < 0) {
+                        upDistance += Math.abs(delta);
+                        downDistance = 0;
+
+                        if (upDistance >= 8) {
+                            setTopbarHidden(false);
+                        }
+                    }
+
+                    lastScrollY = currentScrollY;
+                    updateTopbarOffset();
+                };
+
+                const requestTopbarSync = () => {
+                    if (ticking) {
+                        return;
+                    }
+                    ticking = true;
+                    window.requestAnimationFrame(syncTopbarVisibility);
+                };
+
+                window.addEventListener("scroll", requestTopbarSync, { passive: true });
+                window.addEventListener("resize", () => {
+                    setTopbarHidden(false);
+                    updateTopbarOffset();
+                    resetTopbarScrollState();
+                });
+                window.addEventListener("orientationchange", () => {
+                    setTopbarHidden(false);
+                    updateTopbarOffset();
+                    resetTopbarScrollState();
+                });
+
+                if ("ResizeObserver" in window) {
+                    const topbarObserver = new ResizeObserver(() => {
+                        updateTopbarOffset();
+                    });
+                    topbarObserver.observe(topbar);
+                }
+
+                if (mobileSidebar) {
+                    mobileSidebar.addEventListener("show.bs.offcanvas", () => {
+                        setTopbarHidden(false);
+                        updateTopbarOffset();
+                        resetTopbarScrollState();
+                    });
+                    mobileSidebar.addEventListener("hidden.bs.offcanvas", () => {
+                        setTopbarHidden(false);
+                        updateTopbarOffset();
+                        resetTopbarScrollState();
+                    });
+                }
+
+                updateTopbarOffset();
+            }
+
+            const floatingNotification = document.getElementById("floatingNotification");
+            const floatingNotificationTitle = document.getElementById("floatingNotificationTitle");
+            const floatingNotificationMessage = document.getElementById("floatingNotificationMessage");
+            const floatingNotificationAction = document.getElementById("floatingNotificationAction");
+            const floatingNotificationClose = document.getElementById("floatingNotificationClose");
+
+            if (floatingNotification) {
+                const bellButton = document.getElementById("requestBell");
+                const bellCount = document.getElementById("requestBellCount");
+                const initialNotificationData = document.getElementById("floatingNotificationPayload");
+                const portalRole = floatingNotification.dataset.portalRole || "";
+                const username = floatingNotification.dataset.username || "anonymous";
+                const employeeDashboardUrl = floatingNotification.dataset.employeeDashboardUrl || "/";
+                const adminRequestsUrl = floatingNotification.dataset.adminRequestsUrl || "/";
+                const adminFeedUrl = floatingNotification.dataset.adminFeedUrl || "";
+                const rolesWithAdminFeed = ["admin", "hierarchical", "direction"];
+                let floatingNotificationTimer = null;
+                let isPollingNotifications = false;
+
+                const updateBellCounter = (count, shouldPulse = false) => {
+                    if (!bellCount) {
+                        return;
+                    }
+
+                    const safeCount = Number(count) || 0;
+                    bellCount.textContent = String(safeCount);
+                    bellCount.style.display = safeCount > 0 ? "inline-grid" : "none";
+
+                    if (bellButton) {
+                        bellButton.classList.toggle("has-alert", safeCount > 0);
+                        bellButton.classList.toggle("is-pulsing", shouldPulse && safeCount > 0);
+                    }
+                };
+
+                const playBellSound = () => {
+                    const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                    if (!AudioContextClass) {
+                        return;
+                    }
+
+                    try {
+                        const context = new AudioContextClass();
+                        const now = context.currentTime;
+                        const frequencies = [880, 1174];
+
+                        frequencies.forEach((frequency, index) => {
+                            const oscillator = context.createOscillator();
+                            const gain = context.createGain();
+                            oscillator.type = "triangle";
+                            oscillator.frequency.setValueAtTime(frequency, now + index * 0.08);
+                            gain.gain.setValueAtTime(0.0001, now + index * 0.08);
+                            gain.gain.linearRampToValueAtTime(0.08, now + index * 0.08 + 0.03);
+                            gain.gain.exponentialRampToValueAtTime(0.0001, now + index * 0.08 + 0.42);
+                            oscillator.connect(gain);
+                            gain.connect(context.destination);
+                            oscillator.start(now + index * 0.08);
+                            oscillator.stop(now + index * 0.08 + 0.42);
+                        });
+                    } catch (error) {
+                        return;
+                    }
+                };
+
+                const hideFloatingNotification = () => {
+                    floatingNotification.classList.remove("is-visible");
+                    window.clearTimeout(floatingNotificationTimer);
+                    floatingNotificationTimer = null;
+                    window.setTimeout(() => {
+                        if (!floatingNotification.classList.contains("is-visible")) {
+                            floatingNotification.hidden = true;
+                        }
+                    }, 240);
+                };
+
+                const showFloatingNotification = ({
+                    title,
+                    message,
+                    actionLabel,
+                    actionUrl,
+                    playSound = true,
+                    autoHideMs = 6200,
+                }) => {
+                    floatingNotificationTitle.textContent = title || "Notification";
+                    floatingNotificationMessage.textContent = message || "";
+
+                    if (actionLabel && actionUrl) {
+                        floatingNotificationAction.hidden = false;
+                        floatingNotificationAction.textContent = actionLabel;
+                        floatingNotificationAction.href = actionUrl;
+                    } else {
+                        floatingNotificationAction.hidden = true;
+                        floatingNotificationAction.removeAttribute("href");
+                    }
+
+                    floatingNotification.hidden = false;
+                    window.requestAnimationFrame(() => {
+                        floatingNotification.classList.add("is-visible");
+                    });
+
+                    window.clearTimeout(floatingNotificationTimer);
+                    floatingNotificationTimer = window.setTimeout(hideFloatingNotification, autoHideMs);
+
+                    if (playSound) {
+                        playBellSound();
+                    }
+                };
+
+                floatingNotificationClose?.addEventListener("click", hideFloatingNotification);
+                floatingNotificationAction?.addEventListener("click", () => {
+                    hideFloatingNotification();
+                });
+
+                if (initialNotificationData?.textContent) {
+                    try {
+                        const payload = JSON.parse(initialNotificationData.textContent);
+                        showFloatingNotification({
+                            title: payload.title || "Demande envoyee",
+                            message: payload.message || "",
+                            actionLabel: payload.action_label || "Voir mes demandes",
+                            actionUrl: payload.action_url || employeeDashboardUrl,
+                        });
+                    } catch (error) {
+                        // ignore invalid bootstrap notification payload
+                    }
+                }
+
+                updateBellCounter(Number(bellCount?.textContent || 0), false);
+
+                if (rolesWithAdminFeed.includes(portalRole) && adminFeedUrl) {
+                    const storageKey = `trae:request-feed:${username}:${portalRole}`;
+
+                    const syncAdminNotifications = async (isInitialLoad = false) => {
+                        if (isPollingNotifications || document.hidden) {
+                            return;
+                        }
+                        isPollingNotifications = true;
+
+                        try {
+                            const response = await fetch(adminFeedUrl, {
+                                headers: { "X-Requested-With": "fetch" },
+                            });
+                            if (!response.ok) {
+                                return;
+                            }
+
+                            const payload = await response.json();
+                            const currentState = {
+                                pendingCount: Number(payload.pending_count || 0),
+                                latestEventKey: payload.latest_event_key || "",
+                            };
+                            const previousStateRaw = window.localStorage.getItem(storageKey);
+                            const previousState = previousStateRaw ? JSON.parse(previousStateRaw) : null;
+
+                            updateBellCounter(currentState.pendingCount, false);
+
+                            const hasNewRequest = Boolean(
+                                !isInitialLoad
+                                && previousState
+                                && currentState.pendingCount > 0
+                                && (
+                                    currentState.pendingCount > Number(previousState.pendingCount || 0)
+                                    || (
+                                        currentState.latestEventKey
+                                        && currentState.latestEventKey !== previousState.latestEventKey
+                                    )
+                                )
+                            );
+
+                            if (hasNewRequest && payload.latest_request) {
+                                updateBellCounter(currentState.pendingCount, true);
+                                showFloatingNotification({
+                                    title: "Nouvelle demande a traiter",
+                                    message: `${payload.latest_request.employee_name} a envoye une demande de ${payload.latest_request.type_label.toLowerCase()}.`,
+                                    actionLabel: "Ouvrir les demandes",
+                                    actionUrl: adminRequestsUrl,
+                                });
+                            }
+
+                            window.localStorage.setItem(storageKey, JSON.stringify(currentState));
+                        } catch (error) {
+                            return;
+                        } finally {
+                            isPollingNotifications = false;
+                        }
+                    };
+
+                    syncAdminNotifications(true);
+                    window.setInterval(() => syncAdminNotifications(false), 25000);
+                    document.addEventListener("visibilitychange", () => {
+                        if (!document.hidden) {
+                            syncAdminNotifications(false);
+                        }
+                    });
+                }
+            }
         });
     </script>
 </body>

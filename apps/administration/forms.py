@@ -119,6 +119,7 @@ class LoginBrandingForm(forms.ModelForm):
             "email",
             "website",
             "announcement",
+            "request_submission_email_enabled",
             "logo_image",
             "hero_image",
         ]

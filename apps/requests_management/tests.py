@@ -56,6 +56,22 @@ class RequestsTests(TestCase):
         self.assertEqual(request_item.request_type, StaffRequest.TYPE_LEAVE)
         self.assertEqual(request_item.remaining_days_for_reason, 7)
 
+    def test_request_submission_sets_floating_notification(self):
+        self.client.post(
+            reverse("requests_management:absence_create"),
+            {
+                "start_date": "2026-07-15",
+                "end_date": "2026-07-15",
+                "total_days": "1",
+                "remaining_days_for_reason": "4",
+                "reason": "Demande urgente",
+            },
+        )
+
+        session = self.client.session
+        self.assertIn("floating_notification", session)
+        self.assertEqual(session["floating_notification"]["title"], "Demande envoyee")
+
     def test_employee_can_delete_own_request_from_history(self):
         request_item = StaffRequest.objects.create(
             employee=self.user.profile,
