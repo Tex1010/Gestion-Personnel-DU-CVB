@@ -4,6 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Impression demande</title>
+    {% if branding_logo_src %}
+        <link rel="icon" type="image/png" href="{{ branding_logo_src }}">
+        <link rel="shortcut icon" type="image/png" href="{{ branding_logo_src }}">
+    {% else %}
+        <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23255c3a'/%3E%3Ctext x='50%25' y='56%25' text-anchor='middle' font-size='20' font-family='Arial' fill='white'%3ECVB%3C/text%3E%3C/svg%3E">
+    {% endif %}
     <style>
         @page {
             size: A4;
@@ -206,6 +212,29 @@
             font-size: 13px;
         }
 
+        {% if export_mode %}
+        body {
+            background: #ffffff;
+        }
+
+        .print-toolbar {
+            display: none;
+        }
+
+        .sheet {
+            width: 182mm;
+            min-height: 269mm;
+            margin: 0 auto;
+            padding: 0;
+            box-shadow: none;
+        }
+
+        .sheet-content {
+            width: 100%;
+            transform: none;
+        }
+        {% endif %}
+
         @media print {
             body {
                 background: #ffffff;
@@ -228,21 +257,72 @@
                 transform: scale(var(--print-scale));
             }
         }
+        /* Modal Styles */
+        .action-menu-trigger { position: relative; display: inline-block; }
+        .action-toggle { cursor: pointer; }
+        .action-toggle i { font-size: 1.1rem; }
+        
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); display: flex; align-items: center; justify-content: center; z-index: 9999; }
+        .modal-overlay[hidden] { display: none; }
+        .modal-content { position: relative; background: #ffffff; border-radius: 18px; box-shadow: 0 24px 64px rgba(18, 30, 22, 0.18); padding: 24px; width: min(92vw, 320px); border: 1px solid #e3ebe4; }
+        .modal-close { position: absolute; top: 12px; right: 12px; background: transparent; border: none; font-size: 1.5rem; cursor: pointer; color: #666; padding: 4px; }
+        .modal-close:hover { color: #000; }
+        .modal-heading { margin: 0 0 4px; font-size: 1rem; color: #183424; }
+        .modal-helper { margin: 0 0 14px; font-size: 0.82rem; color: #6a776e; }
+        .modal-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; margin-top: 8px; }
+
+        .action-tile { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-decoration: none; color: inherit; border: none; background: transparent; font: inherit; padding: 10px 6px; cursor: pointer; border-radius: 14px; transition: background-color 0.18s ease, transform 0.18s ease; }
+        .action-tile:hover { background: #f4f8f5; transform: translateY(-1px); }
+        .action-tile .action-item { width: 60px; height: 60px; border-radius: 14px; display:inline-flex; align-items:center; justify-content:center; }
+        .action-label { font-size: 0.82rem; font-weight: 600; color: #2f4a3a; }
+        .action-item.print { background: #eaf5ee; color: #255c3a; }
+        .action-item.image { background: #e8f0ff; color: #1f4fb6; }
+        .action-item.back { background: #f4f3ff; color: #5a43b0; }
+        .action-item.close { background: #f6f6f6; color: #666; }
     </style>
 </head>
 <body>
     <div class="print-toolbar">
-        <a href="javascript:window.close()" class="back-link">Fermer</a>
-        <button type="button" class="print-button" onclick="printRequestDocument()">Imprimer en A4</button>
-        <a href="?download=1" class="print-button">Telecharger PDF</a>
+        <div class="action-menu-trigger">
+            <button type="button" class="print-button action-toggle" aria-expanded="false" aria-label="Actions" data-modal-target="modal-print-toolbar">
+                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+            </button>
+            <div class="modal-overlay" id="modal-print-toolbar" hidden>
+                <div class="modal-content">
+                    <button type="button" class="modal-close" aria-label="Fermer">
+                        <i class="bi bi-x"></i>
+                    </button>
+                    <h3 class="modal-heading">Actions rapides</h3>
+                    <p class="modal-helper">Choisissez l’action a effectuer sur ce document.</p>
+                    <div class="modal-body">
+                        <button type="button" class="action-tile" onclick="printRequestDocument()" title="Imprimer">
+                            <div class="action-item print"><i class="bi bi-printer"></i></div>
+                            <span class="action-label">Imprimer</span>
+                        </button>
+                        <a href="?download=png" class="action-tile" title="Télécharger image">
+                            <div class="action-item image"><i class="bi bi-file-earmark-image"></i></div>
+                            <span class="action-label">PNG</span>
+                        </a>
+                        <a href="{{ back_url|default:'/' }}" class="action-tile" title="Retour">
+                            <div class="action-item back"><i class="bi bi-arrow-left-circle"></i></div>
+                            <span class="action-label">Retour</span>
+                        </a>
+                        <a href="javascript:window.close()" class="action-tile" title="Fermer">
+                            <div class="action-item close"><i class="bi bi-x-lg"></i></div>
+                            <span class="action-label">Fermer</span>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <main class="sheet">
         <div class="sheet-content" id="sheet-content">
         <header class="sheet-header">
             <div class="brand">
-                {% if branding and branding.logo_image %}
-                    <img src="{{ branding.logo_image.url }}" alt="Logo {{ branding.site_name|default:'Centre ValBio' }}">
+                {% if branding_logo_src %}
+                    <img src="{{ branding_logo_src }}" alt="Logo {{ branding.site_name|default:'Centre ValBio' }}">
                 {% else %}
                     <div class="brand-fallback">CVB</div>
                 {% endif %}
@@ -255,7 +335,6 @@
             </div>
             <div>
                 <div class="request-badge">{{ request_item.type_label }}</div>
-                <p class="subtitle">Reference: DEM-{{ request_item.id }}</p>
                 <p class="subtitle">Creee le {{ request_item.created_at|date:"d/m/Y H:i" }}</p>
             </div>
         </header>
@@ -363,7 +442,13 @@
         </div>
     </main>
     <script>
+        const exportMode = {{ export_mode|yesno:"true,false" }};
+
         const fitDocumentToSingleA4Page = () => {
+            if (exportMode) {
+                document.documentElement.style.setProperty("--print-scale", "1");
+                return;
+            }
             const sheet = document.querySelector(".sheet");
             const content = document.getElementById("sheet-content");
             if (!sheet || !content) {
@@ -398,6 +483,39 @@
 
         window.addEventListener("resize", fitDocumentToSingleA4Page);
         window.addEventListener("beforeprint", fitDocumentToSingleA4Page);
+        
+        // Modal management for print toolbar
+        document.addEventListener('click', function (e) {
+            const toggle = e.target.closest('.action-toggle');
+            if (toggle) {
+                const modalId = toggle.getAttribute('data-modal-target');
+                if (modalId) {
+                    const modal = document.getElementById(modalId);
+                    if (modal) {
+                        document.querySelectorAll('.modal-overlay:not([hidden])').forEach(m => {
+                            if (m.id !== modalId) {
+                                m.hidden = true;
+                            }
+                        });
+                        modal.hidden = !modal.hidden;
+                    }
+                }
+                return;
+            }
+            
+            const closeBtn = e.target.closest('.modal-close');
+            if (closeBtn) {
+                const modal = closeBtn.closest('.modal-overlay');
+                if (modal) {
+                    modal.hidden = true;
+                }
+                return;
+            }
+            
+            if (e.target.classList.contains('modal-overlay')) {
+                e.target.hidden = true;
+            }
+        });
     </script>
 </body>
 </html>

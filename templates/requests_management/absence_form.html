@@ -61,12 +61,6 @@
             {% if form.errors %}
                 <div class="error-box">{{ form.errors }}</div>
             {% endif %}
-            <div class="signature-row">
-                <span>Demandeur</span>
-                <span>Chef hierarchique</span>
-                <span>Administration</span>
-                <span>Direction</span>
-            </div>
             <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="{{ confirm_title }}" data-confirm-message="{{ confirm_message }}" data-confirm-label="Oui, envoyer" data-confirm-class="btn-primary"><i class="bi bi-send-check"></i>{{ submit_label }}</button>
         </form>
     </article>
@@ -82,7 +76,7 @@
         if (!startDateInput || !endDateInput || !totalDaysInput || !remainingInput) {
             return;
         }
-
+        
         const parseValue = (value) => {
             const parsed = Number.parseFloat(String(value).replace(",", "."));
             return Number.isFinite(parsed) ? parsed : 0;

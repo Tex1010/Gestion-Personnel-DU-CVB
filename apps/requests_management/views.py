@@ -1,10 +1,20 @@
 from decimal import Decimal
+import base64
+import mimetypes
+import os
+import shutil
+import subprocess
+import tempfile
+import textwrap
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.shortcuts import get_object_or_404, redirect, render
+from django.http import HttpResponse
+from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 
 from apps.accounts.utils import get_user_profile, role_required
+from apps.administration.models import LoginBranding
+from apps.administration.views import _send_request_email_alert
 from apps.personnel.models import EmployeeProfile
 from apps.requests_management.forms import (
     AbsenceRequestForm,
@@ -13,10 +23,150 @@ from apps.requests_management.forms import (
     RecoveryRequestForm,
 )
 from apps.requests_management.models import StaffRequest
+from django.template.loader import render_to_string
 
 
 def _request_requires_hierarchy(request_item):
     return request_item.employee.role == EmployeeProfile.ROLE_USER
+
+
+def _get_branding_logo_src(request, branding, export_format=None):
+    if not branding or not branding.logo_image:
+        return ""
+
+    if export_format:
+        try:
+            branding.logo_image.open("rb")
+            file_bytes = branding.logo_image.read()
+            mime_type = mimetypes.guess_type(branding.logo_image.name)[0] or "image/png"
+            encoded = base64.b64encode(file_bytes).decode("ascii")
+            branding.logo_image.close()
+            return f"data:{mime_type};base64,{encoded}"
+        except Exception:
+            try:
+                branding.logo_image.close()
+            except Exception:
+                pass
+
+    try:
+        return request.build_absolute_uri(branding.logo_image.url)
+    except Exception:
+        return branding.logo_image.url
+
+
+def _build_print_context(
+    request,
+    request_item,
+    stage_statuses,
+    recovery_lines,
+    export_format=None,
+    back_url=None,
+):
+    branding = LoginBranding.objects.first()
+    return {
+        "request_item": request_item,
+        "stage_statuses": stage_statuses,
+        "recovery_lines": recovery_lines,
+        "export_mode": bool(export_format),
+        "export_format": export_format,
+        "branding": branding,
+        "branding_logo_src": _get_branding_logo_src(
+            request,
+            branding,
+            export_format=export_format,
+        ),
+        "back_url": back_url,
+    }
+
+
+def _get_print_return_url(profile):
+    if profile.role == EmployeeProfile.ROLE_USER:
+        return resolve_url("personnel:dashboard")
+    return resolve_url("administration:requests")
+
+
+def _pdf_escape(value):
+    return (
+        str(value)
+        .replace("\\", "\\\\")
+        .replace("(", "\\(")
+        .replace(")", "\\)")
+    )
+
+
+def _build_basic_pdf_bytes(request_item, stage_statuses):
+    lines = [
+        "Centre ValBio - Demande du personnel",
+        f"Type: {request_item.type_label}",
+        f"Employe: {request_item.employee.display_name}",
+        f"Matricule: {request_item.employee.employee_number or '-'}",
+        f"Statut: {request_item.status_label}",
+        f"Creee le: {request_item.created_at.strftime('%d/%m/%Y %H:%M')}",
+        f"Date debut: {request_item.start_date.strftime('%d/%m/%Y') if request_item.start_date else '-'}",
+        f"Date fin: {request_item.end_date.strftime('%d/%m/%Y') if request_item.end_date else '-'}",
+        f"Total jours: {request_item.total_days}",
+        f"Projet: {request_item.project_name or '-'}",
+        "Motif:",
+    ]
+
+    reason_lines = textwrap.wrap(str(request_item.reason or "-"), width=82) or ["-"]
+    lines.extend(reason_lines)
+    lines.append("Suivi des validations:")
+    for stage in stage_statuses:
+        lines.append(
+            f"- {stage['label']}: {stage['status']} ({stage['username']})"
+        )
+
+    wrapped_lines = []
+    for line in lines:
+        wrapped_lines.extend(textwrap.wrap(str(line), width=90) or [" "])
+
+    font_size = 11
+    line_height = 15
+    left_margin = 40
+    top_margin = 800
+
+    content_commands = ["BT", f"/F1 {font_size} Tf", f"1 0 0 1 {left_margin} {top_margin} Tm"]
+    first_line = True
+    for line in wrapped_lines[:45]:
+        escaped = _pdf_escape(line)
+        if first_line:
+            content_commands.append(f"({escaped}) Tj")
+            first_line = False
+        else:
+            content_commands.append(f"0 -{line_height} Td ({escaped}) Tj")
+    content_commands.append("ET")
+    content_stream = "\n".join(content_commands).encode("latin-1", errors="replace")
+
+    objects = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        (
+            b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] "
+            b"/Resources << /Font << /F1 4 0 R >> >> /Contents 5 0 R >>"
+        ),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+        b"<< /Length " + str(len(content_stream)).encode("ascii") + b" >>\nstream\n"
+        + content_stream
+        + b"\nendstream",
+    ]
+
+    pdf_bytes = b"%PDF-1.4\n%\xe2\xe3\xcf\xd3\n"
+    offsets = []
+    for index, obj in enumerate(objects, start=1):
+        offsets.append(len(pdf_bytes))
+        pdf_bytes += f"{index} 0 obj\n".encode("ascii")
+        pdf_bytes += obj + b"\nendobj\n"
+
+    xref_offset = len(pdf_bytes)
+    pdf_bytes += f"xref\n0 {len(objects) + 1}\n".encode("ascii")
+    pdf_bytes += b"0000000000 65535 f \n"
+    for offset in offsets:
+        pdf_bytes += f"{offset:010d} 00000 n \n".encode("ascii")
+    pdf_bytes += (
+        f"trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref_offset}\n%%EOF"
+    ).encode("ascii")
+    return pdf_bytes
 
 
 def _restore_request_balance(request_item):
@@ -146,6 +296,10 @@ def _balance_request_view(request, request_type):
         if profile.role != EmployeeProfile.ROLE_USER:
             balance_request.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
         balance_request.save()
+        branding = LoginBranding.objects.first()
+        _send_request_email_alert(balance_request, branding=branding)
+        request.session["request_notification_pending"] = True
+        request.session.modified = True
         success_message = (
             "La demande de conge a ete enregistree."
             if request_type == StaffRequest.TYPE_LEAVE
@@ -231,6 +385,10 @@ def recovery_request_view(request):
             total_hours += line.duration_hours
         recovery_request.total_days = total_hours
         recovery_request.save(update_fields=["total_days", "updated_at"])
+        branding = LoginBranding.objects.first()
+        _send_request_email_alert(recovery_request, branding=branding)
+        request.session["request_notification_pending"] = True
+        request.session.modified = True
         messages.success(request, "La fiche de recuperation a ete enregistree.")
         return redirect("personnel:dashboard")
 
@@ -303,16 +461,213 @@ def print_request_view(request, request_id):
         return redirect("administration:requests")
     stage_statuses = _build_stage_statuses(request_item)
     recovery_lines = list(request_item.recovery_lines.all())
+    back_url = _get_print_return_url(profile)
 
-    if request.GET.get("download") == "1":
-        return _build_pdf_response(request_item, stage_statuses, recovery_lines)
+    download_type = request.GET.get("download")
+    if download_type == "png":
+        return _build_png_response(request, request_item, stage_statuses, recovery_lines)
+    if download_type in ("1", "pdf", "true"):
+        return _build_pdf_response(request, request_item, stage_statuses, recovery_lines)
 
     return render(
         request,
         "requests_management/request_print.html",
-        {
-            "request_item": request_item,
-            "stage_statuses": stage_statuses,
-            "recovery_lines": recovery_lines,
-        },
+        _build_print_context(
+            request,
+            request_item,
+            stage_statuses,
+            recovery_lines,
+            back_url=back_url,
+        ),
     )
+
+
+def _build_pdf_response(request, request_item, stage_statuses, recovery_lines):
+    """Render the printable template to PDF using WeasyPrint when available.
+
+    Falls back to redirect with an error message if WeasyPrint isn't installed.
+    """
+    context = _build_print_context(
+        request,
+        request_item,
+        stage_statuses,
+        recovery_lines,
+        export_format="pdf",
+    )
+
+    # Attempt WeasyPrint first
+    html = render_to_string("requests_management/request_print.html", context, request=request)
+    base_url = request.build_absolute_uri("/")
+
+    try:
+        from weasyprint import HTML, CSS
+        try:
+            pdf_bytes = HTML(string=html, base_url=base_url).write_pdf(
+                stylesheets=[
+                    CSS(
+                        string=(
+                            "@page { size: A4; margin: 14mm; }"
+                            "body { background: #ffffff !important; }"
+                            ".print-toolbar { display: none !important; }"
+                            ".sheet { width: 182mm !important; min-height: 269mm !important; "
+                            "margin: 0 auto !important; padding: 0 !important; box-shadow: none !important; }"
+                            ".sheet-content { width: 100% !important; transform: none !important; }"
+                        )
+                    )
+                ]
+            )
+            response = HttpResponse(pdf_bytes, content_type="application/pdf")
+            filename = f"demande-{request_item.id}.pdf"
+            response["Content-Disposition"] = f"attachment; filename=\"{filename}\""
+            return response
+        except Exception:
+            weasy_error = True
+    except Exception:
+        weasy_error = True
+
+    # Fallback to wkhtmltopdf binary if available
+    wkhtml = shutil.which("wkhtmltopdf")
+    if wkhtml:
+        try:
+            with tempfile.NamedTemporaryFile("w", delete=False, suffix=".html", encoding="utf-8") as tmp:
+                tmp.write(html)
+                tmp_path = tmp.name
+            cmd = [
+                wkhtml,
+                "--quiet",
+                "--enable-local-file-access",
+                "--page-size",
+                "A4",
+                "--margin-top",
+                "14mm",
+                "--margin-right",
+                "14mm",
+                "--margin-bottom",
+                "14mm",
+                "--margin-left",
+                "14mm",
+                "--print-media-type",
+                tmp_path,
+                "-",
+            ]
+            proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            os.unlink(tmp_path)
+            if proc.returncode == 0:
+                pdf_bytes = proc.stdout
+                response = HttpResponse(pdf_bytes, content_type="application/pdf")
+                filename = f"demande-{request_item.id}.pdf"
+                response["Content-Disposition"] = f"attachment; filename=\"{filename}\""
+                return response
+        except Exception:
+            pass
+
+    # Final fallback: return a simple but valid PDF instead of a broken file.
+    messages.warning(
+        request,
+        "Le rendu PDF avance n'est pas disponible. Un PDF simplifie a ete genere.",
+    )
+    pdf_bytes = _build_basic_pdf_bytes(request_item, stage_statuses)
+    response = HttpResponse(pdf_bytes, content_type="application/pdf")
+    filename = f"demande-{request_item.id}.pdf"
+    response["Content-Disposition"] = f"attachment; filename=\"{filename}\""
+    return response
+
+
+def _build_png_response(request, request_item, stage_statuses, recovery_lines):
+    """Render the printable template to PNG.
+
+    Attempts html2image (Chrome/Firefox headless), then WeasyPrint, then wkhtmltoimage, else returns a tiny placeholder PNG.
+    """
+    context = _build_print_context(
+        request,
+        request_item,
+        stage_statuses,
+        recovery_lines,
+        export_format="png",
+    )
+    html = render_to_string("requests_management/request_print.html", context, request=request)
+    base_url = request.build_absolute_uri("/")
+
+    # Try html2image (Chrome/Firefox headless - most reliable on Windows)
+    try:
+        from html2image import Html2Image
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                png_name = f"demande-{request_item.id}.png"
+                hti = Html2Image(output_path=tmpdir, size=(794, 1123))
+                hti.screenshot(
+                    html_str=html,
+                    css_str="body { margin: 0; background: #ffffff; }",
+                    save_as=png_name,
+                    size=(794, 1123),
+                )
+                png_file = os.path.join(tmpdir, png_name)
+                if os.path.exists(png_file):
+                    with open(png_file, "rb") as f:
+                        png_bytes = f.read()
+                    response = HttpResponse(png_bytes, content_type="image/png")
+                    filename = f"demande-{request_item.id}.png"
+                    response["Content-Disposition"] = f"attachment; filename=\"{filename}\""
+                    return response
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    # Try WeasyPrint -> write_png()
+    try:
+        from weasyprint import HTML
+        try:
+            png_bytes = HTML(string=html, base_url=base_url).write_png()
+            response = HttpResponse(png_bytes, content_type="image/png")
+            filename = f"demande-{request_item.id}.png"
+            response["Content-Disposition"] = f"attachment; filename=\"{filename}\""
+            return response
+        except Exception:
+            pass
+    except Exception:
+        pass
+
+    # Try wkhtmltoimage binary
+    wkimg = shutil.which("wkhtmltoimage")
+    if wkimg:
+        try:
+            with tempfile.NamedTemporaryFile("w", delete=False, suffix=".html", encoding="utf-8") as tmp:
+                tmp.write(html)
+                tmp_html = tmp.name
+            tmp_png = tmp_html + ".png"
+            cmd = [
+                wkimg,
+                "--quality",
+                "100",
+                "--width",
+                "794",
+                "--height",
+                "1123",
+                tmp_html,
+                tmp_png,
+            ]
+            proc = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            if proc.returncode == 0 and os.path.exists(tmp_png):
+                with open(tmp_png, "rb") as f:
+                    png_bytes = f.read()
+                os.unlink(tmp_html)
+                os.unlink(tmp_png)
+                response = HttpResponse(png_bytes, content_type="image/png")
+                filename = f"demande-{request_item.id}.png"
+                response["Content-Disposition"] = f"attachment; filename=\"{filename}\""
+                return response
+        except Exception:
+            try:
+                os.unlink(tmp_html)
+            except Exception:
+                pass
+
+    # Fallback: tiny 1x1 transparent PNG
+    placeholder_b64 = b"iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR4nGNgYAAAAAMAAWgmWQ0AAAAASUVORK5CYII="
+    png_bytes = base64.b64decode(placeholder_b64)
+    response = HttpResponse(png_bytes, content_type="image/png")
+    filename = f"demande-{request_item.id}.png"
+    response["Content-Disposition"] = f"attachment; filename=\"{filename}\""
+    messages.warning(request, "Rendu image minimal fourni: installez html2image/wkhtmltoimage pour une vraie capture.")
+    return response

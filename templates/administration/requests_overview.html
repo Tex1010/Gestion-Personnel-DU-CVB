@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Demandes du personnel{% endblock %}
 
@@ -11,6 +12,12 @@
             <p>{{ pending_count }} demande(s) en attente de traitement.</p>
         </div>
         <div class="header-actions">
+            <a href="{% url 'administration:export_requests' 'csv' %}" class="btn-secondary"><i class="bi bi-filetype-csv"></i>Exporter CSV</a>
+            <a href="{% url 'administration:export_requests' 'excel' %}" class="btn-secondary"><i class="bi bi-file-earmark-excel"></i>Exporter Excel</a>
+            <button id="requestBell" class="btn-secondary btn-bell" title="Nouvelles demandes">
+                <i class="bi bi-bell"></i>
+                <span class="bell-count badge" id="requestBellCount">{{ pending_count }}</span>
+            </button>
             {% if show_history %}
                 <a href="{% url 'administration:requests' %}" class="btn-secondary"><i class="bi bi-clock-history"></i>Masquer l'historique</a>
             {% else %}
@@ -159,4 +166,55 @@
         </article>
     {% endif %}
 </section>
+<audio id="requestNotificationSound" preload="auto" src="{% static 'audio/request-arrived.mp3' %}"></audio>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const sound = document.getElementById("requestNotificationSound");
+        const shouldPlay = {% if request.session.request_notification_pending %}true{% else %}false{% endif %};
+        const bell = document.getElementById("requestBell");
+        const bellCount = document.getElementById("requestBellCount");
+        if (bellCount && Number(bellCount.textContent) <= 0) {
+            bellCount.style.display = 'none';
+        }
+        if (sound && shouldPlay) {
+            sound.play().catch(() => {
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+                if (AudioContextClass) {
+                    const context = new AudioContextClass();
+                    const oscillator = context.createOscillator();
+                    const gain = context.createGain();
+                    oscillator.type = "triangle";
+                    oscillator.frequency.value = 880;
+                    gain.gain.value = 0.08;
+                    oscillator.connect(gain);
+                    gain.connect(context.destination);
+                    oscillator.start();
+                    gain.gain.exponentialRampToValueAtTime(0.0001, context.currentTime + 0.4);
+                    oscillator.stop(context.currentTime + 0.4);
+                }
+            });
+            fetch("{% url 'administration:acknowledge_request_notification' %}", {
+                method: "POST",
+                headers: { "X-CSRFToken": "{{ csrf_token }}" },
+            })
+                .then(() => {
+                    if (bellCount) {
+                        bellCount.textContent = '0';
+                        bellCount.style.display = 'none';
+                    }
+                })
+                .catch(() => {});
+        }
+        if (bell) {
+            bell.addEventListener('click', () => {
+                // focus the table to draw attention
+                const table = document.getElementById('pending-requests-table');
+                if (table) {
+                    table.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    table.focus && table.focus();
+                }
+            });
+        }
+    });
+</script>
 {% endblock %}

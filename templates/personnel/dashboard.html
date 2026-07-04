@@ -126,14 +126,20 @@
                                 </td>
                                 <td data-label="Statut"><span class="badge {{ item.status }}">{{ item.status_label }}</span></td>
                                 <td data-label="Action">
-                                    <div class="row-actions">
-                                        <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
-                                        <a href="{% url 'requests_management:print' item.id %}?download=1" class="btn-secondary" target="_blank" rel="noopener" title="Telecharger en PDF"><i class="bi bi-file-earmark-pdf"></i></a>
-                                        <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
-                                            {% csrf_token %}
-                                            <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette demande" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
-                                        </form>
-                                    </div>
+                                                <button
+                                                    type="button"
+                                                    class="btn-secondary action-toggle"
+                                                    aria-label="Actions"
+                                                    data-bs-toggle="modal"
+                                                    data-bs-target="#employeeActionModal"
+                                                    data-print-url="{% url 'requests_management:print' item.id %}"
+                                                    data-png-url="{% url 'requests_management:print' item.id %}?download=png"
+                                                    data-delete-url="{% url 'requests_management:delete' item.id %}"
+                                                    data-delete-title="Supprimer cette demande"
+                                                    data-delete-message="Cette demande sera retiree de votre historique."
+                                                >
+                                                    <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+                                                </button>
                                 </td>
                             </tr>
                         {% empty %}
@@ -176,14 +182,20 @@
                         </div>
                         <div class="request-card-actions">
                             <span class="badge {{ item.status }}">{{ item.status_label }}</span>
-                            <div class="row-actions">
-                                <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
-                                <a href="{% url 'requests_management:print' item.id %}?download=1" class="btn-secondary" target="_blank" rel="noopener" title="Telecharger en PDF"><i class="bi bi-file-earmark-pdf"></i></a>
-                                <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette absence" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
-                                </form>
-                            </div>
+                            <button
+                                type="button"
+                                class="btn-secondary action-toggle"
+                                aria-label="Actions"
+                                data-bs-toggle="modal"
+                                data-bs-target="#employeeActionModal"
+                                data-print-url="{% url 'requests_management:print' item.id %}"
+                                data-png-url="{% url 'requests_management:print' item.id %}?download=png"
+                                data-delete-url="{% url 'requests_management:delete' item.id %}"
+                                data-delete-title="Supprimer cette absence"
+                                data-delete-message="Cette demande sera retiree de votre historique."
+                            >
+                                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+                            </button>
                         </div>
                     </article>
                 {% empty %}
@@ -223,14 +235,20 @@
                         </div>
                         <div class="request-card-actions">
                             <span class="badge {{ item.status }}">{{ item.status_label }}</span>
-                            <div class="row-actions">
-                                <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
-                                <a href="{% url 'requests_management:print' item.id %}?download=1" class="btn-secondary" target="_blank" rel="noopener" title="Telecharger en PDF"><i class="bi bi-file-earmark-pdf"></i></a>
-                                <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cette recuperation" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
-                                </form>
-                            </div>
+                            <button
+                                type="button"
+                                class="btn-secondary action-toggle"
+                                aria-label="Actions"
+                                data-bs-toggle="modal"
+                                data-bs-target="#employeeActionModal"
+                                data-print-url="{% url 'requests_management:print' item.id %}"
+                                data-png-url="{% url 'requests_management:print' item.id %}?download=png"
+                                data-delete-url="{% url 'requests_management:delete' item.id %}"
+                                data-delete-title="Supprimer cette recuperation"
+                                data-delete-message="Cette demande sera retiree de votre historique."
+                            >
+                                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+                            </button>
                         </div>
                     </article>
                 {% empty %}
@@ -266,14 +284,21 @@
                         </div>
                         <div class="request-card-actions">
                             <span class="badge {{ item.status }}">{{ item.status_label }}</span>
-                            <div class="row-actions">
-                                <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener"><i class="bi bi-printer"></i></a>
-                                <a href="{% url 'requests_management:print' item.id %}?download=1" class="btn-secondary" target="_blank" rel="noopener" title="Telecharger en PDF"><i class="bi bi-file-earmark-pdf"></i></a>
-                                <form method="post" action="{% url 'requests_management:delete' item.id %}" class="inline-action-form">
-                                    {% csrf_token %}
-                                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer ce conge" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
-                                </form>
-                            </div>
+                            <button
+                                type="button"
+                                class="btn-secondary action-toggle"
+                                aria-label="Actions"
+                                data-bs-toggle="modal"
+                                data-bs-target="#employeeActionModal"
+                                data-print-url="{% url 'requests_management:print' item.id %}"
+                                data-png-url="{% url 'requests_management:print' item.id %}?download=png"
+                                data-email="{{ branding.email|default:'centrevalbio@gmail.com' }}"
+                                data-delete-url="{% url 'requests_management:delete' item.id %}"
+                                data-delete-title="Supprimer ce conge"
+                                data-delete-message="Cette demande sera retiree de votre historique."
+                            >
+                                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+                            </button>
                         </div>
                     </article>
                 {% empty %}
@@ -283,6 +308,86 @@
         </article>
     </div>
 </section>
+
+<div class="modal fade employee-actions-modal" id="employeeActionModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content employee-actions-dialog">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <span class="eyebrow">Actions</span>
+                    <h5 class="modal-title mt-2">Options de la demande</h5>
+                    <p class="helper mb-0">Actions rapides et partage du document.</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <a href="#" target="_blank" rel="noopener" class="employee-action-tile" id="employeeActionPrint" title="Imprimer">
+                    <div class="employee-action-icon print"><i class="bi bi-printer"></i></div>
+                    <span class="employee-action-label">Imprimer</span>
+                </a>
+                <a href="#" target="_blank" rel="noopener" class="employee-action-tile" id="employeeActionPng" title="Télécharger PNG">
+                    <div class="employee-action-icon image"><i class="bi bi-file-earmark-image"></i></div>
+                    <span class="employee-action-label">PNG</span>
+                </a>
+                <a href="#" class="employee-action-tile" id="employeeActionShare" title="Envoyer par email">
+                    <span class="employee-action-icon share"><i class="bi bi-envelope"></i></span>
+                    <span class="employee-action-label" id="employeeActionShareLabel">Envoyer email</span>
+                </a>
+                <form method="post" action="#" class="inline-action-form employee-action-tile" id="employeeActionDeleteForm">
+                    {% csrf_token %}
+                    <button type="submit" class="employee-action-icon delete" id="employeeActionDeleteButton" data-confirm-action="1" data-confirm-title="Supprimer cette demande" data-confirm-message="Cette demande sera retiree de votre historique." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger" title="Supprimer">
+                        <i class="bi bi-trash3"></i>
+                    </button>
+                    <span class="employee-action-label">Supprimer</span>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .action-toggle { cursor: pointer; }
+    .action-toggle i { font-size: 1.1rem; }
+    .employee-actions-dialog { border: 0; border-radius: 18px; box-shadow: 0 24px 70px rgba(18, 30, 22, 0.18); }
+    .employee-actions-modal .modal-body { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; padding-top: 8px; }
+    .employee-action-tile { display: inline-flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; text-decoration: none; color: inherit; padding: 12px 8px; background: transparent; border: 0; border-radius: 14px; transition: background-color 0.18s ease, transform 0.18s ease; }
+    .employee-action-tile:hover { background: #f4f8f5; transform: translateY(-1px); }
+    .employee-action-icon { width: 60px; height: 60px; border: 0; border-radius: 14px; display: inline-flex; align-items: center; justify-content: center; font-size: 1.15rem; }
+    .employee-action-label { font-size: 0.82rem; font-weight: 600; color: #2f4a3a; }
+    .employee-action-icon.print { background: #eaf5ee; color: #255c3a; }
+    .employee-action-icon.image { background: #e8f0ff; color: #1f4fb6; }
+    .employee-action-icon.share { background: #f4f3ff; color: #5a43b0; }
+    .employee-action-icon.delete { background: #fff0f0; color: #b43a3a; }
+    
+    /* Center stat cards content */
+    .stats-grid.employee-stats-grid {
+        align-items: stretch;
+    }
+    .stat-card {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        width: 100%;
+        min-height: 140px;
+        padding: 1.25rem;
+        box-sizing: border-box;
+    }
+    .stat-card > * {
+        width: 100%;
+        text-align: center;
+    }
+    .stat-card strong,
+    .stat-card small,
+    .stat-card span {
+        display: block;
+        margin-left: auto;
+        margin-right: auto;
+    }
+    .stat-card strong { font-size: 1.6rem; line-height: 1.2; }
+    .stat-card small { max-width: 220px; }
+</style>
 
 <script>
     const employeeChart = document.getElementById("employeeChart");
@@ -357,5 +462,60 @@
         refreshEmployeeDashboard();
         window.setInterval(refreshEmployeeDashboard, 60000);
     }
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const actionModal = document.getElementById("employeeActionModal");
+        if (!actionModal) {
+            return;
+        }
+
+        const printLink = document.getElementById("employeeActionPrint");
+        const pngLink = document.getElementById("employeeActionPng");
+        const shareButton = document.getElementById("employeeActionShare");
+        const shareLabel = document.getElementById("employeeActionShareLabel");
+        const deleteForm = document.getElementById("employeeActionDeleteForm");
+        const deleteButton = document.getElementById("employeeActionDeleteButton");
+        const actionModalInstance = bootstrap.Modal.getOrCreateInstance(actionModal);
+        let shareUrl = "";
+        let shareEmail = "";
+
+        const resetShareState = () => {
+            shareLabel.textContent = "Envoyer email";
+        };
+
+        [printLink, pngLink, deleteButton].forEach((element) => {
+            element.addEventListener("click", () => {
+                actionModalInstance.hide();
+            });
+        });
+
+        shareButton.addEventListener("click", (event) => {
+            const absoluteUrl = new URL(shareUrl || printLink.href, window.location.origin).href;
+            const mailtoHref = `mailto:${shareEmail || "centrevalbio@gmail.com"}?subject=Demande%20de%20gestion%20du%20personnel&body=Bonjour%2C%0A%0AVeuillez%20trouver%20ci-joint%20le%20lien%20de%20la%20demande%20%3A%20${encodeURIComponent(absoluteUrl)}`;
+            shareButton.href = mailtoHref;
+            shareLabel.textContent = "Ouverture email";
+            actionModalInstance.hide();
+            window.location.href = mailtoHref;
+            event.preventDefault();
+        });
+
+        actionModal.addEventListener("hidden.bs.modal", resetShareState);
+
+        actionModal.addEventListener("show.bs.modal", (event) => {
+            const trigger = event.relatedTarget;
+            if (!trigger) {
+                return;
+            }
+
+            printLink.href = trigger.dataset.printUrl || "#";
+            pngLink.href = trigger.dataset.pngUrl || "#";
+            shareUrl = trigger.dataset.printUrl || "#";
+            shareEmail = trigger.dataset.email || "centrevalbio@gmail.com";
+            deleteForm.action = trigger.dataset.deleteUrl || "#";
+            deleteButton.dataset.confirmTitle = trigger.dataset.deleteTitle || "Supprimer cette demande";
+            deleteButton.dataset.confirmMessage = trigger.dataset.deleteMessage || "Cette demande sera retiree de votre historique.";
+        });
+    });
 </script>
 {% endblock %}

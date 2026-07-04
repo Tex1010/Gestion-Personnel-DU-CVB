@@ -1,11 +1,15 @@
+import csv
+import io
 import json
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
+from django.core.cache import cache
+from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Count
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 
@@ -99,6 +103,93 @@ def _scoped_request_queryset(queryset, profile, actionable_only=False):
             )
         return queryset
     return queryset.none()
+
+
+def _export_request_rows(requests):
+    headers = [
+        "ID",
+        "Employe",
+        "Type",
+        "Date de creation",
+        "Periode",
+        "Nombre de jours",
+        "Statut",
+        "Etape",
+        "Motif",
+        "Commentaire",
+    ]
+    rows = []
+    for item in requests:
+        rows.append(
+            [
+                item.id,
+                getattr(item.employee, "display_name", ""),
+                item.type_label,
+                item.created_at.strftime("%d/%m/%Y %H:%M") if item.created_at else "",
+                f"{item.start_date.strftime('%d/%m/%Y') if item.start_date else ''} - {item.end_date.strftime('%d/%m/%Y') if item.end_date else ''}",
+                item.total_days or "",
+                item.status_label,
+                item.get_approval_stage_display(),
+                item.reason or item.project_name or "",
+                item.admin_comment or "",
+            ]
+        )
+    return headers, rows
+
+
+def _build_requests_export_response(request, export_format, requests):
+    headers, rows = _export_request_rows(requests)
+    if export_format == "excel":
+        try:
+            from openpyxl import Workbook
+        except Exception:
+            export_format = "csv"
+
+    if export_format == "excel":
+        workbook = Workbook()
+        sheet = workbook.active
+        sheet.title = "Demandes"
+        sheet.append(headers)
+        for row in rows:
+            sheet.append(row)
+        output = io.BytesIO()
+        workbook.save(output)
+        output.seek(0)
+        response = HttpResponse(output.getvalue(), content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        response["Content-Disposition"] = "attachment; filename=demandes.xlsx"
+        return response
+
+    output = io.StringIO()
+    writer = csv.writer(output, delimiter=";", lineterminator="\n")
+    writer.writerow(headers)
+    writer.writerows(rows)
+    response = HttpResponse(output.getvalue(), content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = "attachment; filename=demandes.csv"
+    return response
+
+
+def _send_request_email_alert(request_item, branding=None):
+    if not branding:
+        branding = LoginBranding.objects.first()
+    recipient = getattr(branding, "email", "") or "centrevalbio@gmail.com"
+    if not recipient:
+        return False
+
+    subject = "Nouvelle demande de personnel a traiter"
+    admin_url = reverse("administration:requests")
+    body = (
+        f"Une nouvelle demande a ete soumise par {request_item.employee.display_name}.\n"
+        f"Type : {request_item.type_label}\n"
+        f"Periode : {request_item.start_date or '-'} - {request_item.end_date or '-'}\n"
+        f"Nombre de jours : {request_item.total_days}\n"
+        f"Motif : {request_item.reason or request_item.project_name or '-'}\n"
+        f"Lien : {admin_url}\n"
+    )
+    try:
+        send_mail(subject, body, None, [recipient], fail_silently=True)
+        return True
+    except Exception:
+        return False
 
 
 def _is_request_in_scope(request_item, profile):
@@ -307,6 +398,26 @@ def requests_overview_view(request):
             "show_history": request.GET.get("show_history") == "1",
         },
     )
+
+
+@login_required
+@role_required(*APPROVAL_ROLES)
+def export_requests_view(request, export_format):
+    current_profile = getattr(request.user, "profile", None)
+    requests = StaffRequest.objects.select_related("employee", "employee__user")
+    requests = _scoped_request_queryset(requests, current_profile, actionable_only=False)
+    requests = requests.order_by("-created_at")
+    if export_format not in {"csv", "excel"}:
+        export_format = "csv"
+    return _build_requests_export_response(request, export_format, requests)
+
+
+@login_required
+def acknowledge_request_notification_view(request):
+    if request.method == "POST":
+        request.session["request_notification_pending"] = False
+        request.session.modified = True
+    return JsonResponse({"ok": True})
 
 
 @login_required
