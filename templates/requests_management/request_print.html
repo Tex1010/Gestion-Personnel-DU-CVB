@@ -442,6 +442,170 @@
         </div>
     </main>
     <script>
+        (() => {
+            const currentLanguage = ["fr", "en", "mg"].includes(window.localStorage.getItem("gpducvb:lang"))
+                ? window.localStorage.getItem("gpducvb:lang")
+                : "fr";
+            document.documentElement.lang = currentLanguage;
+            const exact = {
+                en: {
+                    "Impression demande": "Print request",
+                    "Actions rapides": "Quick actions",
+                    "Choisissez l’action a effectuer sur ce document.": "Choose the action to perform on this document.",
+                    "Imprimer": "Print",
+                    "Retour": "Back",
+                    "Fermer": "Close",
+                    "Informations employe": "Employee information",
+                    "Nom complet": "Full name",
+                    "Matricule": "Employee ID",
+                    "Poste": "Position",
+                    "Type de contrat": "Contract type",
+                    "Departement": "Department",
+                    "Informations demande": "Request information",
+                    "Statut global": "Overall status",
+                    "Etape en cours": "Current stage",
+                    "Periode": "Period",
+                    "Date debut": "Start date",
+                    "Date fin": "End date",
+                    "Total jours": "Total days",
+                    "Projet": "Project",
+                    "Motif": "Reason",
+                    "Details de recuperation": "Recovery details",
+                    "Date": "Date",
+                    "Nature de travaux": "Nature of work",
+                    "Debut": "Start",
+                    "Fin": "End",
+                    "Duree": "Duration",
+                    "Ferie": "Holiday",
+                    "Oui": "Yes",
+                    "Non": "No",
+                    "Suivi des validations": "Approval tracking",
+                    "Etape": "Stage",
+                    "Par": "By",
+                    "Statut": "Status",
+                    "Commentaire de validation": "Approval comment",
+                    "Document genere depuis la gestion du personnel du Centre ValBio.": "Document generated from Centre ValBio personnel management.",
+                    "Approuvee": "Approved",
+                    "Rejetee": "Rejected",
+                    "Soumise": "Submitted",
+                    "Conge": "Leave",
+                    "Absence": "Absence",
+                    "Recuperation": "Recovery",
+                    "Chef hierarchique": "Line manager",
+                    "Administration": "Administration",
+                    "Direction": "Management",
+                    "Terminee": "Completed",
+                    "En attente": "Pending",
+                    "A venir": "Upcoming",
+                    "Non requise": "Not required",
+                    "Aucune action": "No action",
+                },
+                mg: {
+                    "Impression demande": "Fanontana fangatahana",
+                    "Actions rapides": "Hetsika haingana",
+                    "Choisissez l’action a effectuer sur ce document.": "Safidio ny hetsika hatao amin'ity antontan-taratasy ity.",
+                    "Imprimer": "Hanonta",
+                    "Retour": "Hiverina",
+                    "Fermer": "Hidio",
+                    "Informations employe": "Mombamomba ny mpiasa",
+                    "Nom complet": "Anarana feno",
+                    "Matricule": "Matrikily",
+                    "Poste": "Asa",
+                    "Type de contrat": "Karazana fifanekena",
+                    "Departement": "Departemanta",
+                    "Informations demande": "Mombamomba ny fangatahana",
+                    "Statut global": "Sata ankapobeny",
+                    "Etape en cours": "Dingana ankehitriny",
+                    "Periode": "Fe-potoana",
+                    "Date debut": "Daty fanombohana",
+                    "Date fin": "Daty fiafarana",
+                    "Total jours": "Andro rehetra",
+                    "Projet": "Tetikasa",
+                    "Motif": "Antony",
+                    "Details de recuperation": "Antsipirian'ny fanarenana",
+                    "Date": "Daty",
+                    "Nature de travaux": "Karazan'asa",
+                    "Debut": "Fanombohana",
+                    "Fin": "Fiafarana",
+                    "Duree": "Faharetana",
+                    "Ferie": "Fety",
+                    "Oui": "Eny",
+                    "Non": "Tsia",
+                    "Suivi des validations": "Fanarahana fanamarinana",
+                    "Etape": "Dingana",
+                    "Par": "Nataon'i",
+                    "Statut": "Sata",
+                    "Commentaire de validation": "Fanamarihana fanamarinana",
+                    "Document genere depuis la gestion du personnel du Centre ValBio.": "Antontan-taratasy novokarina avy amin'ny fitantanana ny mpiasa ao Centre ValBio.",
+                    "Approuvee": "Nekena",
+                    "Rejetee": "Nolavina",
+                    "Soumise": "Nalefa",
+                    "Conge": "Fialan-tsasatra",
+                    "Absence": "Tsy fahatongavana",
+                    "Recuperation": "Fanarenana",
+                    "Chef hierarchique": "Lehiben'ny sampana",
+                    "Administration": "Administrasiona",
+                    "Direction": "Fitantanana",
+                    "Terminee": "Vita",
+                    "En attente": "Miandry",
+                    "A venir": "Ho avy",
+                    "Non requise": "Tsy ilaina",
+                    "Aucune action": "Tsy misy hetsika",
+                },
+            };
+            const patterns = {
+                en: [
+                    { pattern: /^Creee le (.+)$/, replace: (_, value) => `Created on ${value}` },
+                    { pattern: /^(.+) jour\(s\)$/, replace: (_, value) => `${value} day(s)` },
+                ],
+                mg: [
+                    { pattern: /^Creee le (.+)$/, replace: (_, value) => `Noforonina tamin'ny ${value}` },
+                    { pattern: /^(.+) jour\(s\)$/, replace: (_, value) => `${value} andro` },
+                ],
+            };
+            const translate = (value) => {
+                const text = String(value ?? "");
+                const trimmed = text.trim();
+                if (!trimmed || currentLanguage === "fr") {
+                    return text;
+                }
+                const exactMatch = exact[currentLanguage]?.[trimmed];
+                if (exactMatch) {
+                    return text.replace(trimmed, exactMatch);
+                }
+                for (const entry of patterns[currentLanguage] || []) {
+                    if (entry.pattern.test(trimmed)) {
+                        return text.replace(trimmed, trimmed.replace(entry.pattern, entry.replace));
+                    }
+                }
+                return text;
+            };
+            document.title = translate(document.title);
+            document.addEventListener("DOMContentLoaded", () => {
+                const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+                const nodes = [];
+                while (walker.nextNode()) {
+                    const node = walker.currentNode;
+                    if (!node.nodeValue.trim()) {
+                        continue;
+                    }
+                    if (["SCRIPT", "STYLE"].includes(node.parentElement?.tagName)) {
+                        continue;
+                    }
+                    nodes.push(node);
+                }
+                nodes.forEach((node) => {
+                    node.nodeValue = translate(node.nodeValue);
+                });
+                document.querySelectorAll("[title], [aria-label]").forEach((element) => {
+                    ["title", "aria-label"].forEach((attributeName) => {
+                        if (element.hasAttribute(attributeName)) {
+                            element.setAttribute(attributeName, translate(element.getAttribute(attributeName)));
+                        }
+                    });
+                });
+            });
+        })();
         const exportMode = {{ export_mode|yesno:"true,false" }};
 
         const fitDocumentToSingleA4Page = () => {

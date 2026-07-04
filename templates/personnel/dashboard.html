@@ -392,6 +392,15 @@
 <script>
     const employeeChart = document.getElementById("employeeChart");
     let employeeChartInstance = null;
+    const translateEmployeeText = (value) =>
+        window.traeI18n?.translateText ? window.traeI18n.translateText(value) : value;
+    const applyEmployeeChartTranslations = () => {
+        if (!employeeChartInstance) {
+            return;
+        }
+        employeeChartInstance.data.labels = employeeChartInstance.data.labels.map((label) => translateEmployeeText(label));
+        employeeChartInstance.update();
+    };
     if (employeeChart) {
         if (window.ChartDataLabels) {
             Chart.register(ChartDataLabels);
@@ -399,7 +408,7 @@
         employeeChartInstance = new Chart(employeeChart, {
             type: "doughnut",
             data: {
-                labels: {{ chart_labels|safe }},
+                labels: ({{ chart_labels|safe }}).map((label) => translateEmployeeText(label)),
                 datasets: [{
                     data: {{ chart_values|safe }},
                     backgroundColor: ["#255c3a", "#9c6b1c", "#3d4d5f"],
@@ -442,17 +451,19 @@
             const approvedCount = document.getElementById("employee-approved-count");
             const rejectedCount = document.getElementById("employee-rejected-count");
 
-            if (leaveBalance) leaveBalance.innerText = data.leave_balance;
-            if (recoveryBalance) recoveryBalance.innerText = data.recovery_balance;
+            if (leaveBalance) leaveBalance.innerText = translateEmployeeText(data.leave_balance);
+            if (recoveryBalance) recoveryBalance.innerText = translateEmployeeText(data.recovery_balance);
             if (recentCount) recentCount.innerText = data.recent_count;
             if (submittedCount) submittedCount.innerText = data.submitted_count;
             if (approvedCount) approvedCount.innerText = data.approved_count;
             if (rejectedCount) rejectedCount.innerText = data.rejected_count;
 
             if (employeeChartInstance && Array.isArray(data.chart_values)) {
+                employeeChartInstance.data.labels = (data.chart_labels || []).map((label) => translateEmployeeText(label));
                 employeeChartInstance.data.datasets[0].data = data.chart_values;
                 employeeChartInstance.update();
             }
+            window.traeI18n?.apply?.();
         } catch (error) {
             return;
         }
@@ -462,6 +473,7 @@
         refreshEmployeeDashboard();
         window.setInterval(refreshEmployeeDashboard, 60000);
     }
+    document.addEventListener("trae:language-changed", applyEmployeeChartTranslations);
 </script>
 <script>
     document.addEventListener("DOMContentLoaded", () => {
@@ -481,7 +493,7 @@
         let shareEmail = "";
 
         const resetShareState = () => {
-            shareLabel.textContent = "Envoyer email";
+            shareLabel.textContent = window.traeI18n?.translateText("Envoyer email") || "Envoyer email";
         };
 
         [printLink, pngLink, deleteButton].forEach((element) => {
@@ -494,7 +506,7 @@
             const absoluteUrl = new URL(shareUrl || printLink.href, window.location.origin).href;
             const mailtoHref = `mailto:${shareEmail || "centrevalbio@gmail.com"}?subject=Demande%20de%20gestion%20du%20personnel&body=Bonjour%2C%0A%0AVeuillez%20trouver%20ci-joint%20le%20lien%20de%20la%20demande%20%3A%20${encodeURIComponent(absoluteUrl)}`;
             shareButton.href = mailtoHref;
-            shareLabel.textContent = "Ouverture email";
+            shareLabel.textContent = window.traeI18n?.translateText("Ouverture email") || "Ouverture email";
             actionModalInstance.hide();
             window.location.href = mailtoHref;
             event.preventDefault();
@@ -515,6 +527,7 @@
             deleteForm.action = trigger.dataset.deleteUrl || "#";
             deleteButton.dataset.confirmTitle = trigger.dataset.deleteTitle || "Supprimer cette demande";
             deleteButton.dataset.confirmMessage = trigger.dataset.deleteMessage || "Cette demande sera retiree de votre historique.";
+            window.traeI18n?.apply?.();
         });
     });
 </script>

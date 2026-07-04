@@ -7,7 +7,7 @@
     <div class="login-card">
         <div class="login-brand">
             <div class="hero-copy">
-                <span class="eyebrow">Plateforme securisee</span>
+                <span class="eyebrow" data-i18n="securePlatform">Plateforme securisee</span>
                 {% if branding and branding.logo_image %}
                     <img src="{{ branding.logo_image.url }}" alt="Logo {{ branding.site_name|default:'Centre ValBio' }}" class="login-logo">
                 {% endif %}
@@ -16,15 +16,15 @@
                 <div class="login-kpi-grid">
                     <div class="login-kpi-card">
                         <strong>1</strong>
-                        <span>Connexion centralisee</span>
+                        <span data-i18n="centralizedLogin">Connexion centralisee</span>
                     </div>
                     <div class="login-kpi-card">
                         <strong>3</strong>
-                        <span>Profils securises</span>
+                        <span data-i18n="securedProfiles">Profils securises</span>
                     </div>
                     <div class="login-kpi-card">
                         <strong>24/7</strong>
-                        <span>Acces interne</span>
+                        <span data-i18n="internalAccess">Acces interne</span>
                     </div>
                 </div>
                 <ul class="brand-list">
@@ -42,9 +42,9 @@
                 {% else %}
                     <div class="brand-placeholder">
                         <div class="brand-placeholder-content">
-                            <span class="eyebrow">Experience moderne</span>
-                            <h3>Un acces fluide pour les employes et l'administration.</h3>
-                            <p>Suivez les demandes, les soldes et les validations depuis une interface claire et professionnelle.</p>
+                            <span class="eyebrow" data-i18n="modernExperience">Experience moderne</span>
+                            <h3 data-i18n="smoothAccessTitle">Un acces fluide pour les employes et l'administration.</h3>
+                            <p data-i18n="smoothAccessText">Suivez les demandes, les soldes et les validations depuis une interface claire et professionnelle.</p>
                         </div>
                     </div>
                 {% endif %}
@@ -52,23 +52,34 @@
         </div>
 
         <div class="login-form-panel">
-            <div class="login-form-head">
-                <span class="eyebrow">Bienvenue</span>
-                <h2>Connexion sécurisée</h2>
-                <p>Sélectionnez votre profil, puis connectez-vous à votre espace dédié.</p>
+            <div class="display-controls login-display-controls">
+                <button type="button" class="display-chip theme-toggle-button" data-theme-toggle>
+                    <i class="bi bi-moon-stars"></i>
+                    <span data-theme-toggle-label>Mode sombre</span>
+                </button>
+                <div class="language-switcher" role="group" aria-label="Langue">
+                    <button type="button" class="display-chip flag-chip" data-lang-switch="fr" title="Français" aria-label="Français">🇫🇷</button>
+                    <button type="button" class="display-chip flag-chip" data-lang-switch="en" title="English" aria-label="English">🇬🇧</button>
+                    <button type="button" class="display-chip flag-chip" data-lang-switch="mg" title="Malagasy" aria-label="Malagasy">🇲🇬</button>
+                </div>
             </div>
-            <div class="role-pill-group login-role-preview" aria-label="Profils disponibles">
-                <span class="role-pill" data-role-pill="user"><i class="bi bi-person-badge"></i>Employé</span>
-                <span class="role-pill" data-role-pill="admin"><i class="bi bi-shield-check"></i>Administration</span>
-                <span class="role-pill" data-role-pill="hierarchical"><i class="bi bi-people"></i>Chef hiérarchique</span>
-                <span class="role-pill" data-role-pill="direction"><i class="bi bi-diagram-3"></i>Direction</span>
+            <div class="login-form-head">
+                <span class="eyebrow" data-i18n="welcome">Bienvenue</span>
+                <h2 data-i18n="secureLogin">Connexion sécurisée</h2>
+                <p data-i18n="selectProfileAndSignIn">Sélectionnez votre profil, puis connectez-vous à votre espace dédié.</p>
+            </div>
+            <div class="role-pill-group login-role-preview" aria-label="Profils disponibles" data-i18n-aria-label="availableProfiles">
+                <span class="role-pill" data-role-pill="user"><i class="bi bi-person-badge"></i><span data-i18n="employee">Employé</span></span>
+                <span class="role-pill" data-role-pill="admin"><i class="bi bi-shield-check"></i><span data-i18n="administration">Administration</span></span>
+                <span class="role-pill" data-role-pill="hierarchical"><i class="bi bi-people"></i><span data-i18n="hierarchicalManager">Chef hiérarchique</span></span>
+                <span class="role-pill" data-role-pill="direction"><i class="bi bi-diagram-3"></i><span data-i18n="direction">Direction</span></span>
             </div>
             <form method="post" class="stack-form login-modern-form">
                 {% csrf_token %}
                 <div class="login-select-shell">
                     <div class="login-select-head">
-                        <span class="login-select-caption">Méthode à sélectionner</span>
-                        <strong>{{ form.role.label }}</strong>
+                        <span class="login-select-caption" data-i18n="methodToSelect">Méthode à sélectionner</span>
+                        <strong data-i18n="signInAs">{{ form.role.label }}</strong>
                     </div>
                     <div class="login-select-control">
                         <i class="bi bi-person-workspace login-field-icon" aria-hidden="true"></i>
@@ -78,28 +89,28 @@
                 <div class="login-floating-field">
                     <i class="bi bi-person login-field-icon" aria-hidden="true"></i>
                     {{ form.username }}
-                    <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+                    <label for="{{ form.username.id_for_label }}" data-i18n="usernameLabel">{{ form.username.label }}</label>
                 </div>
                 <div class="login-floating-field">
                     <i class="bi bi-lock login-field-icon" aria-hidden="true"></i>
                     {{ form.password }}
-                    <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+                    <label for="{{ form.password.id_for_label }}" data-i18n="passwordLabel">{{ form.password.label }}</label>
                 </div>
-                <button type="submit" class="btn-primary full login-submit-button"><i class="bi bi-box-arrow-in-right"></i>Se connecter</button>
+                <button type="submit" class="btn-primary full login-submit-button"><i class="bi bi-box-arrow-in-right"></i><span data-i18n="signIn">Se connecter</span></button>
             </form>
             <div class="card employee-help-card">
                 <div class="help-icon">
                     <i class="bi bi-whatsapp"></i>
                 </div>
 
-                <h2>Besoin d'aide ?</h2>
+                <h2 data-i18n="needHelp">Besoin d'aide ?</h2>
 
-                <p>
+                <p data-i18n="helpQuestion">
                     Une question concernant votre demande d'absence, de congé,
                     de récupération ou le fonctionnement de la plateforme ?
                 </p>
 
-                <p class="helper">
+                <p class="helper" data-i18n="helpAvailability">
                     Je suis disponible pour vous accompagner et répondre à vos questions.
                 </p>
 
@@ -107,7 +118,7 @@
                 target="_blank"
                 class="btn-whatsapp">
                     <i class="bi bi-whatsapp"></i>
-                    Contacter sur WhatsApp
+                    <span data-i18n="contactWhatsApp">Contacter sur WhatsApp</span>
                 </a>
             </div>
         </div>

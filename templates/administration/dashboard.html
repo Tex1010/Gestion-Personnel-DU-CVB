@@ -115,6 +115,8 @@
 
 <script>
     const buildPalette = (length, colors) => Array.from({ length }, (_, index) => colors[index % colors.length]);
+    const translateAdminText = (value) =>
+        window.traeI18n?.translateText ? window.traeI18n.translateText(value) : value;
 
     if (window.ChartDataLabels) {
         Chart.register(ChartDataLabels);
@@ -123,7 +125,7 @@
     const leaveBalanceChart = document.getElementById("leaveBalanceChart");
     let leaveBalanceChartInstance = null;
     if (leaveBalanceChart) {
-        const leaveLabels = {{ leave_chart_labels|safe }};
+        const leaveLabels = ({{ leave_chart_labels|safe }}).map((label) => translateAdminText(label));
         leaveBalanceChartInstance = new Chart(leaveBalanceChart, {
             type: "doughnut",
             data: {
@@ -156,7 +158,7 @@
     const recoveryBalanceChart = document.getElementById("recoveryBalanceChart");
     let recoveryBalanceChartInstance = null;
     if (recoveryBalanceChart) {
-        const recoveryLabels = {{ recovery_chart_labels|safe }};
+        const recoveryLabels = ({{ recovery_chart_labels|safe }}).map((label) => translateAdminText(label));
         recoveryBalanceChartInstance = new Chart(recoveryBalanceChart, {
             type: "doughnut",
             data: {
@@ -208,15 +210,16 @@
             if (lowRecoveryCount) lowRecoveryCount.innerText = data.low_recovery_count;
 
             if (leaveBalanceChartInstance && Array.isArray(data.leave_chart_values) && Array.isArray(data.leave_chart_labels)) {
-                leaveBalanceChartInstance.data.labels = data.leave_chart_labels;
+                leaveBalanceChartInstance.data.labels = data.leave_chart_labels.map((label) => translateAdminText(label));
                 leaveBalanceChartInstance.data.datasets[0].data = data.leave_chart_values;
                 leaveBalanceChartInstance.update();
             }
             if (recoveryBalanceChartInstance && Array.isArray(data.recovery_chart_values) && Array.isArray(data.recovery_chart_labels)) {
-                recoveryBalanceChartInstance.data.labels = data.recovery_chart_labels;
+                recoveryBalanceChartInstance.data.labels = data.recovery_chart_labels.map((label) => translateAdminText(label));
                 recoveryBalanceChartInstance.data.datasets[0].data = data.recovery_chart_values;
                 recoveryBalanceChartInstance.update();
             }
+            window.traeI18n?.apply?.();
         } catch (error) {
             return;
         }
@@ -226,5 +229,15 @@
         refreshAdminDashboard();
         window.setInterval(refreshAdminDashboard, 60000);
     }
+    document.addEventListener("trae:language-changed", () => {
+        if (leaveBalanceChartInstance) {
+            leaveBalanceChartInstance.data.labels = leaveBalanceChartInstance.data.labels.map((label) => translateAdminText(label));
+            leaveBalanceChartInstance.update();
+        }
+        if (recoveryBalanceChartInstance) {
+            recoveryBalanceChartInstance.data.labels = recoveryBalanceChartInstance.data.labels.map((label) => translateAdminText(label));
+            recoveryBalanceChartInstance.update();
+        }
+    });
 </script>
 {% endblock %}

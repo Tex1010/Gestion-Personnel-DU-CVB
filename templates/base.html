@@ -5,6 +5,25 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <meta name="format-detection" content="telephone=no">
+    <script>
+        (() => {
+            try {
+                const savedTheme = window.localStorage.getItem("gpducvb:theme");
+                const savedLanguage = window.localStorage.getItem("gpducvb:lang");
+                const theme = savedTheme === "dark" ? "dark" : "light";
+                const language = ["fr", "en", "mg"].includes(savedLanguage) ? savedLanguage : "fr";
+                document.documentElement.dataset.theme = theme;
+                document.documentElement.dataset.lang = language;
+                document.documentElement.lang = language;
+                document.documentElement.style.colorScheme = theme;
+            } catch (error) {
+                document.documentElement.dataset.theme = "light";
+                document.documentElement.dataset.lang = "fr";
+                document.documentElement.lang = "fr";
+                document.documentElement.style.colorScheme = "light";
+            }
+        })();
+    </script>
     <title>{% block title %}Gestion du personnel{% endblock %}</title>
     {% if branding and branding.logo_image %}
         <link rel="icon" type="image/png" href="{{ branding.logo_image.url }}">
@@ -37,30 +56,30 @@
                                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" data-bs-target="#mobileSidebar" aria-label="Fermer le menu"></button>
                             </div>
                             <strong class="sidebar-brand-title">{{ branding.site_name|default:"Centre ValBio" }}</strong>
-                            <p class="sidebar-brand-subtitle">Gestion du personnel</p>
+                            <p class="sidebar-brand-subtitle" data-i18n="personnelManagement">Gestion du personnel</p>
                         </div>
                     </div>
                     <nav class="sidebar-nav">
                         {% with portal_role=request.session.portal_role|default:request.user.profile.role %}
                             {% if portal_role == "user" %}
-                                <a href="{% url 'personnel:dashboard' %}" class="{% if request.resolver_match.app_name == 'personnel' %}is-active{% endif %}"><i class="bi bi-house-door"></i><span>Accueil employe</span></a>
-                                <a href="{% url 'requests_management:absence_create' %}" class="{% if request.resolver_match.url_name == 'absence_create' %}is-active{% endif %}"><i class="bi bi-calendar2-x"></i><span>Demande d'absence</span></a>
-                                <a href="{% url 'requests_management:leave_create' %}" class="{% if request.resolver_match.url_name == 'leave_create' %}is-active{% endif %}"><i class="bi bi-calendar2-check"></i><span>Demande de conge</span></a>
-                                <a href="{% url 'requests_management:recovery_create' %}" class="{% if request.resolver_match.url_name == 'recovery_create' %}is-active{% endif %}"><i class="bi bi-arrow-repeat"></i><span>Demande de recuperation</span></a>
+                                <a href="{% url 'personnel:dashboard' %}" class="{% if request.resolver_match.app_name == 'personnel' %}is-active{% endif %}"><i class="bi bi-house-door"></i><span data-i18n="homeEmployee">Accueil employe</span></a>
+                                <a href="{% url 'requests_management:absence_create' %}" class="{% if request.resolver_match.url_name == 'absence_create' %}is-active{% endif %}"><i class="bi bi-calendar2-x"></i><span data-i18n="absenceRequest">Demande d'absence</span></a>
+                                <a href="{% url 'requests_management:leave_create' %}" class="{% if request.resolver_match.url_name == 'leave_create' %}is-active{% endif %}"><i class="bi bi-calendar2-check"></i><span data-i18n="leaveRequest">Demande de conge</span></a>
+                                <a href="{% url 'requests_management:recovery_create' %}" class="{% if request.resolver_match.url_name == 'recovery_create' %}is-active{% endif %}"><i class="bi bi-arrow-repeat"></i><span data-i18n="recoveryRequest">Demande de recuperation</span></a>
                             {% elif portal_role == "hierarchical" or portal_role == "direction" %}
-                                <a href="{% url 'administration:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-speedometer2"></i><span>Validation des demandes</span></a>
-                                <a href="{% url 'administration:requests' %}" class="{% if request.resolver_match.url_name == 'requests' or request.resolver_match.url_name == 'request_action' %}is-active{% endif %}"><i class="bi bi-ui-checks-grid"></i><span>Demandes a valider</span></a>
+                                <a href="{% url 'administration:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-speedometer2"></i><span data-i18n="requestValidation">Validation des demandes</span></a>
+                                <a href="{% url 'administration:requests' %}" class="{% if request.resolver_match.url_name == 'requests' or request.resolver_match.url_name == 'request_action' %}is-active{% endif %}"><i class="bi bi-ui-checks-grid"></i><span data-i18n="requestsToApprove">Demandes a valider</span></a>
                             {% else %}
-                                <a href="{% url 'administration:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-speedometer2"></i><span>Tableau de bord admin</span></a>
-                                <a href="{% url 'administration:requests' %}" class="{% if request.resolver_match.url_name == 'requests' or request.resolver_match.url_name == 'request_action' %}is-active{% endif %}"><i class="bi bi-ui-checks-grid"></i><span>Demandes</span></a>
-                                <a href="{% url 'administration:settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}is-active{% endif %}"><i class="bi bi-sliders"></i><span>Parametres</span></a>
+                                <a href="{% url 'administration:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-speedometer2"></i><span data-i18n="adminDashboard">Tableau de bord admin</span></a>
+                                <a href="{% url 'administration:requests' %}" class="{% if request.resolver_match.url_name == 'requests' or request.resolver_match.url_name == 'request_action' %}is-active{% endif %}"><i class="bi bi-ui-checks-grid"></i><span data-i18n="requests">Demandes</span></a>
+                                <a href="{% url 'administration:settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}is-active{% endif %}"><i class="bi bi-sliders"></i><span data-i18n="settings">Parametres</span></a>
                             {% endif %}
                         {% endwith %}
-                        <a href="{% url 'accounts:password_change' %}" class="{% if request.resolver_match.url_name == 'password_change' %}is-active{% endif %}"><i class="bi bi-key"></i><span>Changer le mot de passe</span></a>
+                        <a href="{% url 'accounts:password_change' %}" class="{% if request.resolver_match.url_name == 'password_change' %}is-active{% endif %}"><i class="bi bi-key"></i><span data-i18n="changePassword">Changer le mot de passe</span></a>
                         <form method="post" action="{% url 'accounts:logout' %}" class="sidebar-nav-form">
                             {% csrf_token %}
-                            <button type="submit" class="sidebar-nav-button" data-confirm-action="1" data-confirm-title="Se deconnecter" data-confirm-message="Voulez-vous vraiment vous deconnecter ?" data-confirm-label="Oui, me deconnecter" data-confirm-class="btn-primary">
-                                <i class="bi bi-box-arrow-right"></i><span>Deconnexion</span>
+                            <button type="submit" class="sidebar-nav-button" data-logout-control="1" data-confirm-action="1" data-confirm-title="Se deconnecter" data-confirm-message="Voulez-vous vraiment vous deconnecter ?" data-confirm-label="Oui, me deconnecter" data-confirm-class="btn-primary">
+                                <i class="bi bi-box-arrow-right"></i><span data-i18n="logout">Deconnexion</span>
                             </button>
                         </form>
                     </nav>
@@ -82,17 +101,28 @@
             <main class="content">
                 <header class="topbar">
                     <div class="topbar-main">
-                        <button class="topbar-menu-button" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar" aria-label="Ouvrir le menu">
+                        <button class="topbar-menu-button" type="button" data-bs-toggle="offcanvas" data-bs-target="#mobileSidebar" aria-controls="mobileSidebar" aria-label="Ouvrir le menu" data-i18n-aria-label="openMenu">
                             <i class="bi bi-list"></i>
-                            <span>Menu</span>
+                            <span data-i18n="menu">Menu</span>
                         </button>
-                        <span class="eyebrow">Espace interne</span>
+                        <span class="eyebrow" data-i18n="internalSpace">Espace interne</span>
                         <h1 class="topbar-title">{{ branding.site_name|default:"Centre ValBio" }}</h1>
                     </div>
                     <div class="topbar-meta">
+                        <div class="display-controls topbar-controls">
+                            <button type="button" class="display-chip theme-toggle-button" data-theme-toggle>
+                                <i class="bi bi-moon-stars"></i>
+                                <span data-theme-toggle-label>Mode sombre</span>
+                            </button>
+                            <div class="language-switcher" role="group" aria-label="Langue">
+                                <button type="button" class="display-chip flag-chip" data-lang-switch="fr" title="Français" aria-label="Français">🇫🇷</button>
+                                <button type="button" class="display-chip flag-chip" data-lang-switch="en" title="English" aria-label="English">🇬🇧</button>
+                                <button type="button" class="display-chip flag-chip" data-lang-switch="mg" title="Malagasy" aria-label="Malagasy">🇲🇬</button>
+                            </div>
+                        </div>
                         {% with portal_role=request.session.portal_role|default:request.user.profile.role %}
                             {% if portal_role != "user" %}
-                                <button id="requestBell" class="btn-secondary btn-bell topbar-bell" title="Notifications des demandes" type="button">
+                                <button id="requestBell" class="btn-secondary btn-bell topbar-bell" title="Notifications des demandes" type="button" data-i18n-title="requestNotifications">
                                     <i class="bi bi-bell"></i>
                                     <span class="bell-count badge" id="requestBellCount" style="display: none;">0</span>
                                 </button>
@@ -112,7 +142,7 @@
                                     <span class="message-icon" aria-hidden="true"></span>
                                     <span>{{ message }}</span>
                                 </div>
-                                <button type="button" class="message-close" aria-label="Fermer la notification">×</button>
+                                <button type="button" class="message-close" aria-label="Fermer la notification" data-i18n-aria-label="closeNotification">×</button>
                             </div>
                         {% endfor %}
                     </div>
@@ -141,17 +171,17 @@
             <div class="modal-content confirm-modal-content">
                 <div class="modal-header border-0 pb-0">
                     <div>
-                        <span class="eyebrow">Confirmation</span>
-                        <h5 class="modal-title mt-2" id="actionConfirmTitle">Confirmer l'action</h5>
+                        <span class="eyebrow" data-i18n="confirmation">Confirmation</span>
+                        <h5 class="modal-title mt-2" id="actionConfirmTitle" data-i18n="confirmAction">Confirmer l'action</h5>
                     </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer" data-i18n-aria-label="close"></button>
                 </div>
                 <div class="modal-body pt-2">
-                    <p id="actionConfirmMessage" class="mb-0 helper">Merci de confirmer cette action.</p>
+                    <p id="actionConfirmMessage" class="mb-0 helper" data-i18n="pleaseConfirmAction">Merci de confirmer cette action.</p>
                 </div>
                 <div class="modal-footer border-0">
-                    <button type="button" class="btn-secondary" data-bs-dismiss="modal">Annuler</button>
-                    <button type="button" class="btn-primary" id="actionConfirmSubmit">Confirmer</button>
+                    <button type="button" class="btn-secondary" data-bs-dismiss="modal" data-i18n="cancel">Annuler</button>
+                    <button type="button" class="btn-primary" id="actionConfirmSubmit" data-i18n="confirm">Confirmer</button>
                 </div>
             </div>
         </div>
@@ -172,11 +202,11 @@
                     <i class="bi bi-bell-fill" aria-hidden="true"></i>
                 </div>
                 <div class="floating-notice-body">
-                    <strong id="floatingNotificationTitle">Notification</strong>
-                    <p id="floatingNotificationMessage">Une nouvelle alerte est disponible.</p>
-                    <a href="#" class="floating-notice-link" id="floatingNotificationAction">Voir</a>
+                    <strong id="floatingNotificationTitle" data-i18n="notification">Notification</strong>
+                    <p id="floatingNotificationMessage" data-i18n="newAlertAvailable">Une nouvelle alerte est disponible.</p>
+                    <a href="#" class="floating-notice-link" id="floatingNotificationAction" data-i18n="view">Voir</a>
                 </div>
-                <button type="button" class="floating-notice-close" id="floatingNotificationClose" aria-label="Fermer">
+                <button type="button" class="floating-notice-close" id="floatingNotificationClose" aria-label="Fermer" data-i18n-aria-label="close">
                     <i class="bi bi-x-lg" aria-hidden="true"></i>
                 </button>
             </div>
@@ -188,6 +218,798 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
     <script>
         document.addEventListener("DOMContentLoaded", () => {
+            const storageKeys = {
+                theme: "gpducvb:theme",
+                language: "gpducvb:lang",
+            };
+            const translations = {
+                fr: {
+                    personnelManagement: "Gestion du personnel",
+                    homeEmployee: "Accueil employe",
+                    absenceRequest: "Demande d'absence",
+                    leaveRequest: "Demande de conge",
+                    recoveryRequest: "Demande de recuperation",
+                    requestValidation: "Validation des demandes",
+                    requestsToApprove: "Demandes a valider",
+                    adminDashboard: "Tableau de bord admin",
+                    requests: "Demandes",
+                    settings: "Parametres",
+                    changePassword: "Changer le mot de passe",
+                    logout: "Deconnexion",
+                    menu: "Menu",
+                    internalSpace: "Espace interne",
+                    requestNotifications: "Notifications des demandes",
+                    confirmation: "Confirmation",
+                    confirmAction: "Confirmer l'action",
+                    pleaseConfirmAction: "Merci de confirmer cette action.",
+                    cancel: "Annuler",
+                    confirm: "Confirmer",
+                    notification: "Notification",
+                    newAlertAvailable: "Une nouvelle alerte est disponible.",
+                    view: "Voir",
+                    close: "Fermer",
+                    closeNotification: "Fermer la notification",
+                    openMenu: "Ouvrir le menu",
+                    switchToDark: "Mode sombre",
+                    switchToLight: "Mode clair",
+                    showOrHidePassword: "Afficher ou masquer le mot de passe",
+                    noSearchResults: "Aucun resultat pour cette recherche.",
+                    logoutConfirmTitle: "Se deconnecter",
+                    logoutConfirmMessage: "Voulez-vous vraiment vous deconnecter ?",
+                    logoutConfirmLabel: "Oui, me deconnecter",
+                    role_user: "Employe",
+                    role_admin: "Administration",
+                    role_hierarchical: "Chef hierarchique",
+                    role_direction: "Direction",
+                    securePlatform: "Plateforme securisee",
+                    centralizedLogin: "Connexion centralisee",
+                    securedProfiles: "Profils securises",
+                    internalAccess: "Acces interne",
+                    modernExperience: "Experience moderne",
+                    smoothAccessTitle: "Un acces fluide pour les employes et l'administration.",
+                    smoothAccessText: "Suivez les demandes, les soldes et les validations depuis une interface claire et professionnelle.",
+                    welcome: "Bienvenue",
+                    secureLogin: "Connexion securisee",
+                    selectProfileAndSignIn: "Selectionnez votre profil, puis connectez-vous a votre espace dedie.",
+                    availableProfiles: "Profils disponibles",
+                    methodToSelect: "Methode a selectionner",
+                    signInAs: "Connexion en tant que",
+                    usernameLabel: "Nom d'utilisateur",
+                    passwordLabel: "Mot de passe",
+                    signIn: "Se connecter",
+                    needHelp: "Besoin d'aide ?",
+                    helpQuestion: "Une question concernant votre demande d'absence, de conge, de recuperation ou le fonctionnement de la plateforme ?",
+                    helpAvailability: "Je suis disponible pour vous accompagner et repondre a vos questions.",
+                    contactWhatsApp: "Contacter sur WhatsApp",
+                    employee: "Employe",
+                    administration: "Administration",
+                    hierarchicalManager: "Chef hierarchique",
+                    direction: "Direction",
+                    requestSent: "Demande envoyee",
+                    viewMyRequests: "Voir mes demandes",
+                    newRequestToProcess: "Nouvelle demande a traiter",
+                    openRequests: "Ouvrir les demandes",
+                    requestFromEmployee: "{name} a envoye une demande de {type}.",
+                },
+                en: {
+                    personnelManagement: "Personnel management",
+                    homeEmployee: "Home",
+                    absenceRequest: "Absence request",
+                    leaveRequest: "Leave request",
+                    recoveryRequest: "Recovery request",
+                    requestValidation: "Request review",
+                    requestsToApprove: "Requests to approve",
+                    adminDashboard: "Admin dashboard",
+                    requests: "Requests",
+                    settings: "Settings",
+                    changePassword: "Change password",
+                    logout: "Log out",
+                    menu: "Menu",
+                    internalSpace: "Internal space",
+                    requestNotifications: "Request notifications",
+                    confirmation: "Confirmation",
+                    confirmAction: "Confirm action",
+                    pleaseConfirmAction: "Please confirm this action.",
+                    cancel: "Cancel",
+                    confirm: "Confirm",
+                    notification: "Notification",
+                    newAlertAvailable: "A new alert is available.",
+                    view: "View",
+                    close: "Close",
+                    closeNotification: "Close notification",
+                    openMenu: "Open menu",
+                    switchToDark: "Dark mode",
+                    switchToLight: "Light mode",
+                    showOrHidePassword: "Show or hide password",
+                    noSearchResults: "No results for this search.",
+                    logoutConfirmTitle: "Log out",
+                    logoutConfirmMessage: "Do you really want to log out?",
+                    logoutConfirmLabel: "Yes, log me out",
+                    role_user: "Employee",
+                    role_admin: "Administration",
+                    role_hierarchical: "Line manager",
+                    role_direction: "Management",
+                    securePlatform: "Secure platform",
+                    centralizedLogin: "Centralized login",
+                    securedProfiles: "Secured profiles",
+                    internalAccess: "Internal access",
+                    modernExperience: "Modern experience",
+                    smoothAccessTitle: "Smooth access for employees and administrators.",
+                    smoothAccessText: "Track requests, balances, and approvals from a clear and professional interface.",
+                    welcome: "Welcome",
+                    secureLogin: "Secure login",
+                    selectProfileAndSignIn: "Select your profile, then sign in to your dedicated space.",
+                    availableProfiles: "Available profiles",
+                    methodToSelect: "Selection method",
+                    signInAs: "Sign in as",
+                    usernameLabel: "Username",
+                    passwordLabel: "Password",
+                    signIn: "Sign in",
+                    needHelp: "Need help?",
+                    helpQuestion: "Do you have a question about absence, leave, recovery requests, or how the platform works?",
+                    helpAvailability: "I am available to help you and answer your questions.",
+                    contactWhatsApp: "Contact on WhatsApp",
+                    employee: "Employee",
+                    administration: "Administration",
+                    hierarchicalManager: "Line manager",
+                    direction: "Management",
+                    requestSent: "Request submitted",
+                    viewMyRequests: "View my requests",
+                    newRequestToProcess: "New request to process",
+                    openRequests: "Open requests",
+                    requestFromEmployee: "{name} submitted a {type} request.",
+                },
+                mg: {
+                    personnelManagement: "Fitantanana ny mpiasa",
+                    homeEmployee: "Fandraisana",
+                    absenceRequest: "Fangatahana tsy fahatongavana",
+                    leaveRequest: "Fangatahana fialan-tsasatra",
+                    recoveryRequest: "Fangatahana fanarenana ora",
+                    requestValidation: "Fanamarinana fangatahana",
+                    requestsToApprove: "Fangatahana hohamarinina",
+                    adminDashboard: "Tabilao admin",
+                    requests: "Fangatahana",
+                    settings: "Fikirana",
+                    changePassword: "Hanova tenimiafina",
+                    logout: "Hiala",
+                    menu: "Menu",
+                    internalSpace: "Sehatra anatiny",
+                    requestNotifications: "Fampandrenesana fangatahana",
+                    confirmation: "Fanamafisana",
+                    confirmAction: "Hamafiso ny hetsika",
+                    pleaseConfirmAction: "Azafady hamafiso ity hetsika ity.",
+                    cancel: "Ajanony",
+                    confirm: "Hamafiso",
+                    notification: "Fampandrenesana",
+                    newAlertAvailable: "Misy fampandrenesana vaovao.",
+                    view: "Hijery",
+                    close: "Hidio",
+                    closeNotification: "Hidio ny fampandrenesana",
+                    openMenu: "Hanokatra ny menu",
+                    switchToDark: "Maody maizina",
+                    switchToLight: "Maody mazava",
+                    showOrHidePassword: "Asehoy na afeno ny tenimiafina",
+                    noSearchResults: "Tsy misy valiny amin'ity fikarohana ity.",
+                    logoutConfirmTitle: "Hiala",
+                    logoutConfirmMessage: "Tena hiala tokoa ve ianao?",
+                    logoutConfirmLabel: "Eny, hiala aho",
+                    role_user: "Mpiasa",
+                    role_admin: "Administrasiona",
+                    role_hierarchical: "Lehiben'ny sampana",
+                    role_direction: "Fitantanana",
+                    securePlatform: "Sehatra voaaro",
+                    centralizedLogin: "Fidirana afovoany",
+                    securedProfiles: "Mombamomba voaaro",
+                    internalAccess: "Fidirana anatiny",
+                    modernExperience: "Traikefa maoderina",
+                    smoothAccessTitle: "Fidirana milamina ho an'ny mpiasa sy ny administrasiona.",
+                    smoothAccessText: "Araho avy amin'ny sehatra mazava sy matihanina ny fangatahana, ny kaonty, ary ny fanamarinana.",
+                    welcome: "Tongasoa",
+                    secureLogin: "Fidirana voaaro",
+                    selectProfileAndSignIn: "Safidio ny mombamomba anao dia midira ao amin'ny sehatranao.",
+                    availableProfiles: "Mombamomba misy",
+                    methodToSelect: "Fomba hofidina",
+                    signInAs: "Midira amin'ny maha",
+                    usernameLabel: "Anaran'ny mpampiasa",
+                    passwordLabel: "Tenimiafina",
+                    signIn: "Hiditra",
+                    needHelp: "Mila fanampiana?",
+                    helpQuestion: "Misy fanontaniana momba ny tsy fahatongavana, fialan-tsasatra, fanarenana ora, na ny fampiasana ny sehatra ve?",
+                    helpAvailability: "Vonona hanampy sy hamaly ny fanontanianao aho.",
+                    contactWhatsApp: "Hifandray amin'ny WhatsApp",
+                    employee: "Mpiasa",
+                    administration: "Administrasiona",
+                    hierarchicalManager: "Lehiben'ny sampana",
+                    direction: "Fitantanana",
+                    requestSent: "Nalefa ny fangatahana",
+                    viewMyRequests: "Hijery ny fangatahako",
+                    newRequestToProcess: "Misy fangatahana vaovao",
+                    openRequests: "Hanokatra fangatahana",
+                    requestFromEmployee: "{name} nandefa fangatahana {type}.",
+                },
+            };
+            const literalTranslations = {
+                en: {
+                    "Connexion | Gestion du personnel": "Login | Personnel management",
+                    "Gestion du personnel": "Personnel management",
+                    "Pilotage admin": "Admin overview",
+                    "Vue globale du personnel": "Global personnel overview",
+                    "Suivi des soldes, des comptes et des demandes de l'ensemble des employes sans surcharger l'ecran.": "Track balances, accounts, and requests for all employees without cluttering the screen.",
+                    "Voir les demandes": "View requests",
+                    "Parametres": "Settings",
+                    "Employes": "Employees",
+                    "Total des profils suivis": "Total tracked profiles",
+                    "Demandes en attente": "Pending requests",
+                    "Demandes a traiter en priorite": "Requests to handle first",
+                    "Employe(s) avec un solde faible": "Employee(s) with a low balance",
+                    "Employe(s) a surveiller": "Employee(s) to monitor",
+                    "Repartition par solde de conge": "Leave balance breakdown",
+                    "Nombre de personnes pour chaque niveau de conge disponible.": "Number of people for each available leave level.",
+                    "Repartition par recuperation": "Recovery balance breakdown",
+                    "Nombre de personnes pour chaque niveau de recuperation disponible.": "Number of people for each available recovery level.",
+                    "Soldes des employes": "Employee balances",
+                    "En-tete figee et zone de scroll interne pour eviter le long defilement de la page.": "Sticky header and internal scroll area to avoid long page scrolling.",
+                    "Rechercher un employe, un poste ou un solde": "Search for an employee, a position, or a balance",
+                    "Exporter Excel propre": "Export clean Excel",
+                    "Employe": "Employee",
+                    "Poste": "Position",
+                    "Conge": "Leave",
+                    "Recuperation": "Recovery",
+                    "Aucun employe enregistre.": "No employee recorded.",
+                    "Demandes du personnel": "Personnel requests",
+                    "Demandes": "Requests",
+                    "Conge, absence et recuperation": "Leave, absence and recovery",
+                    "Historique": "History",
+                    "Masquer l'historique": "Hide history",
+                    "Demandes a traiter": "Requests to process",
+                    "Acceptez ou refusez chaque demande. L'export telecharge maintenant un seul fichier Excel, propre et directement lisible.": "Approve or reject each request. Export now downloads a single clean and directly readable Excel file.",
+                    "Rechercher une demande, un employe ou un motif": "Search for a request, an employee, or a reason",
+                    "Type": "Type",
+                    "Periode / date": "Period / date",
+                    "Nombre de jours": "Number of days",
+                    "Motif": "Reason",
+                    "Etape": "Stage",
+                    "Commentaire": "Comment",
+                    "Actions": "Actions",
+                    "Statut": "Status",
+                    "Commentaire optionnel": "Optional comment",
+                    "Aucune demande en attente pour le moment.": "No pending requests at the moment.",
+                    "Historique des actions": "Action history",
+                    "Chaque demande apparait sur une seule ligne avec l'etat du chef hierarchique, de l'administration et de la direction.": "Each request appears on a single line with the status of the line manager, administration, and management.",
+                    "Rechercher dans l'historique des demandes": "Search request history",
+                    "Date": "Date",
+                    "Chef hierarchique": "Line manager",
+                    "Administration": "Administration",
+                    "Direction": "Management",
+                    "Statut final": "Final status",
+                    "Supprimer": "Delete",
+                    "Aucune action enregistree.": "No action recorded.",
+                    "Parametres admin": "Admin settings",
+                    "Comptes, logo et personnalisation": "Accounts, logo and customization",
+                    "Les sections s'affichent une par une pour garder un espace admin plus clair et plus professionnel.": "Sections are shown one at a time to keep the admin area clearer and more professional.",
+                    "Creer un compte employe": "Create an employee account",
+                    "Creer le compte": "Create account",
+                    "Comptes existants": "Existing accounts",
+                    "Modifiez ou supprimez les comptes depuis cette section sans afficher les autres panneaux.": "Edit or delete accounts from this section without showing the other panels.",
+                    "Enregistrer les modifications": "Save changes",
+                    "Annuler": "Cancel",
+                    "Rechercher un compte, un poste ou un role": "Search an account, a position, or a role",
+                    "Nom": "Name",
+                    "Departement": "Department",
+                    "Role": "Role",
+                    "Recup": "Recovery",
+                    "Matricule": "Employee ID",
+                    "Contrat:": "Contract:",
+                    "Session en cours": "Current session",
+                    "Protection active": "Active protection",
+                    "Aucun compte disponible.": "No account available.",
+                    "Historique des comptes": "Account history",
+                    "Le tableau indique l'action effectuee et l'utilisateur ayant modifie ou supprime le compte.": "The table shows the action performed and the user who modified or deleted the account.",
+                    "Rechercher dans l'historique des comptes": "Search account history",
+                    "Compte": "Account",
+                    "Action": "Action",
+                    "Utilisateur": "User",
+                    "Aucun historique disponible.": "No history available.",
+                    "Departements": "Departments",
+                    "Ajoutez, modifiez ou supprimez les structures de votre organisme.": "Add, edit, or delete the structures of your organization.",
+                    "Enregistrer le departement": "Save department",
+                    "Ajouter un departement": "Add department",
+                    "Rechercher un departement": "Search a department",
+                    "Code": "Code",
+                    "Description": "Description",
+                    "Actif": "Active",
+                    "Inactif": "Inactive",
+                    "Modifier": "Edit",
+                    "Aucun departement enregistre.": "No department recorded.",
+                    "Projets": "Projects",
+                    "Ajoutez, modifiez ou supprimez les projets disponibles dans la fiche de recuperation.": "Add, edit, or delete the projects available in the recovery form.",
+                    "Enregistrer le projet": "Save project",
+                    "Ajouter un projet": "Add project",
+                    "Rechercher un projet": "Search a project",
+                    "Aucun projet enregistre.": "No project recorded.",
+                    "Logo et identite visuelle": "Logo and visual identity",
+                    "Le logo est reutilise sur la connexion, la navigation et les entetes principaux. L'email saisi ici sert aussi aux alertes de nouvelles demandes si l'option est active.": "The logo is reused on login, navigation, and main headers. The email entered here is also used for new request alerts if the option is enabled.",
+                    "Activez ou desactivez l'alerte email selon vos besoins. Quand elle est active, chaque nouvelle demande envoie un message a l'adresse definie dans ce panneau.": "Enable or disable email alerts as needed. When enabled, each new request sends a message to the address defined in this panel.",
+                    "Alertes email a la soumission": "Email alerts on submission",
+                    "Utilise l'adresse email definie dans ce panneau pour prevenir l'administration a chaque nouvelle demande.": "Uses the email address defined in this panel to notify administration for each new request.",
+                    "Enregistrer l'identite": "Save identity",
+                    "Tableau de bord employe": "Employee dashboard",
+                    "Accueil employe": "Employee home",
+                    "Consultez vos soldes, suivez vos demandes et accedez rapidement aux formulaires utiles.": "Check your balances, track your requests, and quickly access useful forms.",
+                    "Nouvelle absence": "New absence",
+                    "Nouveau conge": "New leave",
+                    "Nouvelle recuperation": "New recovery",
+                    "Photo de profil": "Profile photo",
+                    "Poste non renseigne": "Position not specified",
+                    "Conge restant": "Remaining leave",
+                    "Solde disponible aujourd'hui": "Balance available today",
+                    "Recuperation disponible": "Available recovery",
+                    "Disponible pour vos prochaines demandes": "Available for your next requests",
+                    "Demandes recentes": "Recent requests",
+                    "12 dernieres demandes affichees": "Last 12 requests displayed",
+                    "Vue d'ensemble des demandes": "Request overview",
+                    "Lecture rapide de vos demandes par categorie.": "Quick reading of your requests by category.",
+                    "Etat de vos dossiers": "Status of your files",
+                    "Suivez ce qui attend encore une validation.": "Track what is still awaiting approval.",
+                    "En attente": "Pending",
+                    "Demande(s) en cours de traitement": "Request(s) being processed",
+                    "Approuvees": "Approved",
+                    "Demande(s) validee(s)": "Validated request(s)",
+                    "Rejetees": "Rejected",
+                    "Demande(s) refusee(s)": "Rejected request(s)",
+                    "Historique recent": "Recent history",
+                    "Retrouvez rapidement vos 12 dernieres demandes grace a la recherche integree.": "Quickly find your last 12 requests with integrated search.",
+                    "Rechercher dans l'historique recent": "Search recent history",
+                    "Periode": "Period",
+                    "Aucune demande pour le moment.": "No request at the moment.",
+                    "Absences envoyees": "Submitted absences",
+                    "Toutes vos demandes d'absence en un seul endroit.": "All your absence requests in one place.",
+                    "Rechercher une absence": "Search an absence",
+                    "Aucune demande d'absence.": "No absence request.",
+                    "Recuperations envoyees": "Submitted recoveries",
+                    "Suivi des recuperations deja saisies.": "Track recoveries already entered.",
+                    "Rechercher une recuperation": "Search a recovery",
+                    "Aucune fiche de recuperation.": "No recovery form.",
+                    "Conges enregistres": "Recorded leave requests",
+                    "Historique des demandes de conge envoyees.": "History of submitted leave requests.",
+                    "Rechercher un conge": "Search leave",
+                    "Aucun conge enregistre.": "No leave recorded.",
+                    "Options de la demande": "Request options",
+                    "Actions rapides et partage du document.": "Quick actions and document sharing.",
+                    "Imprimer": "Print",
+                    "Envoyer email": "Send email",
+                    "Ouverture email": "Opening email",
+                    "Formulaire metier": "Business form",
+                    "Demande d'absence": "Absence request",
+                    "Demande d'autorisation d'absence": "Absence authorization request",
+                    "Formulaire inspire de la fiche papier fournie pour le Centre ValBio.": "Form inspired by the paper form provided for Centre ValBio.",
+                    "Nom et Prenom": "Full name",
+                    "Fonction": "Position",
+                    "Total jours": "Total days",
+                    "Jours restants": "Remaining days",
+                    "Calcul automatique apres cette demande.": "Automatic calculation after this request.",
+                    "Oui, envoyer": "Yes, send",
+                    "Fiche de recuperation": "Recovery form",
+                    "Formulaire numerique reprenant la logique de la fiche papier de recuperation.": "Digital form following the logic of the paper recovery form.",
+                    "Ajouter une ligne": "Add a row",
+                    "Date": "Date",
+                    "Nature de travaux": "Nature of work",
+                    "Debut heure": "Start time",
+                    "Fin d'heure": "End time",
+                    "Duree": "Duration",
+                    "Ferie": "Holiday",
+                    "Veuillez corriger les informations du formulaire.": "Please correct the form information.",
+                    "Enregistrer la fiche": "Save form",
+                    "Restaurer": "Restore",
+                    "Selectionner un projet": "Select a project",
+                    "Sans projet": "No project",
+                    "Changer le mot de passe": "Change password",
+                    "Securite": "Security",
+                    "Mettre a jour": "Update",
+                    "Identifiants invalides.": "Invalid credentials.",
+                    "Le role choisi ne correspond pas aux droits de ce compte.": "The selected role does not match this account's permissions.",
+                    "Connexion reussie.": "Login successful.",
+                    "Vous avez ete deconnecte.": "You have been logged out.",
+                    "Votre mot de passe a ete mis a jour.": "Your password has been updated.",
+                    "Vous n'avez pas acces a cette page.": "You do not have access to this page.",
+                    "Ajoutez au moins une ligne de travail dans la fiche de recuperation.": "Add at least one work row in the recovery form.",
+                    "La fiche de recuperation a ete enregistree.": "The recovery form has been saved.",
+                    "La demande d'absence a ete enregistree.": "The absence request has been saved.",
+                    "La demande de conge a ete enregistree.": "The leave request has been saved.",
+                    "La demande a ete supprimee de votre historique.": "The request has been removed from your history.",
+                    "Le solde de conge a ete restaure.": "The leave balance has been restored.",
+                    "Le solde de recuperation a ete restaure.": "The recovery balance has been restored.",
+                    "Le solde de recuperation a ete ajuste.": "The recovery balance has been adjusted.",
+                    "Impossible de supprimer cette recuperation approuvee car son solde a deja ete utilise.": "Unable to delete this approved recovery because its balance has already been used.",
+                    "Vous n'avez pas acces a cette demande.": "You do not have access to this request.",
+                    "Le rendu PDF avance n'est pas disponible. Un PDF simplifie a ete genere.": "Advanced PDF rendering is not available. A simplified PDF has been generated.",
+                    "Rendu image minimal fourni: installez html2image/wkhtmltoimage pour une vraie capture.": "Minimal image output provided: install html2image/wkhtmltoimage for a real capture.",
+                    "Cette demande a deja ete traitee.": "This request has already been processed.",
+                    "Cette demande n'est pas disponible dans votre perimetre de validation.": "This request is not available in your approval scope.",
+                    "Impossible : seuls les validateurs autorises peuvent traiter cette demande.": "Impossible: only authorized approvers can process this request.",
+                    "La demande a ete rejetee.": "The request has been rejected.",
+                    "La demande a ete transmise a l'administration.": "The request has been sent to administration.",
+                    "Impossible : cette demande n'est pas encore disponible pour le chef hierarchique.": "Impossible: this request is not yet available for the line manager.",
+                    "Impossible : le chef hierarchique doit d'abord valider cette demande.": "Impossible: the line manager must validate this request first.",
+                    "Impossible : la demande a deja ete transmise a la direction.": "Impossible: the request has already been sent to management.",
+                    "Impossible : cette demande ne correspond pas a votre etape de validation.": "Impossible: this request does not match your validation stage.",
+                    "La demande a ete transmise a la direction.": "The request has been sent to management.",
+                    "Impossible : l'administration doit d'abord valider cette demande.": "Impossible: administration must validate this request first.",
+                    "Impossible : cette demande n'est pas a l'etape de validation de la direction.": "Impossible: this request is not at the management validation stage.",
+                    "La demande a ete approuvee et finalisee.": "The request has been approved and finalized.",
+                    "Impossible : action invalide.": "Impossible: invalid action.",
+                    "Action invalide.": "Invalid action.",
+                    "L'historique de la demande a ete supprime.": "The request history has been deleted.",
+                    "Aucune entree d'historique a supprimer pour cette demande.": "No history entry to delete for this request.",
+                    "Vous n'avez pas l'autorisation de supprimer cet historique.": "You are not allowed to delete this history.",
+                    "L'entree d'historique a ete supprimee.": "The history entry has been deleted.",
+                    "Ce compte est protege et ne peut pas etre modifie ici.": "This account is protected and cannot be edited here.",
+                    "Le compte employe a ete cree.": "The employee account has been created.",
+                    "La modification du compte connecte se fait hors de cet ecran.": "Editing the logged-in account is done outside this screen.",
+                    "Le compte a ete modifie.": "The account has been updated.",
+                    "Vous ne pouvez pas supprimer votre session en cours.": "You cannot delete your current session.",
+                    "Ce compte est protege et ne peut pas etre supprime.": "This account is protected and cannot be deleted.",
+                    "Le compte a ete supprime.": "The account has been deleted.",
+                    "L'identite visuelle et les preferences d'alerte email ont ete mises a jour.": "Visual identity and email alert preferences have been updated.",
+                    "Le departement a ete enregistre.": "The department has been saved.",
+                    "Le departement a ete mis a jour.": "The department has been updated.",
+                    "Le departement a ete supprime.": "The department has been deleted.",
+                    "Le projet a ete enregistre.": "The project has been saved.",
+                    "Le projet a ete mis a jour.": "The project has been updated.",
+                    "Le projet a ete supprime.": "The project has been deleted.",
+                    "Ce nom d'utilisateur existe deja.": "This username already exists.",
+                    "Laissez vide ou ******** pour conserver le mot de passe actuel.": "Leave blank or ******** to keep the current password.",
+                    "Projet": "Project",
+                    "Soumise": "Submitted",
+                    "Approuvee": "Approved",
+                    "Rejetee": "Rejected",
+                    "Brouillon": "Draft",
+                    "Terminee": "Completed",
+                    "Non requise": "Not required",
+                    "Aucune action": "No action",
+                    "A venir": "Upcoming",
+                    "CDI": "Permanent contract",
+                    "CDD": "Fixed-term contract",
+                    "Consultant": "Consultant",
+                    "Temporaire": "Temporary",
+                    "Admin": "Admin",
+                },
+                mg: {
+                    "Connexion | Gestion du personnel": "Fidirana | Fitantanana ny mpiasa",
+                    "Gestion du personnel": "Fitantanana ny mpiasa",
+                    "Voir les demandes": "Hijery ny fangatahana",
+                    "Parametres": "Fikirana",
+                    "Demandes": "Fangatahana",
+                    "Historique": "Tantara",
+                    "Masquer l'historique": "Afeno ny tantara",
+                    "Type": "Karazana",
+                    "Periode / date": "Fe-potoana / daty",
+                    "Nombre de jours": "Isan'ny andro",
+                    "Motif": "Antony",
+                    "Etape": "Dingana",
+                    "Commentaire": "Fanamarihana",
+                    "Actions": "Hetsika",
+                    "Statut": "Sata",
+                    "Commentaire optionnel": "Fanamarihana tsy voatery",
+                    "Date": "Daty",
+                    "Chef hierarchique": "Lehiben'ny sampana",
+                    "Administration": "Administrasiona",
+                    "Direction": "Fitantanana",
+                    "Statut final": "Sata farany",
+                    "Supprimer": "Hamafa",
+                    "Annuler": "Ajanony",
+                    "Nom": "Anarana",
+                    "Departement": "Departemanta",
+                    "Role": "Anjara asa",
+                    "Code": "Kaody",
+                    "Description": "Famaritana",
+                    "Actif": "Mavitrika",
+                    "Inactif": "Tsy mavitrika",
+                    "Modifier": "Hanova",
+                    "Projets": "Tetikasa",
+                    "Projet": "Tetikasa",
+                    "Changer le mot de passe": "Hanova tenimiafina",
+                    "Securite": "Fiarovana",
+                    "Mettre a jour": "Havaozy",
+                    "Imprimer": "Hanonta",
+                    "Supprimer": "Hamafa",
+                    "Selectionner un projet": "Safidio ny tetikasa",
+                    "Sans projet": "Tsy misy tetikasa",
+                    "Employe": "Mpiasa",
+                    "Poste": "Asa",
+                    "Conge": "Fialan-tsasatra",
+                    "Recuperation": "Fanarenana",
+                    "Demandes en attente": "Fangatahana miandry",
+                    "Historique recent": "Tantara vao haingana",
+                    "Connexion reussie.": "Nahomby ny fidirana.",
+                    "Identifiants invalides.": "Tsy marina ny mombamomba.",
+                    "Vous avez ete deconnecte.": "Nivoaka ianao.",
+                    "Votre mot de passe a ete mis a jour.": "Nohavaozina ny tenimiafinao.",
+                    "Vous n'avez pas acces a cette page.": "Tsy mahazo miditra amin'ity pejy ity ianao.",
+                    "La fiche de recuperation a ete enregistree.": "Voatahiry ny taratasy fanarenana.",
+                    "La demande d'absence a ete enregistree.": "Voatahiry ny fangatahana tsy fahatongavana.",
+                    "La demande de conge a ete enregistree.": "Voatahiry ny fangatahana fialan-tsasatra.",
+                    "La demande a ete supprimee de votre historique.": "Voafafa tao amin'ny tantaranao ny fangatahana.",
+                    "Approuvee": "Nekena",
+                    "Rejetee": "Nolavina",
+                    "Soumise": "Nalefa",
+                    "Brouillon": "Volavola",
+                    "Terminee": "Vita",
+                    "Non requise": "Tsy ilaina",
+                    "Aucune action": "Tsy misy hetsika",
+                    "A venir": "Ho avy",
+                    "CDI": "Asa maharitra",
+                    "CDD": "Asa voafetra fe-potoana",
+                    "Consultant": "Mpanolotsaina",
+                    "Temporaire": "Vonjimaika",
+                    "Admin": "Admin",
+                },
+            };
+            const patternTranslations = {
+                en: [
+                    { pattern: /^Bonjour (.+)$/, replace: (_, name) => `Hello ${name}` },
+                    { pattern: /^Modifier (.+)$/, replace: (_, name) => `Edit ${name}` },
+                    { pattern: /^Nom et Prenom: (.+)$/, replace: (_, value) => `Full name: ${value}` },
+                    { pattern: /^Fonction: (.+)$/, replace: (_, value) => `Position: ${value}` },
+                    { pattern: /^Matricule: (.+)$/, replace: (_, value) => `Employee ID: ${value}` },
+                    { pattern: /^Contrat: (.+)$/, replace: (_, value) => `Contract: ${value}` },
+                    { pattern: /^Type de contrat: (.+)$/, replace: (_, value) => `Contract type: ${value}` },
+                    { pattern: /^Creee le (.+)$/, replace: (_, value) => `Created on ${value}` },
+                    { pattern: /^(.+) demande\(s\) en attente de traitement\.$/, replace: (_, count) => `${count} request(s) pending processing.` },
+                    { pattern: /^(.+) jours$/, replace: (_, value) => `${value} days` },
+                    { pattern: /^Absence • (.+)$/, replace: (_, value) => `Absence • ${translateTextValue(value)}` },
+                    { pattern: /^Recuperation • (.+)$/, replace: (_, value) => `Recovery • ${translateTextValue(value)}` },
+                    { pattern: /^Récupération • (.+)$/, replace: (_, value) => `Recovery • ${translateTextValue(value)}` },
+                    { pattern: /^Conge • (.+)$/, replace: (_, value) => `Leave • ${translateTextValue(value)}` },
+                    { pattern: /^Congé • (.+)$/, replace: (_, value) => `Leave • ${translateTextValue(value)}` },
+                    { pattern: /^Le nombre demande depasse votre (.+) disponible\.$/, replace: (_, value) => `The requested amount exceeds your available ${translateTextValue(value)}.` },
+                ],
+                mg: [
+                    { pattern: /^Bonjour (.+)$/, replace: (_, name) => `Salama ${name}` },
+                    { pattern: /^Modifier (.+)$/, replace: (_, name) => `Hanova ${name}` },
+                    { pattern: /^Nom et Prenom: (.+)$/, replace: (_, value) => `Anarana feno: ${value}` },
+                    { pattern: /^Fonction: (.+)$/, replace: (_, value) => `Asa: ${value}` },
+                    { pattern: /^Matricule: (.+)$/, replace: (_, value) => `Matrikily: ${value}` },
+                    { pattern: /^Contrat: (.+)$/, replace: (_, value) => `Fifanekena: ${value}` },
+                    { pattern: /^Type de contrat: (.+)$/, replace: (_, value) => `Karazana fifanekena: ${value}` },
+                    { pattern: /^Creee le (.+)$/, replace: (_, value) => `Noforonina tamin'ny ${value}` },
+                    { pattern: /^(.+) demande\(s\) en attente de traitement\.$/, replace: (_, count) => `Misy fangatahana ${count} miandry fikarakarana.` },
+                    { pattern: /^(.+) jours$/, replace: (_, value) => `${value} andro` },
+                    { pattern: /^Absence • (.+)$/, replace: (_, value) => `Tsy fahatongavana • ${translateTextValue(value)}` },
+                    { pattern: /^Recuperation • (.+)$/, replace: (_, value) => `Fanarenana • ${translateTextValue(value)}` },
+                    { pattern: /^Récupération • (.+)$/, replace: (_, value) => `Fanarenana • ${translateTextValue(value)}` },
+                    { pattern: /^Conge • (.+)$/, replace: (_, value) => `Fialan-tsasatra • ${translateTextValue(value)}` },
+                    { pattern: /^Congé • (.+)$/, replace: (_, value) => `Fialan-tsasatra • ${translateTextValue(value)}` },
+                    { pattern: /^Le nombre demande depasse votre (.+) disponible\.$/, replace: (_, value) => `Mihoatra ny ${translateTextValue(value)} anananao ny fangatahana.` },
+                ],
+            };
+            const fallbackTranslations = translations.fr;
+            const resolveTranslation = (key) => currentTranslations[key] || fallbackTranslations[key] || "";
+            let currentLanguage = ["fr", "en", "mg"].includes(document.documentElement.dataset.lang)
+                ? document.documentElement.dataset.lang
+                : "fr";
+            let currentTheme = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
+            let currentTranslations = translations[currentLanguage] || fallbackTranslations;
+            const textNodeOriginals = new WeakMap();
+            const attributeOriginals = new WeakMap();
+            const getStoredAttribute = (element, attributeName, currentValue) => {
+                let originalMap = attributeOriginals.get(element);
+                if (!originalMap) {
+                    originalMap = {};
+                    attributeOriginals.set(element, originalMap);
+                }
+                if (!(attributeName in originalMap)) {
+                    originalMap[attributeName] = currentValue;
+                }
+                return originalMap[attributeName];
+            };
+            const formatTranslated = (template, variables = {}) =>
+                Object.entries(variables).reduce(
+                    (result, [key, value]) => result.replaceAll(`{${key}}`, String(value)),
+                    template
+                );
+            function translateTextValue(value) {
+                const sourceText = String(value ?? "");
+                const trimmed = sourceText.trim();
+                if (!trimmed || currentLanguage === "fr") {
+                    return sourceText;
+                }
+                const exactMatch = literalTranslations[currentLanguage]?.[trimmed];
+                if (exactMatch) {
+                    return sourceText.replace(trimmed, exactMatch);
+                }
+                for (const entry of patternTranslations[currentLanguage] || []) {
+                    if (entry.pattern.test(trimmed)) {
+                        const translated = trimmed.replace(entry.pattern, entry.replace);
+                        return sourceText.replace(trimmed, translated);
+                    }
+                }
+                return sourceText;
+            }
+            const applyLiteralTranslations = () => {
+                const originalTitle = getStoredAttribute(document.documentElement, "title", document.title);
+                document.title = translateTextValue(originalTitle);
+
+                const walker = document.createTreeWalker(
+                    document.body || document.documentElement,
+                    NodeFilter.SHOW_TEXT,
+                    {
+                        acceptNode(node) {
+                            if (!node.nodeValue || !node.nodeValue.trim()) {
+                                return NodeFilter.FILTER_REJECT;
+                            }
+                            const parent = node.parentElement;
+                            if (!parent) {
+                                return NodeFilter.FILTER_REJECT;
+                            }
+                            if (parent.closest("[data-i18n-template]")) {
+                                return NodeFilter.FILTER_REJECT;
+                            }
+                            if (["SCRIPT", "STYLE"].includes(parent.tagName)) {
+                                return NodeFilter.FILTER_REJECT;
+                            }
+                            return NodeFilter.FILTER_ACCEPT;
+                        },
+                    }
+                );
+
+                const textNodes = [];
+                while (walker.nextNode()) {
+                    textNodes.push(walker.currentNode);
+                }
+                textNodes.forEach((node) => {
+                    const originalText = textNodeOriginals.get(node) ?? node.nodeValue;
+                    textNodeOriginals.set(node, originalText);
+                    node.nodeValue = translateTextValue(originalText);
+                });
+
+                document.querySelectorAll("[placeholder], [title], [aria-label], [data-label]").forEach((element) => {
+                    ["placeholder", "title", "aria-label", "data-label"].forEach((attributeName) => {
+                        if (!element.hasAttribute(attributeName)) {
+                            return;
+                        }
+                        const originalValue = getStoredAttribute(
+                            element,
+                            attributeName,
+                            element.getAttribute(attributeName) || ""
+                        );
+                        element.setAttribute(attributeName, translateTextValue(originalValue));
+                    });
+                });
+
+                document.querySelectorAll("[data-confirm-action]").forEach((element) => {
+                    ["confirmTitle", "confirmMessage", "confirmLabel"].forEach((field) => {
+                        const attributeName = `data-${field.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`)}`;
+                        if (!element.dataset[field]) {
+                            return;
+                        }
+                        const originalValue = getStoredAttribute(element, attributeName, element.dataset[field]);
+                        element.dataset[field] = translateTextValue(originalValue);
+                    });
+                });
+            };
+
+            const applyTextTranslations = () => {
+                document.querySelectorAll("[data-i18n]").forEach((element) => {
+                    const key = element.dataset.i18n;
+                    const translation = resolveTranslation(key);
+                    if (translation) {
+                        element.textContent = translation;
+                    }
+                });
+
+                document.querySelectorAll("[data-i18n-title]").forEach((element) => {
+                    const translation = resolveTranslation(element.dataset.i18nTitle);
+                    if (translation) {
+                        element.setAttribute("title", translation);
+                    }
+                });
+
+                document.querySelectorAll("[data-i18n-aria-label]").forEach((element) => {
+                    const translation = resolveTranslation(element.dataset.i18nAriaLabel);
+                    if (translation) {
+                        element.setAttribute("aria-label", translation);
+                    }
+                });
+
+                document.querySelectorAll("[data-logout-control='1']").forEach((button) => {
+                    button.dataset.confirmTitle = resolveTranslation("logoutConfirmTitle");
+                    button.dataset.confirmMessage = resolveTranslation("logoutConfirmMessage");
+                    button.dataset.confirmLabel = resolveTranslation("logoutConfirmLabel");
+                });
+
+                const roleSelect = document.querySelector("[data-login-role-select='1']");
+                if (roleSelect) {
+                    Array.from(roleSelect.options).forEach((option) => {
+                        const translation = resolveTranslation(`role_${option.value}`);
+                        if (translation) {
+                            option.textContent = translation;
+                        }
+                    });
+                }
+
+                document.querySelectorAll(".password-toggle-button").forEach((button) => {
+                    button.setAttribute("aria-label", resolveTranslation("showOrHidePassword"));
+                });
+
+                applyLiteralTranslations();
+            };
+
+            const syncThemeButtons = () => {
+                const nextThemeLabel = resolveTranslation(
+                    currentTheme === "dark" ? "switchToLight" : "switchToDark"
+                );
+                document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+                    button.classList.toggle("is-active", currentTheme === "dark");
+                    const icon = button.querySelector("i");
+                    if (icon) {
+                        icon.className = currentTheme === "dark" ? "bi bi-sun" : "bi bi-moon-stars";
+                    }
+                    const label = button.querySelector("[data-theme-toggle-label]");
+                    if (label) {
+                        label.textContent = nextThemeLabel;
+                    }
+                    button.setAttribute("title", nextThemeLabel);
+                    button.setAttribute("aria-label", nextThemeLabel);
+                });
+            };
+
+            const syncLanguageButtons = () => {
+                document.querySelectorAll("[data-lang-switch]").forEach((button) => {
+                    button.classList.toggle("is-active", button.dataset.langSwitch === currentLanguage);
+                });
+            };
+
+            const applyTheme = (theme, persist = true) => {
+                currentTheme = theme === "dark" ? "dark" : "light";
+                document.documentElement.dataset.theme = currentTheme;
+                document.documentElement.style.colorScheme = currentTheme;
+                syncThemeButtons();
+                if (persist) {
+                    window.localStorage.setItem(storageKeys.theme, currentTheme);
+                }
+            };
+
+            const applyLanguage = (language, persist = true) => {
+                currentLanguage = ["fr", "en", "mg"].includes(language) ? language : "fr";
+                currentTranslations = translations[currentLanguage] || fallbackTranslations;
+                document.documentElement.dataset.lang = currentLanguage;
+                document.documentElement.lang = currentLanguage;
+                applyTextTranslations();
+                syncThemeButtons();
+                syncLanguageButtons();
+                if (persist) {
+                    window.localStorage.setItem(storageKeys.language, currentLanguage);
+                }
+                window.traeI18n = {
+                    language: currentLanguage,
+                    translateText: translateTextValue,
+                    key: resolveTranslation,
+                    template: formatTranslated,
+                    apply: applyTextTranslations,
+                };
+                document.dispatchEvent(
+                    new CustomEvent("trae:language-changed", {
+                        detail: { language: currentLanguage },
+                    })
+                );
+            };
+
+            document.querySelectorAll("[data-theme-toggle]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    applyTheme(currentTheme === "dark" ? "light" : "dark");
+                });
+            });
+
+            document.querySelectorAll("[data-lang-switch]").forEach((button) => {
+                button.addEventListener("click", () => {
+                    applyLanguage(button.dataset.langSwitch || "fr");
+                });
+            });
+
+            applyTheme(currentTheme, false);
+            applyLanguage(currentLanguage, false);
+
             const passwordInputs = document.querySelectorAll('input[type="password"]');
             passwordInputs.forEach((input) => {
                 if (input.dataset.passwordToggleReady === "1") {
@@ -202,7 +1024,7 @@
                 const toggleButton = document.createElement("button");
                 toggleButton.type = "button";
                 toggleButton.className = "password-toggle-button";
-                toggleButton.setAttribute("aria-label", "Afficher ou masquer le mot de passe");
+                toggleButton.setAttribute("aria-label", resolveTranslation("showOrHidePassword"));
                 toggleButton.innerHTML = '<i class="bi bi-eye"></i>';
                 toggleButton.addEventListener("click", () => {
                     const isPassword = input.getAttribute("type") === "password";
@@ -225,7 +1047,7 @@
 
             const resetConfirmButton = () => {
                 submitElement.className = "btn-primary";
-                submitElement.textContent = "Confirmer";
+                submitElement.textContent = resolveTranslation("confirm");
             };
 
             document.querySelectorAll("[data-confirm-action]").forEach((button) => {
@@ -241,13 +1063,13 @@
                     event.preventDefault();
                     pendingForm = form;
                     pendingSubmitter = button;
-                    titleElement.textContent = button.dataset.confirmTitle || "Confirmer l'action";
-                    messageElement.textContent = button.dataset.confirmMessage || "Merci de confirmer cette action.";
+                    titleElement.textContent = button.dataset.confirmTitle || resolveTranslation("confirmAction");
+                    messageElement.textContent = button.dataset.confirmMessage || resolveTranslation("pleaseConfirmAction");
                     resetConfirmButton();
                     if (button.dataset.confirmClass) {
                         submitElement.className = button.dataset.confirmClass;
                     }
-                    submitElement.textContent = button.dataset.confirmLabel || "Confirmer";
+                    submitElement.textContent = button.dataset.confirmLabel || resolveTranslation("confirm");
                     confirmationModal.show();
                 });
             });
@@ -414,7 +1236,7 @@
                         helperCard.dataset.searchHelper = "1";
                         helperCard.className = "empty-state";
                         helperCard.hidden = true;
-                        helperCard.innerText = "Aucun resultat pour cette recherche.";
+                        helperCard.innerText = resolveTranslation("noSearchResults");
                         target.appendChild(helperCard);
                     }
 
@@ -450,7 +1272,7 @@
                     helperRow = document.createElement("tr");
                     helperRow.dataset.searchHelper = "1";
                     helperRow.hidden = true;
-                    helperRow.innerHTML = `<td colspan="${headerCount}">Aucun resultat pour cette recherche.</td>`;
+                    helperRow.innerHTML = `<td colspan="${headerCount}">${resolveTranslation("noSearchResults")}</td>`;
                     tbody.appendChild(helperRow);
                 }
 
@@ -749,7 +1571,7 @@
                     playSound = true,
                     autoHideMs = 6200,
                 }) => {
-                    floatingNotificationTitle.textContent = title || "Notification";
+                    floatingNotificationTitle.textContent = title || resolveTranslation("notification");
                     floatingNotificationMessage.textContent = message || "";
 
                     if (actionLabel && actionUrl) {
@@ -796,9 +1618,9 @@
                     try {
                         const payload = JSON.parse(initialNotificationData.textContent);
                         showFloatingNotification({
-                            title: payload.title || "Demande envoyee",
-                            message: payload.message || "",
-                            actionLabel: payload.action_label || "Voir mes demandes",
+                            title: translateTextValue(payload.title || resolveTranslation("requestSent")),
+                            message: translateTextValue(payload.message || ""),
+                            actionLabel: translateTextValue(payload.action_label || resolveTranslation("viewMyRequests")),
                             actionUrl: payload.action_url || employeeDashboardUrl,
                         });
                     } catch (error) {
@@ -850,10 +1672,16 @@
 
                             if (hasNewRequest && payload.latest_request) {
                                 updateBellCounter(currentState.pendingCount, true);
+                                const translatedType = translateTextValue(
+                                    String(payload.latest_request.type_label || "").toLowerCase()
+                                );
                                 showFloatingNotification({
-                                    title: "Nouvelle demande a traiter",
-                                    message: `${payload.latest_request.employee_name} a envoye une demande de ${payload.latest_request.type_label.toLowerCase()}.`,
-                                    actionLabel: "Ouvrir les demandes",
+                                    title: resolveTranslation("newRequestToProcess"),
+                                    message: formatTranslated(resolveTranslation("requestFromEmployee"), {
+                                        name: payload.latest_request.employee_name,
+                                        type: translatedType,
+                                    }),
+                                    actionLabel: resolveTranslation("openRequests"),
                                     actionUrl: adminRequestsUrl,
                                 });
                             }
