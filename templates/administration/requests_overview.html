@@ -13,10 +13,6 @@
         </div>
         <div class="header-actions">
             <a href="{% url 'administration:export_requests' 'excel' %}" class="btn-secondary"><i class="bi bi-file-earmark-excel"></i>Exporter Excel propre</a>
-            <button id="requestBell" class="btn-secondary btn-bell" title="Nouvelles demandes" type="button">
-                <i class="bi bi-bell"></i>
-                <span class="bell-count badge" id="requestBellCount">{{ pending_count }}</span>
-            </button>
             {% if show_history %}
                 <a href="{% url 'administration:requests' %}" class="btn-secondary"><i class="bi bi-clock-history"></i>Masquer l'historique</a>
             {% else %}
@@ -37,6 +33,9 @@
                 <i class="bi bi-search"></i>
                 <input type="search" placeholder="Rechercher une demande, un employe ou un motif" data-table-search="pending-requests-table">
             </label>
+            <a href="{% url 'administration:export_table' 'pending_requests' %}" class="btn-secondary">
+                <i class="bi bi-file-earmark-excel"></i>Exporter Excel propre
+            </a>
         </div>
         <div class="table-shell">
             <div class="table-wrap sticky-table">
@@ -101,6 +100,9 @@
                     <i class="bi bi-search"></i>
                     <input type="search" placeholder="Rechercher dans l'historique des demandes" data-table-search="requests-history-table">
                 </label>
+                <a href="{% url 'administration:export_table' 'requests_history' %}" class="btn-secondary">
+                    <i class="bi bi-file-earmark-excel"></i>Exporter Excel propre
+                </a>
             </div>
             <div class="table-shell">
                 <div class="table-wrap sticky-table">
@@ -165,22 +167,4 @@
         </article>
     {% endif %}
 </section>
-<script>
-    document.addEventListener("DOMContentLoaded", () => {
-        const bell = document.getElementById("requestBell");
-        const bellCount = document.getElementById("requestBellCount");
-        if (bellCount && Number(bellCount.textContent) <= 0) {
-            bellCount.style.display = 'none';
-        }
-        if (bell) {
-            bell.addEventListener('click', () => {
-                const table = document.getElementById('pending-requests-table');
-                if (table) {
-                    table.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    table.focus && table.focus();
-                }
-            });
-        }
-    });
-</script>
 {% endblock %}

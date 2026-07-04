@@ -95,6 +95,9 @@
                     <i class="bi bi-search"></i>
                     <input type="search" placeholder="Rechercher un compte, un poste ou un role" data-table-search="accounts-table">
                 </label>
+                <a href="{% url 'administration:export_table' 'accounts' %}" class="btn-secondary">
+                    <i class="bi bi-file-earmark-excel"></i>Exporter Excel propre
+                </a>
             </div>
             <div class="table-shell">
                 <div class="table-wrap sticky-table">
@@ -166,6 +169,9 @@
                         <i class="bi bi-search"></i>
                         <input type="search" placeholder="Rechercher dans l'historique des comptes" data-table-search="accounts-history-table">
                     </label>
+                    <a href="{% url 'administration:export_table' 'accounts_history' %}" class="btn-secondary">
+                        <i class="bi bi-file-earmark-excel"></i>Exporter Excel propre
+                    </a>
                 </div>
                 <div class="table-shell">
                     <div class="table-wrap sticky-table">
@@ -261,7 +267,16 @@
                 </div>
                 <button type="submit" class="btn-primary"><i class="bi bi-plus-lg"></i>Ajouter un departement</button>
             </form>
-            <div class="table-shell" style="margin-top: 20px;">
+            <div class="table-toolbar" style="margin-top: 20px;">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher un departement" data-table-search="departments-table">
+                </label>
+                <a href="{% url 'administration:export_table' 'departments' %}" class="btn-secondary">
+                    <i class="bi bi-file-earmark-excel"></i>Exporter Excel propre
+                </a>
+            </div>
+            <div class="table-shell">
                 <div class="table-wrap sticky-table">
                     <table id="departments-table">
                         <thead>
@@ -359,6 +374,9 @@
                     <i class="bi bi-search"></i>
                     <input type="search" placeholder="Rechercher un projet" data-table-search="projects-table">
                 </label>
+                <a href="{% url 'administration:export_table' 'projects' %}" class="btn-secondary">
+                    <i class="bi bi-file-earmark-excel"></i>Exporter Excel propre
+                </a>
             </div>
             <div class="table-shell">
                 <div class="table-wrap sticky-table">
@@ -417,13 +435,28 @@
                 <input type="hidden" name="save-branding" value="1">
                 <div class="form-grid two">
                     {% for field in branding_form %}
-                        <div>
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% for error in field.errors %}
-                                <small class="error-text">{{ error }}</small>
-                            {% endfor %}
-                        </div>
+                        {% if field.name == "request_submission_email_enabled" %}
+                            <div class="toggle-setting-card">
+                                <label class="toggle-setting-label" for="{{ field.id_for_label }}">
+                                    <span>
+                                        <strong>Alertes email a la soumission</strong>
+                                        <small class="helper">Utilise l'adresse email definie dans ce panneau pour prevenir l'administration a chaque nouvelle demande.</small>
+                                    </span>
+                                    {{ field }}
+                                </label>
+                                {% for error in field.errors %}
+                                    <small class="error-text">{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <div>
+                                {{ field.label_tag }}
+                                {{ field }}
+                                {% for error in field.errors %}
+                                    <small class="error-text">{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
                     {% endfor %}
                 </div>
                 <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Enregistrer le logo et l'identite" data-confirm-message="Le nouveau logo sera applique a la connexion, a la navigation et aux entetes principaux." data-confirm-label="Oui, enregistrer" data-confirm-class="btn-primary"><i class="bi bi-stars"></i>Enregistrer l'identite</button>

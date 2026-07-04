@@ -147,20 +147,197 @@ def _export_request_rows(requests):
     return headers, rows
 
 
-def _build_requests_export_response(request, export_format, requests):
-    headers, rows = _export_request_rows(requests)
+def _build_history_requests(current_profile):
+    history_requests = (
+        StaffRequest.objects.select_related("employee", "employee__user")
+        .filter(admin_history__isnull=False)
+        .distinct()
+        .order_by("-updated_at", "-created_at")
+    )
+    if current_profile and current_profile.role == EmployeeProfile.ROLE_HIERARCHICAL:
+        history_requests = history_requests.filter(employee__department=current_profile.department)
+    return [
+        {
+            "request": history_request,
+            "stage_statuses": _build_history_stage_statuses(history_request),
+        }
+        for history_request in history_requests
+    ]
+
+
+def _stage_status_label(stage_status):
+    username = stage_status.get("username") or "-"
+    status = stage_status.get("status") or "-"
+    if username == "-":
+        return status
+    return f"{status} ({username})"
+
+
+def _export_history_request_rows(history_requests):
+    headers = [
+        "Date",
+        "Employe",
+        "Type",
+        "Nombre de jours",
+        "Chef hierarchique",
+        "Administration",
+        "Direction",
+        "Statut final",
+        "Commentaire",
+    ]
+    rows = []
+    for item in history_requests:
+        request_item = item["request"]
+        stage_statuses = item["stage_statuses"]
+        rows.append(
+            [
+                localtime(request_item.updated_at).strftime("%d/%m/%Y %H:%M"),
+                request_item.employee.display_name,
+                request_item.type_label,
+                request_item.total_days or "",
+                _stage_status_label(stage_statuses[0]),
+                _stage_status_label(stage_statuses[1]),
+                _stage_status_label(stage_statuses[2]),
+                request_item.status_label,
+                request_item.admin_comment or "",
+            ]
+        )
+    return headers, rows
+
+
+def _export_employee_rows(employees):
+    headers = [
+        "Employe",
+        "Matricule",
+        "Poste",
+        "Departement",
+        "Role",
+        "Type de contrat",
+        "Conge",
+        "Recuperation",
+    ]
+    rows = []
+    for employee in employees:
+        rows.append(
+            [
+                employee.display_name,
+                employee.employee_number or "",
+                employee.position or "",
+                employee.department_name,
+                employee.dashboard_role_label,
+                employee.contract_type_label,
+                employee.leave_balance,
+                employee.recovery_balance,
+            ]
+        )
+    return headers, rows
+
+
+def _export_account_rows(employees):
+    headers = [
+        "Nom",
+        "Nom d'utilisateur",
+        "Email",
+        "Matricule",
+        "Poste",
+        "Departement",
+        "Role",
+        "Type de contrat",
+        "Conge",
+        "Recuperation",
+    ]
+    rows = []
+    for employee in employees:
+        rows.append(
+            [
+                employee.display_name,
+                employee.user.username,
+                employee.user.email or "",
+                employee.employee_number or "",
+                employee.position or "",
+                employee.department_name,
+                employee.dashboard_role_label,
+                employee.contract_type_label,
+                employee.leave_balance,
+                employee.recovery_balance,
+            ]
+        )
+    return headers, rows
+
+
+def _export_account_history_rows(entries):
+    headers = ["Date", "Compte", "Nom", "Role", "Action", "Utilisateur", "Details"]
+    rows = []
+    for entry in entries:
+        rows.append(
+            [
+                localtime(entry.created_at).strftime("%d/%m/%Y %H:%M"),
+                entry.target_username,
+                entry.target_display_name or "",
+                entry.target_role or "",
+                entry.get_action_display(),
+                entry.actor.username if entry.actor else "-",
+                entry.details or "",
+            ]
+        )
+    return headers, rows
+
+
+def _export_department_rows(departments):
+    headers = ["Nom", "Code", "Description", "Statut", "Mise a jour"]
+    rows = []
+    for department in departments:
+        rows.append(
+            [
+                department.name,
+                department.code or "",
+                department.description or "",
+                "Actif" if department.is_active else "Inactif",
+                localtime(department.updated_at).strftime("%d/%m/%Y %H:%M"),
+            ]
+        )
+    return headers, rows
+
+
+def _export_project_rows(projects):
+    headers = ["Nom", "Code", "Description", "Statut", "Mise a jour"]
+    rows = []
+    for project in projects:
+        rows.append(
+            [
+                project.name,
+                project.code or "",
+                project.description or "",
+                "Actif" if project.is_active else "Inactif",
+                localtime(project.updated_at).strftime("%d/%m/%Y %H:%M"),
+            ]
+        )
+    return headers, rows
+
+
+def _format_excel_cell(value):
+    if value is None:
+        return ""
+    if isinstance(value, Decimal):
+        return format(value, "f").rstrip("0").rstrip(".") or "0"
+    if isinstance(value, bool):
+        return "Oui" if value else "Non"
+    return str(value)
+
+
+def _build_excel_response(filename, sheet_title, headers, rows):
     from openpyxl import Workbook
     from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
     from openpyxl.utils import get_column_letter
 
     workbook = Workbook()
     sheet = workbook.active
-    sheet.title = "Demandes"
+    sheet.title = sheet_title
     sheet.freeze_panes = "A2"
     sheet.sheet_view.showGridLines = False
     sheet.append(headers)
     for row in rows:
-        sheet.append(row)
+        sheet.append([_format_excel_cell(value) for value in row])
 
     header_fill = PatternFill("solid", fgColor="255C3A")
     header_font = Font(color="FFFFFF", bold=True)
@@ -187,22 +364,18 @@ def _build_requests_export_response(request, export_format, requests):
             cell.border = border
             cell.fill = row_fill
 
-    width_map = {
-        1: 8,
-        2: 26,
-        3: 16,
-        4: 16,
-        5: 20,
-        6: 18,
-        7: 34,
-        8: 14,
-        9: 16,
-        10: 20,
-        11: 34,
-        12: 30,
-    }
+    width_map = {}
+    for column_index, header in enumerate(headers, start=1):
+        candidates = [len(_format_excel_cell(header))]
+        for row in rows:
+            if column_index - 1 < len(row):
+                value = _format_excel_cell(row[column_index - 1])
+                candidates.extend(len(part) for part in value.splitlines() or [""])
+        width_map[column_index] = min(max(max(candidates) + 3, 12), 42)
+
     for column_index, width in width_map.items():
         sheet.column_dimensions[get_column_letter(column_index)].width = width
+
 
     sheet.row_dimensions[1].height = 28
     for row_index in range(2, sheet.max_row + 1):
@@ -217,8 +390,61 @@ def _build_requests_export_response(request, export_format, requests):
         output.getvalue(),
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
     )
-    response["Content-Disposition"] = "attachment; filename=demandes.xlsx"
+    response["Content-Disposition"] = f'attachment; filename="{filename}"'
     return response
+
+
+def _build_requests_export_response(requests):
+    headers, rows = _export_request_rows(requests)
+    return _build_excel_response("demandes.xlsx", "Demandes", headers, rows)
+
+
+def _build_admin_table_export_response(current_profile, table_key):
+    is_admin = bool(current_profile and current_profile.role in ADMIN_ROLES)
+
+    if table_key == "dashboard_employees":
+        employees = _visible_employee_queryset(current_profile)
+        headers, rows = _export_employee_rows(employees)
+        return _build_excel_response("soldes-employes.xlsx", "Soldes", headers, rows)
+
+    if table_key == "pending_requests":
+        requests = StaffRequest.objects.select_related("employee", "employee__user")
+        requests = _scoped_request_queryset(requests, current_profile, actionable_only=True)
+        headers, rows = _export_request_rows(requests.order_by("-created_at"))
+        return _build_excel_response("demandes-en-attente.xlsx", "Demandes", headers, rows)
+
+    if table_key == "requests_history":
+        headers, rows = _export_history_request_rows(_build_history_requests(current_profile))
+        return _build_excel_response("historique-demandes.xlsx", "Historique", headers, rows)
+
+    if not is_admin:
+        return HttpResponse("Non autorise.", status=403)
+
+    if table_key == "accounts":
+        employees = (
+            EmployeeProfile.objects.select_related("user", "department")
+            .exclude(user__username="cvbadmin")
+            .order_by("user__first_name", "user__last_name", "user__username")
+        )
+        headers, rows = _export_account_rows(employees)
+        return _build_excel_response("comptes-employes.xlsx", "Comptes", headers, rows)
+
+    if table_key == "accounts_history":
+        account_history = AccountActionHistory.objects.select_related("actor")
+        headers, rows = _export_account_history_rows(account_history)
+        return _build_excel_response("historique-comptes.xlsx", "Historique", headers, rows)
+
+    if table_key == "departments":
+        departments = Department.objects.order_by("name")
+        headers, rows = _export_department_rows(departments)
+        return _build_excel_response("departements.xlsx", "Departements", headers, rows)
+
+    if table_key == "projects":
+        projects = Project.objects.order_by("name")
+        headers, rows = _export_project_rows(projects)
+        return _build_excel_response("projets.xlsx", "Projets", headers, rows)
+
+    return HttpResponse("Export introuvable.", status=404)
 
 
 def _send_request_email_alert(request_item, branding=None):
@@ -438,27 +664,12 @@ def requests_overview_view(request):
     current_profile = getattr(request.user, "profile", None)
     requests = StaffRequest.objects.select_related("employee", "employee__user")
     submitted_requests = _scoped_request_queryset(requests, current_profile, actionable_only=True)
-    history_requests = (
-        StaffRequest.objects.select_related("employee", "employee__user")
-        .filter(admin_history__isnull=False)
-        .distinct()
-        .order_by("-updated_at", "-created_at")
-    )
-    if current_profile and current_profile.role == EmployeeProfile.ROLE_HIERARCHICAL:
-        history_requests = history_requests.filter(employee__department=current_profile.department)
-    history_requests = [
-        {
-            "request": history_request,
-            "stage_statuses": _build_history_stage_statuses(history_request),
-        }
-        for history_request in history_requests
-    ]
     return render(
         request,
         "administration/requests_overview.html",
         {
             "requests": submitted_requests,
-            "history_requests": history_requests,
+            "history_requests": _build_history_requests(current_profile),
             "pending_count": submitted_requests.count(),
             "show_history": request.GET.get("show_history") == "1",
         },
@@ -472,7 +683,14 @@ def export_requests_view(request, export_format):
     requests = StaffRequest.objects.select_related("employee", "employee__user")
     requests = _scoped_request_queryset(requests, current_profile, actionable_only=False)
     requests = requests.order_by("-created_at")
-    return _build_requests_export_response(request, "excel", requests)
+    return _build_requests_export_response(requests)
+
+
+@login_required
+@role_required(*APPROVAL_ROLES)
+def export_table_view(request, table_key):
+    current_profile = getattr(request.user, "profile", None)
+    return _build_admin_table_export_response(current_profile, table_key)
 
 
 @login_required

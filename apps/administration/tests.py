@@ -353,6 +353,60 @@ class AdministrationViewsTests(TestCase):
         self.assertIn("demandes.xlsx", response["Content-Disposition"])
         self.assertTrue(response.content.startswith(b"PK"))
 
+    def test_export_table_accounts_returns_excel_file(self):
+        response = self.client.get(
+            reverse("administration:export_table", args=["accounts"])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("comptes-employes.xlsx", response["Content-Disposition"])
+        self.assertTrue(response.content.startswith(b"PK"))
+
+    def test_export_table_requests_history_returns_excel_file(self):
+        request_item = StaffRequest.objects.create(
+            employee=self.employee.profile,
+            request_type=StaffRequest.TYPE_ABSENCE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_ADMINISTRATION,
+            total_days=Decimal("1.0"),
+            reason="Mission",
+            hierarchical_signature="chef",
+            administration_signature="admin",
+        )
+        RequestActionHistory.objects.create(
+            request=request_item,
+            actor=self.admin,
+            action=RequestActionHistory.ACTION_APPROVED,
+            previous_status=StaffRequest.STATUS_SUBMITTED,
+            new_status=StaffRequest.STATUS_SUBMITTED,
+            comment="Validation",
+        )
+
+        response = self.client.get(
+            reverse("administration:export_table", args=["requests_history"])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(
+            response["Content-Type"],
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        )
+        self.assertIn("historique-demandes.xlsx", response["Content-Disposition"])
+        self.assertTrue(response.content.startswith(b"PK"))
+
+    def test_branding_settings_displays_email_alert_toggle(self):
+        response = self.client.get(
+            f"{reverse('administration:settings')}?panel=branding"
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Alertes email a la soumission")
+        self.assertContains(response, "request_submission_email_enabled")
+
     def test_request_notifications_state_returns_pending_request_summary(self):
         request_item = StaffRequest.objects.create(
             employee=self.employee.profile,
