@@ -1,13 +1,15 @@
 import json
+from io import BytesIO
 from decimal import Decimal
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
+from openpyxl import load_workbook
 
 from apps.administration.models import AccountActionHistory, LoginBranding, RequestActionHistory
-from apps.personnel.models import EmployeeProfile
+from apps.personnel.models import Department, EmployeeProfile
 from apps.requests_management.models import StaffRequest
 
 
@@ -41,6 +43,10 @@ class AdministrationViewsTests(TestCase):
         self.employee_to_delete.profile.leave_balance = Decimal("4.0")
         self.employee_to_delete.profile.recovery_balance = Decimal("4.0")
         self.employee_to_delete.profile.save()
+
+    def _read_workbook_rows(self, response):
+        workbook = load_workbook(filename=BytesIO(response.content))
+        return list(workbook.active.iter_rows(values_only=True))
 
     def test_admin_dashboard_requires_admin_role(self):
         user = User.objects.create_user(username="simple", password="TestPass123!")
@@ -365,6 +371,44 @@ class AdministrationViewsTests(TestCase):
         )
         self.assertIn("comptes-employes.xlsx", response["Content-Disposition"])
         self.assertTrue(response.content.startswith(b"PK"))
+
+    def test_export_table_accounts_applies_search_from_visible_table(self):
+        searched_user = User.objects.create_user(
+            username="tendry",
+            password="TestPass123!",
+            first_name="Tendry",
+            last_name="Rakoto",
+        )
+        searched_user.profile.role = EmployeeProfile.ROLE_USER
+        searched_user.profile.position = "Analyste"
+        searched_user.profile.leave_balance = Decimal("8.0")
+        searched_user.profile.recovery_balance = Decimal("2.0")
+        searched_user.profile.save()
+
+        response = self.client.get(
+            reverse("administration:export_table", args=["accounts"]),
+            {"search": "tendry"},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        rows = self._read_workbook_rows(response)
+        self.assertEqual(len(rows), 2)
+        self.assertEqual(rows[1][0], searched_user.profile.display_name)
+        self.assertEqual(rows[1][4], "Analyste")
+
+    def test_export_table_departments_matches_displayed_active_rows(self):
+        Department.objects.create(name="Administration", code="ADM", is_active=True)
+        Department.objects.create(name="Archive", code="ARC", is_active=False)
+
+        response = self.client.get(
+            reverse("administration:export_table", args=["departments"])
+        )
+
+        self.assertEqual(response.status_code, 200)
+        rows = self._read_workbook_rows(response)
+        exported_names = [row[0] for row in rows[1:]]
+        self.assertIn("Administration", exported_names)
+        self.assertNotIn("Archive", exported_names)
 
     def test_export_table_requests_history_returns_excel_file(self):
         request_item = StaffRequest.objects.create(

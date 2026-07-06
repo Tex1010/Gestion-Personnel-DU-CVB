@@ -1,5 +1,6 @@
 import io
 import json
+import unicodedata
 from decimal import Decimal
 
 from django.contrib import messages
@@ -116,6 +117,153 @@ def _scoped_request_queryset(queryset, profile, actionable_only=False):
             )
         return queryset
     return queryset.none()
+
+
+def _normalize_search_text(value):
+    normalized_value = unicodedata.normalize("NFD", str(value or "").strip().lower())
+    return "".join(
+        character for character in normalized_value if unicodedata.category(character) != "Mn"
+    )
+
+
+def _search_matches(search_term, values):
+    normalized_term = _normalize_search_text(search_term)
+    if not normalized_term:
+        return True
+    searchable_text = " ".join(_normalize_search_text(value) for value in values if value not in (None, ""))
+    return normalized_term in searchable_text
+
+
+def _filter_items_for_search(items, search_term, values_getter):
+    if not _normalize_search_text(search_term):
+        return items
+    return [item for item in items if _search_matches(search_term, values_getter(item))]
+
+
+def _request_period_search_label(item):
+    if item.start_date:
+        start_label = item.start_date.strftime("%d/%m/%Y")
+    elif item.created_at:
+        start_label = localtime(item.created_at).strftime("%d/%m/%Y")
+    else:
+        start_label = ""
+    if item.end_date:
+        return f"{start_label} - {item.end_date.strftime('%d/%m/%Y')}"
+    return start_label
+
+
+def _request_table_search_values(item):
+    return [
+        item.employee.display_name,
+        item.type_label,
+        _request_period_search_label(item),
+        item.total_days,
+        item.reason or item.project_name or "",
+        item.get_approval_stage_display(),
+        item.admin_comment or "",
+        item.status_label,
+    ]
+
+
+def _history_request_table_search_values(item):
+    request_item = item["request"]
+    stage_statuses = item["stage_statuses"]
+    return [
+        localtime(request_item.updated_at).strftime("%d/%m/%Y %H:%M") if request_item.updated_at else "",
+        request_item.employee.display_name,
+        request_item.type_label,
+        request_item.total_days,
+        _stage_status_label(stage_statuses[0]),
+        _stage_status_label(stage_statuses[1]),
+        _stage_status_label(stage_statuses[2]),
+        request_item.status_label,
+        request_item.admin_comment or "",
+    ]
+
+
+def _dashboard_employee_search_values(employee):
+    return [
+        employee.display_name,
+        employee.position or "",
+        employee.leave_balance,
+        employee.recovery_balance,
+    ]
+
+
+def _account_search_values(employee, current_user):
+    values = [
+        employee.display_name,
+        employee.employee_number or "",
+        employee.contract_type_label,
+        employee.position or "",
+        employee.department_name,
+        employee.dashboard_role_label,
+        employee.leave_balance,
+        employee.recovery_balance,
+    ]
+    if current_user and employee.user_id == current_user.id:
+        values.append("Session en cours")
+    return values
+
+
+def _account_history_search_values(entry):
+    return [
+        localtime(entry.created_at).strftime("%d/%m/%Y %H:%M") if entry.created_at else "",
+        entry.target_username,
+        entry.get_action_display(),
+        entry.actor.username if entry.actor else "-",
+    ]
+
+
+def _department_search_values(department):
+    return [
+        department.name,
+        department.code or "",
+        department.description or "",
+        "Actif" if department.is_active else "Inactif",
+    ]
+
+
+def _project_search_values(project):
+    return [
+        project.name,
+        project.code or "",
+        project.description or "",
+        "Actif" if project.is_active else "Inactif",
+    ]
+
+
+def _role_permissions_search_label(role):
+    permissions = []
+    if role.can_manage_settings:
+        permissions.append("Parametres")
+    if role.can_validate_hierarchy:
+        permissions.append("Hierarchie")
+    if role.can_validate_administration:
+        permissions.append("Administration")
+    if role.can_validate_direction:
+        permissions.append("Direction")
+    return " ".join(permissions)
+
+
+def _role_search_values(role):
+    return [
+        role.label_fr,
+        role.code,
+        role.get_portal_display(),
+        "Visible" if role.show_in_login else "Masque",
+        _role_permissions_search_label(role),
+        "Actif" if role.is_active else "Inactif",
+    ]
+
+
+def _contract_type_search_values(contract_type):
+    return [
+        contract_type.label_fr,
+        contract_type.code,
+        contract_type.order,
+        "Actif" if contract_type.is_active else "Inactif",
+    ]
 
 
 def _export_request_rows(requests):
@@ -460,22 +608,31 @@ def _build_requests_export_response(requests):
     return _build_excel_response("demandes.xlsx", "Demandes", headers, rows)
 
 
-def _build_admin_table_export_response(current_profile, table_key):
+def _build_admin_table_export_response(current_profile, table_key, search_term="", current_user=None):
     is_admin = bool(current_profile and can_manage_settings(current_profile))
 
     if table_key == "dashboard_employees":
         employees = _visible_employee_queryset(current_profile)
+        employees = _filter_items_for_search(employees, search_term, _dashboard_employee_search_values)
         headers, rows = _export_employee_rows(employees)
         return _build_excel_response("soldes-employes.xlsx", "Soldes", headers, rows)
 
     if table_key == "pending_requests":
         requests = StaffRequest.objects.select_related("employee", "employee__user")
         requests = _scoped_request_queryset(requests, current_profile, actionable_only=True)
-        headers, rows = _export_request_rows(requests.order_by("-created_at"))
+        requests = requests.order_by("-created_at")
+        requests = _filter_items_for_search(requests, search_term, _request_table_search_values)
+        headers, rows = _export_request_rows(requests)
         return _build_excel_response("demandes-en-attente.xlsx", "Demandes", headers, rows)
 
     if table_key == "requests_history":
-        headers, rows = _export_history_request_rows(_build_history_requests(current_profile))
+        history_requests = _build_history_requests(current_profile)
+        history_requests = _filter_items_for_search(
+            history_requests,
+            search_term,
+            _history_request_table_search_values,
+        )
+        headers, rows = _export_history_request_rows(history_requests)
         return _build_excel_response("historique-demandes.xlsx", "Historique", headers, rows)
 
     if not is_admin:
@@ -487,31 +644,49 @@ def _build_admin_table_export_response(current_profile, table_key):
             .exclude(user__username="cvbadmin")
             .order_by("user__first_name", "user__last_name", "user__username")
         )
+        employees = _filter_items_for_search(
+            employees,
+            search_term,
+            lambda employee: _account_search_values(employee, current_user),
+        )
         headers, rows = _export_account_rows(employees)
         return _build_excel_response("comptes-employes.xlsx", "Comptes", headers, rows)
 
     if table_key == "accounts_history":
         account_history = AccountActionHistory.objects.select_related("actor")
+        account_history = _filter_items_for_search(
+            account_history,
+            search_term,
+            _account_history_search_values,
+        )
         headers, rows = _export_account_history_rows(account_history)
         return _build_excel_response("historique-comptes.xlsx", "Historique", headers, rows)
 
     if table_key == "departments":
-        departments = Department.objects.order_by("name")
+        departments = Department.objects.filter(is_active=True).order_by("name")
+        departments = _filter_items_for_search(departments, search_term, _department_search_values)
         headers, rows = _export_department_rows(departments)
         return _build_excel_response("departements.xlsx", "Departements", headers, rows)
 
     if table_key == "projects":
         projects = Project.objects.order_by("name")
+        projects = _filter_items_for_search(projects, search_term, _project_search_values)
         headers, rows = _export_project_rows(projects)
         return _build_excel_response("projets.xlsx", "Projets", headers, rows)
 
     if table_key == "roles":
         roles = Role.objects.order_by("order", "label_fr")
+        roles = _filter_items_for_search(roles, search_term, _role_search_values)
         headers, rows = _export_role_rows(roles)
         return _build_excel_response("roles.xlsx", "Roles", headers, rows)
 
     if table_key == "contract_types":
         contract_types = ContractType.objects.order_by("order", "label_fr")
+        contract_types = _filter_items_for_search(
+            contract_types,
+            search_term,
+            _contract_type_search_values,
+        )
         headers, rows = _export_contract_type_rows(contract_types)
         return _build_excel_response("types-contrat.xlsx", "TypesContrat", headers, rows)
 
@@ -754,6 +929,7 @@ def export_requests_view(request, export_format):
     requests = StaffRequest.objects.select_related("employee", "employee__user")
     requests = _scoped_request_queryset(requests, current_profile, actionable_only=False)
     requests = requests.order_by("-created_at")
+    requests = _filter_items_for_search(requests, request.GET.get("search", ""), _request_table_search_values)
     return _build_requests_export_response(requests)
 
 
@@ -761,7 +937,12 @@ def export_requests_view(request, export_format):
 @approval_required
 def export_table_view(request, table_key):
     current_profile = getattr(request.user, "profile", None)
-    return _build_admin_table_export_response(current_profile, table_key)
+    return _build_admin_table_export_response(
+        current_profile,
+        table_key,
+        search_term=request.GET.get("search", ""),
+        current_user=request.user,
+    )
 
 
 @login_required

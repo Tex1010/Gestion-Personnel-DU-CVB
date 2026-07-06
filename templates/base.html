@@ -1509,6 +1509,30 @@
                 .normalize("NFD")
                 .replace(/[\u0300-\u036f]/g, "");
 
+            const syncTableExportLinks = (input) => {
+                const toolbar = input.closest(".table-toolbar");
+                if (!toolbar) {
+                    return;
+                }
+
+                const exportLinks = toolbar.querySelectorAll('a[href*="/exports/"], a[href*="/demandes/export/"]');
+                exportLinks.forEach((link) => {
+                    const baseHref = link.dataset.baseHref || link.getAttribute("href");
+                    if (!baseHref) {
+                        return;
+                    }
+                    link.dataset.baseHref = baseHref;
+                    const exportUrl = new URL(baseHref, window.location.origin);
+                    const term = input.value.trim();
+                    if (term) {
+                        exportUrl.searchParams.set("search", term);
+                    } else {
+                        exportUrl.searchParams.delete("search");
+                    }
+                    link.href = `${exportUrl.pathname}${exportUrl.search}${exportUrl.hash}`;
+                });
+            };
+
             document.querySelectorAll("input[data-table-search]").forEach((input) => {
                 const target = document.getElementById(input.dataset.tableSearch);
                 if (!target) {
@@ -1554,8 +1578,12 @@
                         helperCard.hidden = !term || visibleCount > 0 || cards.length === 0;
                     };
 
-                    input.addEventListener("input", filterCards);
+                    input.addEventListener("input", () => {
+                        filterCards();
+                        syncTableExportLinks(input);
+                    });
                     filterCards();
+                    syncTableExportLinks(input);
                     return;
                 }
 
@@ -1599,8 +1627,12 @@
                     helperRow.hidden = !term || visibleCount > 0 || !hasDataRows;
                 };
 
-                input.addEventListener("input", filterTable);
+                input.addEventListener("input", () => {
+                    filterTable();
+                    syncTableExportLinks(input);
+                });
                 filterTable();
+                syncTableExportLinks(input);
             });
 
             const topbar = document.querySelector(".topbar");
