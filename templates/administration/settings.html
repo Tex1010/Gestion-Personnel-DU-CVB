@@ -16,6 +16,8 @@
         <a href="{% url 'administration:settings' %}?panel=create" class="switch-pill {% if panel == 'create' %}is-active{% endif %}"><i class="bi bi-person-plus"></i>Creer un compte employe</a>
         <a href="{% url 'administration:settings' %}?panel=accounts" class="switch-pill {% if panel == 'accounts' %}is-active{% endif %}"><i class="bi bi-people"></i>Comptes existants</a>
         <a href="{% url 'administration:settings' %}?panel=departments" class="switch-pill {% if panel == 'departments' %}is-active{% endif %}"><i class="bi bi-diagram-3"></i>Departements</a>
+        <a href="{% url 'administration:settings' %}?panel=roles" class="switch-pill {% if panel == 'roles' %}is-active{% endif %}"><i class="bi bi-person-badge"></i>Roles</a>
+        <a href="{% url 'administration:settings' %}?panel=contract_types" class="switch-pill {% if panel == 'contract_types' %}is-active{% endif %}"><i class="bi bi-file-earmark-text"></i>Types de contrat</a>
         <a href="{% url 'administration:settings' %}?panel=projects" class="switch-pill {% if panel == 'projects' %}is-active{% endif %}"><i class="bi bi-folder2-open"></i>Projets</a>
         <a href="{% url 'administration:settings' %}?panel=branding" class="switch-pill {% if panel == 'branding' %}is-active{% endif %}"><i class="bi bi-palette"></i>Logo et identite</a>
     </div>
@@ -310,6 +312,227 @@
                                 </tr>
                             {% empty %}
                                 <tr><td colspan="5">Aucun departement enregistre.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+    {% elif panel == "roles" %}
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Roles</h2>
+                    <p class="helper">Ajoutez, modifiez ou supprimez les roles utilises dans la connexion, la creation de compte et les validations.</p>
+                </div>
+            </div>
+            {% if role_editor %}
+                <div class="edit-panel">
+                    <div class="card-head">
+                        <div>
+                            <h3>Modifier {{ role_editor.label_fr }}</h3>
+                        </div>
+                        <a href="{% url 'administration:settings' %}?panel=roles" class="btn-secondary"><i class="bi bi-arrow-left"></i>Annuler</a>
+                    </div>
+                    <form method="post" class="stack-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="panel" value="roles">
+                        <input type="hidden" name="role_id" value="{{ role_editor.id }}">
+                        <input type="hidden" name="update-role" value="1">
+                        <div class="form-grid two">
+                            {% for field in role_form %}
+                                <div>
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {% for error in field.errors %}
+                                        <small class="error-text">{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn-primary"><i class="bi bi-save2"></i>Enregistrer le role</button>
+                    </form>
+                </div>
+            {% endif %}
+            <form method="post" class="stack-form">
+                {% csrf_token %}
+                <input type="hidden" name="panel" value="roles">
+                <input type="hidden" name="save-role" value="1">
+                <div class="form-grid two">
+                    {% for field in role_form %}
+                        <div>
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <small class="error-text">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn-primary"><i class="bi bi-plus-lg"></i>Ajouter un role</button>
+            </form>
+            <div class="table-toolbar" style="margin-top: 20px;">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher un role" data-table-search="roles-table">
+                </label>
+                <a href="{% url 'administration:export_table' 'roles' %}" class="btn-secondary">
+                    <i class="bi bi-file-earmark-excel"></i>Exporter Excel propre
+                </a>
+            </div>
+            <div class="table-shell">
+                <div class="table-wrap sticky-table">
+                    <table id="roles-table">
+                        <thead>
+                            <tr>
+                                <th>Libelle</th>
+                                <th>Code</th>
+                                <th>Portail</th>
+                                <th>Connexion</th>
+                                <th>Permissions</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for role in roles %}
+                                <tr>
+                                    <td data-label="Libelle">{{ role.label_fr }}</td>
+                                    <td data-label="Code">{{ role.code }}</td>
+                                    <td data-label="Portail">{{ role.get_portal_display }}</td>
+                                    <td data-label="Connexion">{% if role.show_in_login %}Visible{% else %}Masque{% endif %}</td>
+                                    <td data-label="Permissions">
+                                        {% if role.can_manage_settings %}Parametres {% endif %}
+                                        {% if role.can_validate_hierarchy %}Hierarchie {% endif %}
+                                        {% if role.can_validate_administration %}Administration {% endif %}
+                                        {% if role.can_validate_direction %}Direction{% endif %}
+                                    </td>
+                                    <td data-label="Statut">{% if role.is_active %}Actif{% else %}Inactif{% endif %}</td>
+                                    <td data-label="Actions">
+                                        <div class="row-actions">
+                                            <a href="{% url 'administration:settings' %}?panel=roles&edit_role={{ role.id }}" class="btn-secondary"><i class="bi bi-pencil-square"></i>Modifier</a>
+                                            {% if role.is_system %}
+                                                <span class="helper">Role systeme</span>
+                                            {% else %}
+                                                <form method="post" class="inline-action-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="panel" value="roles">
+                                                    <input type="hidden" name="role_id" value="{{ role.id }}">
+                                                    <input type="hidden" name="delete-role" value="1">
+                                                    <button type="submit" class="btn-danger"><i class="bi bi-trash3"></i>Supprimer</button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="7">Aucun role enregistre.</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+    {% elif panel == "contract_types" %}
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Types de contrat</h2>
+                    <p class="helper">Ajoutez, modifiez ou supprimez les types de contrat proposes dans la creation et la mise a jour de compte.</p>
+                </div>
+            </div>
+            {% if contract_type_editor %}
+                <div class="edit-panel">
+                    <div class="card-head">
+                        <div>
+                            <h3>Modifier {{ contract_type_editor.label_fr }}</h3>
+                        </div>
+                        <a href="{% url 'administration:settings' %}?panel=contract_types" class="btn-secondary"><i class="bi bi-arrow-left"></i>Annuler</a>
+                    </div>
+                    <form method="post" class="stack-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="panel" value="contract_types">
+                        <input type="hidden" name="contract_type_id" value="{{ contract_type_editor.id }}">
+                        <input type="hidden" name="update-contract-type" value="1">
+                        <div class="form-grid two">
+                            {% for field in contract_type_form %}
+                                <div>
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {% for error in field.errors %}
+                                        <small class="error-text">{{ error }}</small>
+                                    {% endfor %}
+                                </div>
+                            {% endfor %}
+                        </div>
+                        <button type="submit" class="btn-primary"><i class="bi bi-save2"></i>Enregistrer le type de contrat</button>
+                    </form>
+                </div>
+            {% endif %}
+            <form method="post" class="stack-form">
+                {% csrf_token %}
+                <input type="hidden" name="panel" value="contract_types">
+                <input type="hidden" name="save-contract-type" value="1">
+                <div class="form-grid two">
+                    {% for field in contract_type_form %}
+                        <div>
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% for error in field.errors %}
+                                <small class="error-text">{{ error }}</small>
+                            {% endfor %}
+                        </div>
+                    {% endfor %}
+                </div>
+                <button type="submit" class="btn-primary"><i class="bi bi-plus-lg"></i>Ajouter un type de contrat</button>
+            </form>
+            <div class="table-toolbar" style="margin-top: 20px;">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher un type de contrat" data-table-search="contract-types-table">
+                </label>
+                <a href="{% url 'administration:export_table' 'contract_types' %}" class="btn-secondary">
+                    <i class="bi bi-file-earmark-excel"></i>Exporter Excel propre
+                </a>
+            </div>
+            <div class="table-shell">
+                <div class="table-wrap sticky-table">
+                    <table id="contract-types-table">
+                        <thead>
+                            <tr>
+                                <th>Libelle</th>
+                                <th>Code</th>
+                                <th>Ordre</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for contract_type in contract_types %}
+                                <tr>
+                                    <td data-label="Libelle">{{ contract_type.label_fr }}</td>
+                                    <td data-label="Code">{{ contract_type.code }}</td>
+                                    <td data-label="Ordre">{{ contract_type.order }}</td>
+                                    <td data-label="Statut">{% if contract_type.is_active %}Actif{% else %}Inactif{% endif %}</td>
+                                    <td data-label="Actions">
+                                        <div class="row-actions">
+                                            <a href="{% url 'administration:settings' %}?panel=contract_types&edit_contract_type={{ contract_type.id }}" class="btn-secondary"><i class="bi bi-pencil-square"></i>Modifier</a>
+                                            {% if contract_type.is_system %}
+                                                <span class="helper">Type systeme</span>
+                                            {% else %}
+                                                <form method="post" class="inline-action-form">
+                                                    {% csrf_token %}
+                                                    <input type="hidden" name="panel" value="contract_types">
+                                                    <input type="hidden" name="contract_type_id" value="{{ contract_type.id }}">
+                                                    <input type="hidden" name="delete-contract-type" value="1">
+                                                    <button type="submit" class="btn-danger"><i class="bi bi-trash3"></i>Supprimer</button>
+                                                </form>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr><td colspan="5">Aucun type de contrat enregistre.</td></tr>
                             {% endfor %}
                         </tbody>
                     </table>

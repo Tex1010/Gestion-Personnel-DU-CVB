@@ -4,13 +4,14 @@ from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect, render
 
 from apps.accounts.forms import LoginForm, StyledPasswordChangeForm
-from apps.accounts.utils import get_user_profile
-from apps.personnel.models import EmployeeProfile
+from apps.accounts.utils import get_role_code, get_role_portal, get_user_profile, normalize_portal_role
+from apps.personnel.models import EmployeeProfile, Role
 
 
 def login_view(request):
     if request.user.is_authenticated:
-        if request.session.get("portal_role") and request.session.get("portal_role") != EmployeeProfile.ROLE_USER:
+        portal_role = normalize_portal_role(request.session.get("portal_role"))
+        if portal_role != Role.PORTAL_EMPLOYEE:
             return redirect("administration:dashboard")
         return redirect("personnel:dashboard")
 
@@ -26,6 +27,7 @@ def login_view(request):
         else:
             profile = get_user_profile(user)
             selected_role = form.cleaned_data["role"]
+            profile_role_code = get_role_code(profile)
             allowed_roles = {
                 EmployeeProfile.ROLE_USER: [
                     EmployeeProfile.ROLE_USER,
@@ -37,16 +39,17 @@ def login_view(request):
                 EmployeeProfile.ROLE_HIERARCHICAL: [EmployeeProfile.ROLE_HIERARCHICAL],
                 EmployeeProfile.ROLE_DIRECTION: [EmployeeProfile.ROLE_DIRECTION],
             }.get(selected_role, [EmployeeProfile.ROLE_USER])
-            if user.username != "cvbadmin" and profile.role not in allowed_roles:
+            if user.username != "cvbadmin" and profile_role_code not in allowed_roles:
                 messages.error(
                     request,
                     "Le role choisi ne correspond pas aux droits de ce compte.",
                 )
             else:
                 login(request, user)
-                request.session["portal_role"] = selected_role
+                selected_portal = Role.PORTAL_EMPLOYEE if selected_role == EmployeeProfile.ROLE_USER else Role.PORTAL_ADMIN
+                request.session["portal_role"] = selected_portal
                 messages.success(request, "Connexion reussie.")
-                if selected_role != EmployeeProfile.ROLE_USER:
+                if selected_portal != Role.PORTAL_EMPLOYEE:
                     return redirect("administration:dashboard")
                 return redirect("personnel:dashboard")
 
@@ -69,7 +72,8 @@ def password_change_view(request):
         user = form.save()
         update_session_auth_hash(request, user)
         messages.success(request, "Votre mot de passe a ete mis a jour.")
-        if request.session.get("portal_role") and request.session.get("portal_role") != EmployeeProfile.ROLE_USER:
+        portal_role = normalize_portal_role(request.session.get("portal_role") or get_role_portal(get_user_profile(request.user)))
+        if portal_role != Role.PORTAL_EMPLOYEE:
             return redirect("administration:dashboard")
         return redirect("personnel:dashboard")
 

@@ -1,9 +1,9 @@
 from django import forms
 from django.contrib.auth.models import User
 
-from apps.accounts.utils import sync_profile_role
+from apps.accounts.utils import ensure_reference_data, get_role_by_code, sync_profile_role
 from apps.administration.models import LoginBranding
-from apps.personnel.models import Department, EmployeeProfile, Project
+from apps.personnel.models import ContractType, Department, EmployeeProfile, Project, Role
 
 
 class EmployeeAccountForm(forms.Form):
@@ -14,14 +14,19 @@ class EmployeeAccountForm(forms.Form):
     email = forms.EmailField(label="Email", required=False)
     employee_number = forms.CharField(label="Matricule", max_length=50, required=False)
     position = forms.CharField(label="Poste", max_length=150)
-    contract_type = forms.ChoiceField(
+    contract_type = forms.ModelChoiceField(
         label="Type de contrat",
-        choices=[("", "Sélectionner")] + list(EmployeeProfile.CONTRACT_TYPE_CHOICES),
+        queryset=ContractType.objects.none(),
         required=False,
+        empty_label="Selectionner",
     )
     leave_balance = forms.DecimalField(label="Conge restant", initial=30)
     recovery_balance = forms.DecimalField(label="Recuperation restante", initial=0)
-    role = forms.ChoiceField(label="Role", choices=EmployeeProfile.ROLE_CHOICES)
+    role = forms.ModelChoiceField(
+        label="Role",
+        queryset=Role.objects.none(),
+        empty_label=None,
+    )
     department = forms.ModelChoiceField(
         label="Departement",
         queryset=Department.objects.filter(is_active=True),
@@ -32,7 +37,11 @@ class EmployeeAccountForm(forms.Form):
     def __init__(self, *args, profile=None, **kwargs):
         self.profile = profile
         super().__init__(*args, **kwargs)
-        self.fields["role"].choices = list(EmployeeProfile.ROLE_CHOICES)
+        ensure_reference_data()
+        self.fields["contract_type"].queryset = ContractType.objects.filter(is_active=True).order_by(
+            "order", "label_fr"
+        )
+        self.fields["role"].queryset = Role.objects.filter(is_active=True).order_by("order", "label_fr")
         self.fields["department"].queryset = Department.objects.filter(is_active=True).order_by("name")
         if self.profile:
             self.fields["password"].required = False
@@ -90,7 +99,8 @@ class EmployeeAccountForm(forms.Form):
         user.last_name = self.cleaned_data["last_name"]
         user.email = self.cleaned_data["email"]
         selected_role = self.cleaned_data["role"]
-        user.is_staff = selected_role == EmployeeProfile.ROLE_ADMIN
+        admin_role = get_role_by_code(EmployeeProfile.ROLE_ADMIN)
+        user.is_staff = bool(admin_role and selected_role and selected_role.pk == admin_role.pk)
         user.is_superuser = False
         user.save()
 
@@ -146,6 +156,39 @@ class DepartmentForm(forms.ModelForm):
     class Meta:
         model = Department
         fields = ["name", "code", "description", "is_active"]
+
+
+class RoleForm(forms.ModelForm):
+    class Meta:
+        model = Role
+        fields = [
+            "code",
+            "label_fr",
+            "label_en",
+            "label_mg",
+            "portal",
+            "is_department_scoped",
+            "can_manage_settings",
+            "can_validate_hierarchy",
+            "can_validate_administration",
+            "can_validate_direction",
+            "show_in_login",
+            "is_active",
+            "order",
+        ]
+
+
+class ContractTypeForm(forms.ModelForm):
+    class Meta:
+        model = ContractType
+        fields = [
+            "code",
+            "label_fr",
+            "label_en",
+            "label_mg",
+            "is_active",
+            "order",
+        ]
 
 
 class ProjectForm(forms.ModelForm):

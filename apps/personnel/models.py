@@ -36,6 +36,75 @@ class Project(models.Model):
         return self.name
 
 
+class Role(models.Model):
+    PORTAL_EMPLOYEE = "employee"
+    PORTAL_ADMIN = "admin"
+
+    PORTAL_CHOICES = [
+        (PORTAL_EMPLOYEE, "Employe"),
+        (PORTAL_ADMIN, "Administration"),
+    ]
+
+    code = models.SlugField(max_length=50, unique=True)
+    label_fr = models.CharField(max_length=120)
+    label_en = models.CharField(max_length=120, blank=True, default="")
+    label_mg = models.CharField(max_length=120, blank=True, default="")
+    portal = models.CharField(max_length=20, choices=PORTAL_CHOICES, default=PORTAL_EMPLOYEE)
+    is_department_scoped = models.BooleanField(default=False)
+    can_manage_settings = models.BooleanField(default=False)
+    can_validate_hierarchy = models.BooleanField(default=False)
+    can_validate_administration = models.BooleanField(default=False)
+    can_validate_direction = models.BooleanField(default=False)
+    show_in_login = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
+    is_system = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "label_fr"]
+        verbose_name = "Role"
+        verbose_name_plural = "Roles"
+
+    def __str__(self):
+        return self.label_fr
+
+    def label_for(self, language):
+        if language == "en":
+            return self.label_en or self.label_fr
+        if language == "mg":
+            return self.label_mg or self.label_fr
+        return self.label_fr
+
+
+class ContractType(models.Model):
+    code = models.SlugField(max_length=50, unique=True)
+    label_fr = models.CharField(max_length=120)
+    label_en = models.CharField(max_length=120, blank=True, default="")
+    label_mg = models.CharField(max_length=120, blank=True, default="")
+    is_active = models.BooleanField(default=True)
+    is_system = models.BooleanField(default=False)
+    order = models.PositiveIntegerField(default=0)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["order", "label_fr"]
+        verbose_name = "Type de contrat"
+        verbose_name_plural = "Types de contrat"
+
+    def __str__(self):
+        return self.label_fr
+
+    def label_for(self, language):
+        if language == "en":
+            return self.label_en or self.label_fr
+        if language == "mg":
+            return self.label_mg or self.label_fr
+        return self.label_fr
+
+
 class EmployeeProfile(models.Model):
     ROLE_USER = "user"
     ROLE_ADMIN = "admin"
@@ -46,20 +115,6 @@ class EmployeeProfile(models.Model):
     CONTRACT_TYPE_CDD = "cdd"
     CONTRACT_TYPE_CONSULTANT = "consultant"
     CONTRACT_TYPE_TEMPORARY = "temporary"
-
-    CONTRACT_TYPE_CHOICES = [
-        (CONTRACT_TYPE_CDI, "CDI"),
-        (CONTRACT_TYPE_CDD, "CDD"),
-        (CONTRACT_TYPE_CONSULTANT, "Consultant"),
-        (CONTRACT_TYPE_TEMPORARY, "Temporaire"),
-    ]
-
-    ROLE_CHOICES = [
-        (ROLE_USER, "Employe"),
-        (ROLE_ADMIN, "Admin"),
-        (ROLE_HIERARCHICAL, "Chef hierarchique"),
-        (ROLE_DIRECTION, "Direction"),
-    ]
 
     user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
     department = models.ForeignKey(
@@ -72,16 +127,23 @@ class EmployeeProfile(models.Model):
     )
     employee_number = models.CharField("Matricule", max_length=50, blank=True)
     position = models.CharField("Poste", max_length=150, blank=True)
-    contract_type = models.CharField(
-        "Type de contrat",
-        max_length=20,
-        choices=CONTRACT_TYPE_CHOICES,
+    contract_type = models.ForeignKey(
+        ContractType,
+        on_delete=models.SET_NULL,
         blank=True,
-        default="",
+        null=True,
+        related_name="profiles",
+        verbose_name="Type de contrat",
     )
     contract_end_date = models.DateField("Fin de contrat", blank=True, null=True)
     photo = models.FileField(upload_to="profiles/", blank=True, null=True)
-    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default=ROLE_USER)
+    role = models.ForeignKey(
+        Role,
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="profiles",
+    )
     leave_balance = models.DecimalField(
         "Solde de conge", max_digits=6, decimal_places=1, default=30
     )
@@ -109,7 +171,31 @@ class EmployeeProfile(models.Model):
 
     @property
     def dashboard_role_label(self):
-        return dict(self.ROLE_CHOICES).get(self.role, self.role)
+        return self.role.label_fr if self.role else "Employe"
+
+    @property
+    def role_code(self):
+        return self.role.code if self.role else self.ROLE_USER
+
+    @property
+    def role_portal(self):
+        return self.role.portal if self.role else Role.PORTAL_EMPLOYEE
+
+    @property
+    def can_manage_settings(self):
+        return bool(self.role and self.role.can_manage_settings)
+
+    @property
+    def can_validate_hierarchy(self):
+        return bool(self.role and self.role.can_validate_hierarchy)
+
+    @property
+    def can_validate_administration(self):
+        return bool(self.role and self.role.can_validate_administration)
+
+    @property
+    def can_validate_direction(self):
+        return bool(self.role and self.role.can_validate_direction)
 
     @property
     def department_name(self):
@@ -117,4 +203,24 @@ class EmployeeProfile(models.Model):
 
     @property
     def contract_type_label(self):
-        return dict(self.CONTRACT_TYPE_CHOICES).get(self.contract_type, "-")
+        return self.contract_type.label_fr if self.contract_type else "-"
+
+    @property
+    def role_label_map(self):
+        if not self.role:
+            return {"fr": "Employe", "en": "Employee", "mg": "Mpiasa"}
+        return {
+            "fr": self.role.label_fr,
+            "en": self.role.label_en or self.role.label_fr,
+            "mg": self.role.label_mg or self.role.label_fr,
+        }
+
+    @property
+    def contract_type_label_map(self):
+        if not self.contract_type:
+            return {"fr": "-", "en": "-", "mg": "-"}
+        return {
+            "fr": self.contract_type.label_fr,
+            "en": self.contract_type.label_en or self.contract_type.label_fr,
+            "mg": self.contract_type.label_mg or self.contract_type.label_fr,
+        }

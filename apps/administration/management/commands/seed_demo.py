@@ -4,6 +4,7 @@ from decimal import Decimal
 from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 
+from apps.accounts.utils import ensure_reference_data, get_contract_type_by_code, get_role_by_code
 from apps.administration.models import LoginBranding
 from apps.personnel.models import EmployeeProfile
 from apps.requests_management.models import RecoveryLine, StaffRequest
@@ -13,6 +14,7 @@ class Command(BaseCommand):
     help = "Charge des donnees de demonstration pour l'application Centre ValBio."
 
     def handle(self, *args, **options):
+        ensure_reference_data()
         branding, _ = LoginBranding.objects.get_or_create(
             id=1,
             defaults={
@@ -72,7 +74,8 @@ class Command(BaseCommand):
                 user.is_superuser = False
                 user.save()
             profile = user.profile
-            profile.role = item["role"]
+            profile.role = get_role_by_code(item["role"])
+            profile.contract_type = get_contract_type_by_code(EmployeeProfile.CONTRACT_TYPE_CDI)
             profile.position = item["position"]
             profile.employee_number = item["employee_number"]
             profile.contract_end_date = date.today() + timedelta(days=365)

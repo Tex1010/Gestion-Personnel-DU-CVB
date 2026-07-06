@@ -12,24 +12,22 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils.timezone import localtime
 
-from apps.accounts.utils import role_required
+from apps.accounts.utils import approval_required, can_manage_settings, settings_required
 from apps.administration.forms import (
+    ContractTypeForm,
     DepartmentForm,
     EmployeeAccountForm,
     LoginBrandingForm,
     ProjectForm,
+    RoleForm,
 )
 from apps.administration.models import (
     AccountActionHistory,
     LoginBranding,
     RequestActionHistory,
 )
-from apps.personnel.models import Department, EmployeeProfile, Project
+from apps.personnel.models import ContractType, Department, EmployeeProfile, Project, Role
 from apps.requests_management.models import StaffRequest
-
-
-ADMIN_ROLES = [EmployeeProfile.ROLE_ADMIN]
-APPROVAL_ROLES = [EmployeeProfile.ROLE_HIERARCHICAL, EmployeeProfile.ROLE_DIRECTION, *ADMIN_ROLES]
 
 
 def _format_balance_label(value, unit):
@@ -50,13 +48,29 @@ def _build_balance_distribution(queryset, field_name, unit):
     return json.dumps(labels), json.dumps(values)
 
 
-def _settings_redirect(panel="create", show_history=False, edit_id=None):
+def _settings_redirect(
+    panel="create",
+    show_history=False,
+    edit_id=None,
+    edit_department=None,
+    edit_project=None,
+    edit_role=None,
+    edit_contract_type=None,
+):
     url = reverse("administration:settings")
     params = [f"panel={panel}"]
     if show_history:
         params.append("show_history=1")
     if edit_id:
         params.append(f"edit={edit_id}")
+    if edit_department:
+        params.append(f"edit_department={edit_department}")
+    if edit_project:
+        params.append(f"edit_project={edit_project}")
+    if edit_role:
+        params.append(f"edit_role={edit_role}")
+    if edit_contract_type:
+        params.append(f"edit_contract_type={edit_contract_type}")
     return f"{url}?{'&'.join(params)}"
 
 
@@ -71,7 +85,7 @@ def _visible_employee_queryset(profile):
     employees = EmployeeProfile.objects.select_related("user").exclude(
         user__username="cvbadmin"
     )
-    if profile and profile.role == EmployeeProfile.ROLE_HIERARCHICAL:
+    if profile and profile.can_validate_hierarchy:
         employees = employees.filter(department=profile.department)
     return employees
 
@@ -79,7 +93,7 @@ def _visible_employee_queryset(profile):
 def _scoped_request_queryset(queryset, profile, actionable_only=False):
     if not profile:
         return queryset.none()
-    if profile.role == EmployeeProfile.ROLE_HIERARCHICAL:
+    if profile.can_validate_hierarchy:
         queryset = queryset.filter(employee__department=profile.department)
         if actionable_only:
             return queryset.filter(
@@ -87,14 +101,14 @@ def _scoped_request_queryset(queryset, profile, actionable_only=False):
                 approval_stage=StaffRequest.APPROVAL_HIERARCHY,
             )
         return queryset
-    if profile.role == EmployeeProfile.ROLE_ADMIN:
+    if profile.can_manage_settings or profile.can_validate_administration:
         if actionable_only:
             return queryset.filter(
                 status=StaffRequest.STATUS_SUBMITTED,
                 approval_stage=StaffRequest.APPROVAL_ADMINISTRATION,
             )
         return queryset
-    if profile.role == EmployeeProfile.ROLE_DIRECTION:
+    if profile.can_validate_direction:
         if actionable_only:
             return queryset.filter(
                 status=StaffRequest.STATUS_SUBMITTED,
@@ -154,7 +168,7 @@ def _build_history_requests(current_profile):
         .distinct()
         .order_by("-updated_at", "-created_at")
     )
-    if current_profile and current_profile.role == EmployeeProfile.ROLE_HIERARCHICAL:
+    if current_profile and current_profile.can_validate_hierarchy:
         history_requests = history_requests.filter(employee__department=current_profile.department)
     return [
         {
@@ -315,6 +329,53 @@ def _export_project_rows(projects):
     return headers, rows
 
 
+def _export_role_rows(roles):
+    headers = [
+        "Code",
+        "Libelle FR",
+        "Portail",
+        "Connexion",
+        "Parametres",
+        "Validation hiérarchie",
+        "Validation administration",
+        "Validation direction",
+        "Statut",
+    ]
+    rows = []
+    for role in roles:
+        rows.append(
+            [
+                role.code,
+                role.label_fr,
+                role.get_portal_display(),
+                "Oui" if role.show_in_login else "Non",
+                "Oui" if role.can_manage_settings else "Non",
+                "Oui" if role.can_validate_hierarchy else "Non",
+                "Oui" if role.can_validate_administration else "Non",
+                "Oui" if role.can_validate_direction else "Non",
+                "Actif" if role.is_active else "Inactif",
+            ]
+        )
+    return headers, rows
+
+
+def _export_contract_type_rows(contract_types):
+    headers = ["Code", "Libelle FR", "Libelle EN", "Libelle MG", "Statut", "Ordre"]
+    rows = []
+    for contract_type in contract_types:
+        rows.append(
+            [
+                contract_type.code,
+                contract_type.label_fr,
+                contract_type.label_en or "",
+                contract_type.label_mg or "",
+                "Actif" if contract_type.is_active else "Inactif",
+                contract_type.order,
+            ]
+        )
+    return headers, rows
+
+
 def _format_excel_cell(value):
     if value is None:
         return ""
@@ -400,7 +461,7 @@ def _build_requests_export_response(requests):
 
 
 def _build_admin_table_export_response(current_profile, table_key):
-    is_admin = bool(current_profile and current_profile.role in ADMIN_ROLES)
+    is_admin = bool(current_profile and can_manage_settings(current_profile))
 
     if table_key == "dashboard_employees":
         employees = _visible_employee_queryset(current_profile)
@@ -444,6 +505,16 @@ def _build_admin_table_export_response(current_profile, table_key):
         headers, rows = _export_project_rows(projects)
         return _build_excel_response("projets.xlsx", "Projets", headers, rows)
 
+    if table_key == "roles":
+        roles = Role.objects.order_by("order", "label_fr")
+        headers, rows = _export_role_rows(roles)
+        return _build_excel_response("roles.xlsx", "Roles", headers, rows)
+
+    if table_key == "contract_types":
+        contract_types = ContractType.objects.order_by("order", "label_fr")
+        headers, rows = _export_contract_type_rows(contract_types)
+        return _build_excel_response("types-contrat.xlsx", "TypesContrat", headers, rows)
+
     return HttpResponse("Export introuvable.", status=404)
 
 
@@ -486,20 +557,20 @@ def _queue_floating_notification(request, title, message, action_label="", actio
 def _is_request_in_scope(request_item, profile):
     if not profile:
         return False
-    if profile.role == EmployeeProfile.ROLE_HIERARCHICAL:
+    if profile.can_validate_hierarchy:
         return (
             request_item.employee.department_id == profile.department_id
             and request_item.approval_stage == StaffRequest.APPROVAL_HIERARCHY
         )
-    if profile.role == EmployeeProfile.ROLE_ADMIN:
+    if profile.can_manage_settings or profile.can_validate_administration:
         return request_item.approval_stage == StaffRequest.APPROVAL_ADMINISTRATION
-    if profile.role == EmployeeProfile.ROLE_DIRECTION:
+    if profile.can_validate_direction:
         return request_item.approval_stage == StaffRequest.APPROVAL_DIRECTION
     return False
 
 
 def _request_requires_hierarchy(request_item):
-    return request_item.employee.role == EmployeeProfile.ROLE_USER
+    return request_item.employee.role_code == EmployeeProfile.ROLE_USER
 
 
 def _build_history_stage_statuses(request_item):
@@ -560,7 +631,7 @@ def _record_account_history(actor, user, action, details=""):
         target_user=user,
         target_username=user.username,
         target_display_name=profile.display_name if profile else "",
-        target_role=profile.role if profile else "",
+        target_role=profile.dashboard_role_label if profile else "",
         action=action,
         details=details,
     )
@@ -599,7 +670,7 @@ def _apply_request_balance(request_item):
 
 
 @login_required
-@role_required(*APPROVAL_ROLES)
+@approval_required
 def dashboard_view(request):
     current_profile = getattr(request.user, "profile", None)
     employees = _visible_employee_queryset(current_profile)
@@ -629,7 +700,7 @@ def dashboard_view(request):
 
 
 @login_required
-@role_required(*APPROVAL_ROLES)
+@approval_required
 def dashboard_data_view(request):
     current_profile = getattr(request.user, "profile", None)
     employees = _visible_employee_queryset(current_profile)
@@ -659,7 +730,7 @@ def dashboard_data_view(request):
 
 
 @login_required
-@role_required(*APPROVAL_ROLES)
+@approval_required
 def requests_overview_view(request):
     current_profile = getattr(request.user, "profile", None)
     requests = StaffRequest.objects.select_related("employee", "employee__user")
@@ -677,7 +748,7 @@ def requests_overview_view(request):
 
 
 @login_required
-@role_required(*APPROVAL_ROLES)
+@approval_required
 def export_requests_view(request, export_format):
     current_profile = getattr(request.user, "profile", None)
     requests = StaffRequest.objects.select_related("employee", "employee__user")
@@ -687,14 +758,14 @@ def export_requests_view(request, export_format):
 
 
 @login_required
-@role_required(*APPROVAL_ROLES)
+@approval_required
 def export_table_view(request, table_key):
     current_profile = getattr(request.user, "profile", None)
     return _build_admin_table_export_response(current_profile, table_key)
 
 
 @login_required
-@role_required(*APPROVAL_ROLES)
+@approval_required
 def request_notifications_state_view(request):
     current_profile = getattr(request.user, "profile", None)
     actionable_requests = _scoped_request_queryset(
@@ -734,7 +805,7 @@ def acknowledge_request_notification_view(request):
 
 
 @login_required
-@role_required(*APPROVAL_ROLES)
+@approval_required
 @transaction.atomic
 def request_action_view(request, request_id, action):
     if request.method != "POST":
@@ -753,9 +824,9 @@ def request_action_view(request, request_id, action):
     balance_message = ""
 
     current_profile = getattr(request.user, "profile", None)
-    is_hierarchical = current_profile and current_profile.role == EmployeeProfile.ROLE_HIERARCHICAL
-    is_direction = current_profile and current_profile.role == EmployeeProfile.ROLE_DIRECTION
-    is_admin = current_profile and current_profile.role in ADMIN_ROLES
+    is_hierarchical = bool(current_profile and current_profile.can_validate_hierarchy)
+    is_direction = bool(current_profile and current_profile.can_validate_direction)
+    is_admin = bool(current_profile and (current_profile.can_manage_settings or current_profile.can_validate_administration))
     if not _is_request_in_scope(request_item, current_profile):
         messages.error(request, "Cette demande n'est pas disponible dans votre perimetre de validation.")
         return redirect(_requests_redirect(show_history=True))
@@ -879,7 +950,7 @@ def request_action_view(request, request_id, action):
 
 
 @login_required
-@role_required(*ADMIN_ROLES)
+@settings_required
 def request_history_delete_view(request, request_id):
     if request.method != "POST":
         return redirect(_requests_redirect(show_history=True))
@@ -893,7 +964,7 @@ def request_history_delete_view(request, request_id):
 
 
 @login_required
-@role_required(*ADMIN_ROLES)
+@settings_required
 def account_history_delete_view(request, entry_id):
     if request.method != "POST":
         return redirect(_settings_redirect(panel="accounts", show_history=True))
@@ -907,7 +978,7 @@ def account_history_delete_view(request, entry_id):
 
 
 @login_required
-@role_required(*ADMIN_ROLES)
+@settings_required
 def settings_view(request):
     branding = LoginBranding.objects.first() or LoginBranding.objects.create()
     panel = request.GET.get("panel", "create")
@@ -916,8 +987,12 @@ def settings_view(request):
     employees = all_employees.exclude(user__username="cvbadmin")
     departments = Department.objects.filter(is_active=True).order_by("name")
     projects = Project.objects.order_by("name")
+    roles = Role.objects.order_by("order", "label_fr")
+    contract_types = ContractType.objects.order_by("order", "label_fr")
 
     edit_profile = None
+    role_editor = None
+    contract_type_editor = None
     if request.GET.get("edit"):
         edit_profile = get_object_or_404(all_employees, pk=request.GET["edit"])
         if edit_profile.user.username == "cvbadmin" or edit_profile.user.is_superuser:
@@ -927,6 +1002,8 @@ def settings_view(request):
 
     department_form = DepartmentForm()
     project_form = ProjectForm()
+    role_form = RoleForm()
+    contract_type_form = ContractTypeForm()
     account_form = EmployeeAccountForm()
     edit_account_form = EmployeeAccountForm(profile=edit_profile) if edit_profile else None
     branding_form = LoginBrandingForm(instance=branding)
@@ -1044,6 +1121,68 @@ def settings_view(request):
             messages.success(request, "Le projet a ete supprime.")
             return redirect(_settings_redirect(panel="projects"))
 
+        elif "save-role" in request.POST:
+            role_form = RoleForm(request.POST)
+            if role_form.is_valid():
+                role_form.save()
+                messages.success(request, "Le role a ete enregistre.")
+                return redirect(_settings_redirect(panel="roles"))
+
+        elif "update-role" in request.POST:
+            role_editor = get_object_or_404(Role, pk=request.POST.get("role_id"))
+            if role_editor.is_system and role_editor.code == EmployeeProfile.ROLE_ADMIN and not role_editor.can_manage_settings:
+                messages.error(request, "Le role administration doit conserver l'acces aux parametres.")
+                return redirect(_settings_redirect(panel="roles", edit_role=role_editor.id))
+            role_form = RoleForm(request.POST, instance=role_editor)
+            if role_form.is_valid():
+                updated_role = role_form.save(commit=False)
+                if updated_role.is_system and updated_role.code == EmployeeProfile.ROLE_ADMIN:
+                    updated_role.can_manage_settings = True
+                updated_role.save()
+                messages.success(request, "Le role a ete mis a jour.")
+                return redirect(_settings_redirect(panel="roles"))
+
+        elif "delete-role" in request.POST:
+            role = get_object_or_404(Role, pk=request.POST.get("role_id"))
+            if role.is_system:
+                messages.error(request, "Ce role systeme ne peut pas etre supprime.")
+            elif role.profiles.exists():
+                messages.error(request, "Ce role est encore utilise par au moins un compte.")
+            else:
+                role.delete()
+                messages.success(request, "Le role a ete supprime.")
+            return redirect(_settings_redirect(panel="roles"))
+
+        elif "save-contract-type" in request.POST:
+            contract_type_form = ContractTypeForm(request.POST)
+            if contract_type_form.is_valid():
+                contract_type_form.save()
+                messages.success(request, "Le type de contrat a ete enregistre.")
+                return redirect(_settings_redirect(panel="contract_types"))
+
+        elif "update-contract-type" in request.POST:
+            contract_type_editor = get_object_or_404(
+                ContractType, pk=request.POST.get("contract_type_id")
+            )
+            contract_type_form = ContractTypeForm(request.POST, instance=contract_type_editor)
+            if contract_type_form.is_valid():
+                contract_type_form.save()
+                messages.success(request, "Le type de contrat a ete mis a jour.")
+                return redirect(_settings_redirect(panel="contract_types"))
+
+        elif "delete-contract-type" in request.POST:
+            contract_type = get_object_or_404(
+                ContractType, pk=request.POST.get("contract_type_id")
+            )
+            if contract_type.is_system:
+                messages.error(request, "Ce type de contrat systeme ne peut pas etre supprime.")
+            elif contract_type.profiles.exists():
+                messages.error(request, "Ce type de contrat est encore utilise par au moins un compte.")
+            else:
+                contract_type.delete()
+                messages.success(request, "Le type de contrat a ete supprime.")
+            return redirect(_settings_redirect(panel="contract_types"))
+
         if panel == "create" and not account_form.is_bound:
             account_form = EmployeeAccountForm()
         if panel == "branding" and not branding_form.is_bound:
@@ -1058,6 +1197,14 @@ def settings_view(request):
     if request.GET.get("edit_project"):
         project_editor = get_object_or_404(Project, pk=request.GET["edit_project"])
         project_form = ProjectForm(instance=project_editor)
+    if request.GET.get("edit_role"):
+        role_editor = get_object_or_404(Role, pk=request.GET["edit_role"])
+        role_form = RoleForm(instance=role_editor)
+    if request.GET.get("edit_contract_type"):
+        contract_type_editor = get_object_or_404(
+            ContractType, pk=request.GET["edit_contract_type"]
+        )
+        contract_type_form = ContractTypeForm(instance=contract_type_editor)
 
     return render(
         request,
@@ -1068,10 +1215,16 @@ def settings_view(request):
             "branding_form": branding_form,
             "department_form": department_form,
             "project_form": project_form,
+            "role_form": role_form,
+            "contract_type_form": contract_type_form,
             "departments": departments,
             "projects": projects,
+            "roles": roles,
+            "contract_types": contract_types,
             "department_editor": department_editor,
             "project_editor": project_editor,
+            "role_editor": role_editor,
+            "contract_type_editor": contract_type_editor,
             "employees": employees,
             "account_history": account_history,
             "panel": panel,

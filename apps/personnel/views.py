@@ -5,16 +5,16 @@ from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 
-from apps.accounts.utils import get_user_profile
-from apps.personnel.models import EmployeeProfile
+from apps.accounts.utils import get_user_profile, normalize_portal_role
+from apps.personnel.models import Role
 from apps.requests_management.models import StaffRequest
 
 
 @login_required
 def dashboard_view(request):
     profile = get_user_profile(request.user)
-    portal_role = request.session.get("portal_role") or profile.role
-    if portal_role != EmployeeProfile.ROLE_USER and profile.role != EmployeeProfile.ROLE_USER:
+    portal_role = normalize_portal_role(request.session.get("portal_role") or profile.role_portal)
+    if portal_role != Role.PORTAL_EMPLOYEE and profile.role_portal != Role.PORTAL_EMPLOYEE:
         return redirect("administration:dashboard")
 
     request_queryset = profile.requests.prefetch_related("recovery_lines").order_by("-created_at")
@@ -52,8 +52,8 @@ def dashboard_view(request):
 @login_required
 def dashboard_data_view(request):
     profile = get_user_profile(request.user)
-    portal_role = request.session.get("portal_role") or profile.role
-    if portal_role != EmployeeProfile.ROLE_USER and profile.role != EmployeeProfile.ROLE_USER:
+    portal_role = normalize_portal_role(request.session.get("portal_role") or profile.role_portal)
+    if portal_role != Role.PORTAL_EMPLOYEE and profile.role_portal != Role.PORTAL_EMPLOYEE:
         return JsonResponse({"redirect": "administration"})
 
     request_queryset = profile.requests.all().order_by("-created_at")

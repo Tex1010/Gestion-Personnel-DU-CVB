@@ -12,7 +12,8 @@ from django.contrib.auth.decorators import login_required
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404, redirect, render, resolve_url
 
-from apps.accounts.utils import get_user_profile, role_required
+from apps.accounts.utils import get_role_code, role_required
+from apps.accounts.utils import get_user_profile
 from apps.administration.models import LoginBranding
 from apps.administration.views import _queue_floating_notification, _send_request_email_alert
 from apps.personnel.models import EmployeeProfile
@@ -27,7 +28,7 @@ from django.template.loader import render_to_string
 
 
 def _request_requires_hierarchy(request_item):
-    return request_item.employee.role == EmployeeProfile.ROLE_USER
+    return request_item.employee.role_code == EmployeeProfile.ROLE_USER
 
 
 def _get_branding_logo_src(request, branding, export_format=None):
@@ -80,7 +81,7 @@ def _build_print_context(
 
 
 def _get_print_return_url(profile):
-    if profile.role == EmployeeProfile.ROLE_USER:
+    if profile.role_code == EmployeeProfile.ROLE_USER:
         return resolve_url("personnel:dashboard")
     return resolve_url("administration:requests")
 
@@ -281,7 +282,7 @@ def _balance_request_view(request, request_type):
         profile=profile,
         request_type=request_type,
     )
-    if profile.role == EmployeeProfile.ROLE_USER:
+    if profile.role_code == EmployeeProfile.ROLE_USER:
         request_titles[StaffRequest.TYPE_ABSENCE]["confirm_message"] = (
             "La demande sera transmise au chef hierarchique, puis a l'administration et a la direction."
         )
@@ -293,7 +294,7 @@ def _balance_request_view(request, request_type):
         balance_request.employee = profile
         balance_request.request_type = request_type
         balance_request.status = StaffRequest.STATUS_SUBMITTED
-        if profile.role != EmployeeProfile.ROLE_USER:
+        if profile.role_code != EmployeeProfile.ROLE_USER:
             balance_request.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
         balance_request.save()
         branding = LoginBranding.objects.first()
@@ -361,7 +362,7 @@ def recovery_request_view(request):
         request_type=StaffRequest.TYPE_RECOVERY,
         status=StaffRequest.STATUS_SUBMITTED,
     )
-    if profile.role != EmployeeProfile.ROLE_USER:
+    if profile.role_code != EmployeeProfile.ROLE_USER:
         recovery_request.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
     form = RecoveryRequestForm(request.POST or None, instance=recovery_request)
     formset = RecoveryLineFormSet(request.POST or None, instance=recovery_request)
@@ -455,7 +456,7 @@ def print_request_view(request, request_id):
         StaffRequest.objects.select_related("employee", "employee__user", "employee__department").prefetch_related("recovery_lines"),
         pk=request_id,
     )
-    if request_item.employee_id != profile.id and profile.role not in [
+    if request_item.employee_id != profile.id and get_role_code(profile) not in [
         EmployeeProfile.ROLE_ADMIN,
         EmployeeProfile.ROLE_HIERARCHICAL,
         EmployeeProfile.ROLE_DIRECTION,
@@ -463,7 +464,7 @@ def print_request_view(request, request_id):
         messages.error(request, "Vous n'avez pas acces a cette demande.")
         return redirect("personnel:dashboard")
     if (
-        profile.role == EmployeeProfile.ROLE_HIERARCHICAL
+        profile.role_code == EmployeeProfile.ROLE_HIERARCHICAL
         and request_item.employee.department_id != profile.department_id
         and request_item.employee_id != profile.id
     ):

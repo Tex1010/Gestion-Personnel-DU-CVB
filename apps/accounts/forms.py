@@ -2,18 +2,14 @@ from django import forms
 from django.contrib.auth import password_validation
 from django.contrib.auth.forms import PasswordChangeForm
 
-from apps.personnel.models import EmployeeProfile
+from apps.accounts.utils import ensure_reference_data
+from apps.personnel.models import Role
 
 
 class LoginForm(forms.Form):
     role = forms.ChoiceField(
         label="Connexion en tant que",
-        choices=[
-            (EmployeeProfile.ROLE_USER, "Employé"),
-            (EmployeeProfile.ROLE_ADMIN, "Administration"),
-            (EmployeeProfile.ROLE_HIERARCHICAL, "Chef hiérarchique"),
-            (EmployeeProfile.ROLE_DIRECTION, "Direction"),
-        ],
+        choices=[],
         widget=forms.Select(
             attrs={
                 "class": "form-select login-select-input",
@@ -32,6 +28,12 @@ class LoginForm(forms.Form):
             }
         ),
     )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        ensure_reference_data()
+        login_roles = Role.objects.filter(is_active=True, show_in_login=True).order_by("order", "label_fr")
+        self.fields["role"].choices = [(role.code, role.label_fr) for role in login_roles]
     password = forms.CharField(
         label="Mot de passe",
         widget=forms.PasswordInput(
