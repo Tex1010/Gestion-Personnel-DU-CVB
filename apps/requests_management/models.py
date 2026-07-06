@@ -116,6 +116,67 @@ class StaffRequest(models.Model):
             return "approved-administration"
         return self.status
 
+    def _approval_status_for_stage(self, stage):
+        if self.status == self.STATUS_DRAFT:
+            return "En attente"
+
+        stage_order = {
+            self.APPROVAL_HIERARCHY: 1,
+            self.APPROVAL_ADMINISTRATION: 2,
+            self.APPROVAL_DIRECTION: 3,
+            self.APPROVAL_COMPLETED: 4,
+        }
+        current_order = stage_order.get(self.approval_stage, 0)
+        target_order = stage_order.get(stage, 0)
+
+        if self.status == self.STATUS_APPROVED or self.approval_stage == self.APPROVAL_COMPLETED:
+            return "Approuvee"
+
+        if self.status == self.STATUS_REJECTED:
+            if self.approval_stage == stage:
+                return "Refusee"
+            if current_order > target_order:
+                return "Approuvee"
+            return "En attente"
+
+        if current_order > target_order:
+            return "Approuvee"
+        if current_order == target_order:
+            return "En attente"
+        return "En attente"
+
+    def _approval_badge_class_for_stage(self, stage):
+        label = self._approval_status_for_stage(stage)
+        if label == "Approuvee":
+            return "stage-approved"
+        if label == "Refusee":
+            return "stage-rejected"
+        return "stage-pending"
+
+    @property
+    def hierarchy_status_label(self):
+        return self._approval_status_for_stage(self.APPROVAL_HIERARCHY)
+
+    @property
+    def hierarchy_status_badge_class(self):
+        return self._approval_badge_class_for_stage(self.APPROVAL_HIERARCHY)
+
+    @property
+    def administration_status_label(self):
+        return self._approval_status_for_stage(self.APPROVAL_ADMINISTRATION)
+
+    @property
+    def administration_status_badge_class(self):
+        return self._approval_badge_class_for_stage(self.APPROVAL_ADMINISTRATION)
+
+    @property
+    def direction_status_label(self):
+        return self._approval_status_for_stage(self.APPROVAL_DIRECTION)
+
+    @property
+    def direction_status_badge_class(self):
+        return self._approval_badge_class_for_stage(self.APPROVAL_DIRECTION)
+
     @staticmethod
     def _format_date(value):
         return value.strftime("%d/%m/%Y") if value else "-"

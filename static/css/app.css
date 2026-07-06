@@ -1064,6 +1064,21 @@ th {
     color: var(--muted);
 }
 
+.badge.stage-approved {
+    background: rgba(37, 92, 58, 0.12);
+    color: var(--green);
+}
+
+.badge.stage-rejected {
+    background: rgba(155, 54, 54, 0.12);
+    color: #8c2f2f;
+}
+
+.badge.stage-pending {
+    background: rgba(156, 107, 28, 0.12);
+    color: var(--amber);
+}
+
 .row-actions {
     display: flex;
     flex-wrap: wrap;
