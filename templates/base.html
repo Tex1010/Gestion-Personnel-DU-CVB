@@ -720,6 +720,34 @@
                     "Envoyer cette demande de conge": "Submit this leave request",
                     "La demande de conge sera transmise a l'administration pour validation.": "The leave request will be sent to administration for validation.",
                     "La demande sera transmise au chef hierarchique, puis a l'administration et a la direction.": "The request will be sent to the line manager, then to administration and management.",
+                    "Langue": "Language",
+                    "Fermer le menu": "Close menu",
+                    "Logo et identite": "Logo and identity",
+                    "Les changements sont appliques immediatement sur le compte selectionne.": "Changes are applied immediately to the selected account.",
+                    "Nom du site": "Site name",
+                    "Sous-titre": "Subtitle",
+                    "Adresse": "Address",
+                    "Site web": "Website",
+                    "Annonce": "Announcement",
+                    "Logo": "Logo",
+                    "Illustration d'accueil": "Welcome illustration",
+                    "Type de contrat": "Contract type",
+                    "Mot de passe initial": "Initial password",
+                    "Prenom": "First name",
+                    "Email": "Email",
+                    "Recuperation restante": "Remaining recovery balance",
+                    "Photo": "Photo",
+                    "Mot de passe actuel": "Current password",
+                    "Nouveau mot de passe": "New password",
+                    "Confirmation du nouveau mot de passe": "Confirm new password",
+                    "Nom du departement": "Department name",
+                    "Nom du projet": "Project name",
+                    "Commentaire admin": "Admin comment",
+                    "Ajouter une remarque...": "Add a note...",
+                    "Selectionner": "Select",
+                    "Sélectionner": "Select",
+                    "Texte libre modifiable par l'admin pour annoncer un evenement.": "Editable text that administrators can use to announce an event.",
+                    "Active l'envoi d'un email a l'adresse d'administration a chaque nouvelle demande.": "Enable sending an email to the administration address for each new request.",
                 },
                 mg: {
                     "Connexion | Gestion du personnel": "Fidirana | Fitantanana ny mpiasa",
@@ -960,6 +988,34 @@
                     "Consultant": "Mpanolotsaina",
                     "Temporaire": "Vonjimaika",
                     "Admin": "Admin",
+                    "Langue": "Fiteny",
+                    "Fermer le menu": "Hidio ny menu",
+                    "Logo et identite": "Logo sy endrika",
+                    "Les changements sont appliques immediatement sur le compte selectionne.": "Ampiharina avy hatrany amin'ilay kaonty voafidy ny fanovana.",
+                    "Nom du site": "Anaran'ny tranonkala",
+                    "Sous-titre": "Zana-dohateny",
+                    "Adresse": "Adiresy",
+                    "Site web": "Tranonkala",
+                    "Annonce": "Fanambarana",
+                    "Logo": "Logo",
+                    "Illustration d'accueil": "Sary fandraisana",
+                    "Type de contrat": "Karazana fifanekena",
+                    "Mot de passe initial": "Tenimiafina voalohany",
+                    "Prenom": "Fanampin'anarana",
+                    "Email": "Email",
+                    "Recuperation restante": "Fanarenana sisa",
+                    "Photo": "Sary",
+                    "Mot de passe actuel": "Tenimiafina ankehitriny",
+                    "Nouveau mot de passe": "Tenimiafina vaovao",
+                    "Confirmation du nouveau mot de passe": "Fanamafisana ny tenimiafina vaovao",
+                    "Nom du departement": "Anaran'ny departemanta",
+                    "Nom du projet": "Anaran'ny tetikasa",
+                    "Commentaire admin": "Fanamarihana admin",
+                    "Ajouter une remarque...": "Ampio fanamarihana...",
+                    "Selectionner": "Safidio",
+                    "Sélectionner": "Safidio",
+                    "Texte libre modifiable par l'admin pour annoncer un evenement.": "Lahatsoratra malalaka azon'ny admin ovaina hanaovana fanambarana hetsika.",
+                    "Active l'envoi d'un email a l'adresse d'administration a chaque nouvelle demande.": "Alefa ny mailaka any amin'ny adiresin'ny administrasiona isaky ny misy fangatahana vaovao.",
                 },
             };
             const patternTranslations = {
@@ -980,6 +1036,7 @@
                     { pattern: /^Conge • (.+)$/, replace: (_, value) => `Leave • ${translateTextValue(value)}` },
                     { pattern: /^Congé • (.+)$/, replace: (_, value) => `Leave • ${translateTextValue(value)}` },
                     { pattern: /^Le nombre demande depasse votre (.+) disponible\.$/, replace: (_, value) => `The requested amount exceeds your available ${translateTextValue(value)}.` },
+                    { pattern: /^Logo (.+)$/, replace: (_, value) => `${value} logo` },
                 ],
                 mg: [
                     { pattern: /^Bonjour (.+)$/, replace: (_, name) => `Salama ${name}` },
@@ -998,6 +1055,7 @@
                     { pattern: /^Conge • (.+)$/, replace: (_, value) => `Fialan-tsasatra • ${translateTextValue(value)}` },
                     { pattern: /^Congé • (.+)$/, replace: (_, value) => `Fialan-tsasatra • ${translateTextValue(value)}` },
                     { pattern: /^Le nombre demande depasse votre (.+) disponible\.$/, replace: (_, value) => `Mihoatra ny ${translateTextValue(value)} anananao ny fangatahana.` },
+                    { pattern: /^Logo (.+)$/, replace: (_, value) => `Logo ${value}` },
                 ],
             };
             const fallbackTranslations = translations.fr;
@@ -1080,8 +1138,8 @@
                     node.nodeValue = translateTextValue(originalText);
                 });
 
-                document.querySelectorAll("[placeholder], [title], [aria-label], [data-label]").forEach((element) => {
-                    ["placeholder", "title", "aria-label", "data-label"].forEach((attributeName) => {
+                document.querySelectorAll("[placeholder], [title], [aria-label], [data-label], [alt]").forEach((element) => {
+                    ["placeholder", "title", "aria-label", "data-label", "alt"].forEach((attributeName) => {
                         if (!element.hasAttribute(attributeName)) {
                             return;
                         }

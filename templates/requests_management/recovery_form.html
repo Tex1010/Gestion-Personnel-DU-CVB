@@ -119,6 +119,8 @@
         const linesBody = document.getElementById("recovery-lines-body");
         const template = document.getElementById("recovery-line-template");
         const addButton = document.getElementById("add-recovery-line");
+        const translateRecoveryText = (value) =>
+            window.traeI18n?.translateText ? window.traeI18n.translateText(value) : value;
 
         if (!totalFormsInput || !linesBody || !template || !addButton) {
             return;
@@ -171,6 +173,16 @@
             const removeButton = row.querySelector('[data-remove-line="1"]');
             const deleteInput = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
 
+            const syncRemoveButtonLabel = () => {
+                if (!removeButton) {
+                    return;
+                }
+                const isDeleted = row.classList.contains("is-deleted");
+                removeButton.innerHTML = isDeleted
+                    ? `<i class="bi bi-arrow-counterclockwise"></i><span>${translateRecoveryText("Restaurer")}</span>`
+                    : `<i class="bi bi-trash3"></i><span>${translateRecoveryText("Supprimer")}</span>`;
+            };
+
             if (!startInput || !endInput || !durationInput) {
                 return;
             }
@@ -186,11 +198,7 @@
                         control.disabled = isDeleted;
                     }
                 });
-                if (removeButton) {
-                    removeButton.innerHTML = isDeleted
-                        ? '<i class="bi bi-arrow-counterclockwise"></i><span>Restaurer</span>'
-                        : '<i class="bi bi-trash3"></i><span>Supprimer</span>';
-                }
+                syncRemoveButtonLabel();
             };
             const toggleDeletion = () => applyDeletionState(!row.classList.contains("is-deleted"));
 
@@ -212,6 +220,7 @@
             if (deleteInput && deleteInput.checked) {
                 applyDeletionState(true);
             }
+            syncRemoveButtonLabel();
             update();
         };
 
@@ -230,6 +239,7 @@
             linesBody.appendChild(row);
             totalFormsInput.value = String(nextIndex + 1);
             bindRow(row);
+            window.traeI18n?.apply?.();
         };
 
         const ensureRowsForAutosave = (payload) => {
@@ -259,6 +269,18 @@
 
         addButton.addEventListener("click", addLine);
         Array.from(linesBody.querySelectorAll(".recovery-line-row")).forEach(bindRow);
+        document.addEventListener("trae:language-changed", () => {
+            Array.from(linesBody.querySelectorAll(".recovery-line-row")).forEach((row) => {
+                const removeButton = row.querySelector('[data-remove-line="1"]');
+                if (!removeButton) {
+                    return;
+                }
+                const isDeleted = row.classList.contains("is-deleted");
+                removeButton.innerHTML = isDeleted
+                    ? `<i class="bi bi-arrow-counterclockwise"></i><span>${translateRecoveryText("Restaurer")}</span>`
+                    : `<i class="bi bi-trash3"></i><span>${translateRecoveryText("Supprimer")}</span>`;
+            });
+        });
     })();
 </script>
 {% endblock %}

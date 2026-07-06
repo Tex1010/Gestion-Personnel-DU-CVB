@@ -110,6 +110,23 @@ class EmployeeAccountForm(forms.Form):
 
 
 class LoginBrandingForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        labels = {
+            "site_name": "Nom du site",
+            "subtitle": "Sous-titre",
+            "address": "Adresse",
+            "email": "Email",
+            "website": "Site web",
+            "announcement": "Annonce",
+            "request_submission_email_enabled": "Alertes email a la soumission",
+            "logo_image": "Logo",
+            "hero_image": "Illustration d'accueil",
+        }
+        for field_name, label in labels.items():
+            if field_name in self.fields:
+                self.fields[field_name].label = label
+
     class Meta:
         model = LoginBranding
         fields = [

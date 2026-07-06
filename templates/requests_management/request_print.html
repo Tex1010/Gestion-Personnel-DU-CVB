@@ -450,9 +450,11 @@
             const exact = {
                 en: {
                     "Impression demande": "Print request",
+                    "Actions": "Actions",
                     "Actions rapides": "Quick actions",
                     "Choisissez l’action a effectuer sur ce document.": "Choose the action to perform on this document.",
                     "Imprimer": "Print",
+                    "Télécharger image": "Download image",
                     "Retour": "Back",
                     "Fermer": "Close",
                     "Informations employe": "Employee information",
@@ -502,9 +504,11 @@
                 },
                 mg: {
                     "Impression demande": "Fanontana fangatahana",
+                    "Actions": "Hetsika",
                     "Actions rapides": "Hetsika haingana",
                     "Choisissez l’action a effectuer sur ce document.": "Safidio ny hetsika hatao amin'ity antontan-taratasy ity.",
                     "Imprimer": "Hanonta",
+                    "Télécharger image": "Hisintona sary",
                     "Retour": "Hiverina",
                     "Fermer": "Hidio",
                     "Informations employe": "Mombamomba ny mpiasa",
@@ -557,10 +561,12 @@
                 en: [
                     { pattern: /^Creee le (.+)$/, replace: (_, value) => `Created on ${value}` },
                     { pattern: /^(.+) jour\(s\)$/, replace: (_, value) => `${value} day(s)` },
+                    { pattern: /^Logo (.+)$/, replace: (_, value) => `${value} logo` },
                 ],
                 mg: [
                     { pattern: /^Creee le (.+)$/, replace: (_, value) => `Noforonina tamin'ny ${value}` },
                     { pattern: /^(.+) jour\(s\)$/, replace: (_, value) => `${value} andro` },
+                    { pattern: /^Logo (.+)$/, replace: (_, value) => `Logo ${value}` },
                 ],
             };
             const translate = (value) => {
@@ -597,8 +603,8 @@
                 nodes.forEach((node) => {
                     node.nodeValue = translate(node.nodeValue);
                 });
-                document.querySelectorAll("[title], [aria-label]").forEach((element) => {
-                    ["title", "aria-label"].forEach((attributeName) => {
+                document.querySelectorAll("[title], [aria-label], [alt]").forEach((element) => {
+                    ["title", "aria-label", "alt"].forEach((attributeName) => {
                         if (element.hasAttribute(attributeName)) {
                             element.setAttribute(attributeName, translate(element.getAttribute(attributeName)));
                         }

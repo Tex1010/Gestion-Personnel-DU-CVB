@@ -392,13 +392,14 @@
 <script>
     const employeeChart = document.getElementById("employeeChart");
     let employeeChartInstance = null;
+    const employeeChartOriginalLabels = {{ chart_labels|safe }};
     const translateEmployeeText = (value) =>
         window.traeI18n?.translateText ? window.traeI18n.translateText(value) : value;
     const applyEmployeeChartTranslations = () => {
         if (!employeeChartInstance) {
             return;
         }
-        employeeChartInstance.data.labels = employeeChartInstance.data.labels.map((label) => translateEmployeeText(label));
+        employeeChartInstance.data.labels = employeeChartOriginalLabels.map((label) => translateEmployeeText(label));
         employeeChartInstance.update();
     };
     if (employeeChart) {
@@ -408,7 +409,7 @@
         employeeChartInstance = new Chart(employeeChart, {
             type: "doughnut",
             data: {
-                labels: ({{ chart_labels|safe }}).map((label) => translateEmployeeText(label)),
+                labels: employeeChartOriginalLabels.map((label) => translateEmployeeText(label)),
                 datasets: [{
                     data: {{ chart_values|safe }},
                     backgroundColor: ["#255c3a", "#9c6b1c", "#3d4d5f"],
@@ -459,7 +460,8 @@
             if (rejectedCount) rejectedCount.innerText = data.rejected_count;
 
             if (employeeChartInstance && Array.isArray(data.chart_values)) {
-                employeeChartInstance.data.labels = (data.chart_labels || []).map((label) => translateEmployeeText(label));
+                employeeChartOriginalLabels.splice(0, employeeChartOriginalLabels.length, ...(data.chart_labels || []));
+                employeeChartInstance.data.labels = employeeChartOriginalLabels.map((label) => translateEmployeeText(label));
                 employeeChartInstance.data.datasets[0].data = data.chart_values;
                 employeeChartInstance.update();
             }

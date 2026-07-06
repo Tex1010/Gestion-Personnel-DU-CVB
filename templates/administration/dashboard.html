@@ -124,8 +124,9 @@
 
     const leaveBalanceChart = document.getElementById("leaveBalanceChart");
     let leaveBalanceChartInstance = null;
+    const leaveBalanceOriginalLabels = {{ leave_chart_labels|safe }};
     if (leaveBalanceChart) {
-        const leaveLabels = ({{ leave_chart_labels|safe }}).map((label) => translateAdminText(label));
+        const leaveLabels = leaveBalanceOriginalLabels.map((label) => translateAdminText(label));
         leaveBalanceChartInstance = new Chart(leaveBalanceChart, {
             type: "doughnut",
             data: {
@@ -157,8 +158,9 @@
 
     const recoveryBalanceChart = document.getElementById("recoveryBalanceChart");
     let recoveryBalanceChartInstance = null;
+    const recoveryBalanceOriginalLabels = {{ recovery_chart_labels|safe }};
     if (recoveryBalanceChart) {
-        const recoveryLabels = ({{ recovery_chart_labels|safe }}).map((label) => translateAdminText(label));
+        const recoveryLabels = recoveryBalanceOriginalLabels.map((label) => translateAdminText(label));
         recoveryBalanceChartInstance = new Chart(recoveryBalanceChart, {
             type: "doughnut",
             data: {
@@ -210,12 +212,14 @@
             if (lowRecoveryCount) lowRecoveryCount.innerText = data.low_recovery_count;
 
             if (leaveBalanceChartInstance && Array.isArray(data.leave_chart_values) && Array.isArray(data.leave_chart_labels)) {
-                leaveBalanceChartInstance.data.labels = data.leave_chart_labels.map((label) => translateAdminText(label));
+                leaveBalanceOriginalLabels.splice(0, leaveBalanceOriginalLabels.length, ...data.leave_chart_labels);
+                leaveBalanceChartInstance.data.labels = leaveBalanceOriginalLabels.map((label) => translateAdminText(label));
                 leaveBalanceChartInstance.data.datasets[0].data = data.leave_chart_values;
                 leaveBalanceChartInstance.update();
             }
             if (recoveryBalanceChartInstance && Array.isArray(data.recovery_chart_values) && Array.isArray(data.recovery_chart_labels)) {
-                recoveryBalanceChartInstance.data.labels = data.recovery_chart_labels.map((label) => translateAdminText(label));
+                recoveryBalanceOriginalLabels.splice(0, recoveryBalanceOriginalLabels.length, ...data.recovery_chart_labels);
+                recoveryBalanceChartInstance.data.labels = recoveryBalanceOriginalLabels.map((label) => translateAdminText(label));
                 recoveryBalanceChartInstance.data.datasets[0].data = data.recovery_chart_values;
                 recoveryBalanceChartInstance.update();
             }
@@ -231,11 +235,11 @@
     }
     document.addEventListener("trae:language-changed", () => {
         if (leaveBalanceChartInstance) {
-            leaveBalanceChartInstance.data.labels = leaveBalanceChartInstance.data.labels.map((label) => translateAdminText(label));
+            leaveBalanceChartInstance.data.labels = leaveBalanceOriginalLabels.map((label) => translateAdminText(label));
             leaveBalanceChartInstance.update();
         }
         if (recoveryBalanceChartInstance) {
-            recoveryBalanceChartInstance.data.labels = recoveryBalanceChartInstance.data.labels.map((label) => translateAdminText(label));
+            recoveryBalanceChartInstance.data.labels = recoveryBalanceOriginalLabels.map((label) => translateAdminText(label));
             recoveryBalanceChartInstance.update();
         }
     });
