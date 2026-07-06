@@ -116,6 +116,22 @@ class StaffRequest(models.Model):
             return "approved-administration"
         return self.status
 
+    @property
+    def employee_simple_status_label(self):
+        if self.status == self.STATUS_REJECTED:
+            return "Refusee"
+        if self.status == self.STATUS_APPROVED or self.approval_stage == self.APPROVAL_COMPLETED:
+            return "Approuvee"
+        return "En attente"
+
+    @property
+    def employee_simple_status_badge_class(self):
+        if self.employee_simple_status_label == "Approuvee":
+            return "approved"
+        if self.employee_simple_status_label == "Refusee":
+            return "rejected"
+        return "stage-pending"
+
     def _approval_status_for_stage(self, stage):
         if self.status == self.STATUS_DRAFT:
             return "En attente"
