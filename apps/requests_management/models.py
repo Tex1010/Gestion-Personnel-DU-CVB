@@ -84,6 +84,38 @@ class StaffRequest(models.Model):
     def status_label(self):
         return self.get_status_display()
 
+    @property
+    def employee_status_label(self):
+        if self.status == self.STATUS_DRAFT:
+            return "Brouillon"
+        if self.status == self.STATUS_REJECTED:
+            return "Rejetee"
+        if self.status == self.STATUS_APPROVED or self.approval_stage == self.APPROVAL_COMPLETED:
+            return "Approuvee"
+        if self.approval_stage == self.APPROVAL_HIERARCHY:
+            return "En attente du chef hierarchique"
+        if self.approval_stage == self.APPROVAL_ADMINISTRATION:
+            return "Chef hierarchique approuve, attente administration"
+        if self.approval_stage == self.APPROVAL_DIRECTION:
+            return "Chef hierarchique et administration approuves, attente direction"
+        return self.get_status_display()
+
+    @property
+    def employee_status_badge_class(self):
+        if self.status == self.STATUS_DRAFT:
+            return "draft"
+        if self.status == self.STATUS_REJECTED:
+            return "rejected"
+        if self.status == self.STATUS_APPROVED or self.approval_stage == self.APPROVAL_COMPLETED:
+            return "approved"
+        if self.approval_stage == self.APPROVAL_HIERARCHY:
+            return "pending-hierarchy"
+        if self.approval_stage == self.APPROVAL_ADMINISTRATION:
+            return "approved-hierarchy"
+        if self.approval_stage == self.APPROVAL_DIRECTION:
+            return "approved-administration"
+        return self.status
+
     @staticmethod
     def _format_date(value):
         return value.strftime("%d/%m/%Y") if value else "-"

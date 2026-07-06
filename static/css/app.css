@@ -1034,6 +1034,21 @@ th {
     color: var(--amber);
 }
 
+.badge.pending-hierarchy {
+    background: rgba(156, 107, 28, 0.12);
+    color: var(--amber);
+}
+
+.badge.approved-hierarchy {
+    background: rgba(61, 77, 95, 0.14);
+    color: var(--slate);
+}
+
+.badge.approved-administration {
+    background: rgba(37, 92, 58, 0.18);
+    color: var(--green);
+}
+
 .badge.approved {
     background: rgba(37, 92, 58, 0.12);
     color: var(--green);
@@ -1042,6 +1057,11 @@ th {
 .badge.rejected {
     background: rgba(155, 54, 54, 0.12);
     color: #8c2f2f;
+}
+
+.badge.draft {
+    background: rgba(108, 115, 111, 0.14);
+    color: var(--muted);
 }
 
 .row-actions {
