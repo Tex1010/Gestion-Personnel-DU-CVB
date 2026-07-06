@@ -12,7 +12,6 @@
             <p>{{ pending_count }} demande(s) en attente de traitement.</p>
         </div>
         <div class="header-actions">
-            <a href="{% url 'administration:export_requests' 'excel' %}" class="btn-secondary"><i class="bi bi-file-earmark-excel"></i>Exporter Excel propre</a>
             {% if show_history %}
                 <a href="{% url 'administration:requests' %}" class="btn-secondary"><i class="bi bi-clock-history"></i>Masquer l'historique</a>
             {% else %}

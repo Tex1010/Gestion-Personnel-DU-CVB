@@ -149,7 +149,7 @@
         const computeDays = (startMinutes, endMinutes, isHoliday) => {
             if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
                 return "";
-            }
+            } 
             const pauseStart = 12 * 60;
             const pauseEnd = 13 * 60;
             const overlap = Math.max(0, Math.min(endMinutes, pauseEnd) - Math.max(startMinutes, pauseStart));

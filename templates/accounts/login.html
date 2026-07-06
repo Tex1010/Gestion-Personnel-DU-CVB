@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}Connexion | Gestion du personnel{% endblock %}
 {% block body_class %}login-page{% endblock %}
@@ -58,9 +59,15 @@
                     <span data-theme-toggle-label>Mode sombre</span>
                 </button>
                 <div class="language-switcher" role="group" aria-label="Langue">
-                    <button type="button" class="display-chip flag-chip" data-lang-switch="fr" title="Français" aria-label="Français">🇫🇷</button>
-                    <button type="button" class="display-chip flag-chip" data-lang-switch="en" title="English" aria-label="English">🇬🇧</button>
-                    <button type="button" class="display-chip flag-chip" data-lang-switch="mg" title="Malagasy" aria-label="Malagasy">🇲🇬</button>
+                    <button type="button" class="display-chip flag-chip" data-lang-switch="fr" title="Français" aria-label="Français">
+                        <img class="flag-icon" src="{% static 'img/flags/fr.svg' %}" alt="" aria-hidden="true">
+                    </button>
+                    <button type="button" class="display-chip flag-chip" data-lang-switch="en" title="English" aria-label="English">
+                        <img class="flag-icon" src="{% static 'img/flags/gb.svg' %}" alt="" aria-hidden="true">
+                    </button>
+                    <button type="button" class="display-chip flag-chip" data-lang-switch="mg" title="Malagasy" aria-label="Malagasy">
+                        <img class="flag-icon" src="{% static 'img/flags/mg.svg' %}" alt="" aria-hidden="true">
+                    </button>
                 </div>
             </div>
             <div class="login-form-head">

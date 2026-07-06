@@ -359,6 +359,15 @@ img {
     padding-inline: 12px;
     font-size: 1.1rem;
     line-height: 1;
+    gap: 0;
+}
+
+.flag-icon {
+    width: 22px;
+    height: 16px;
+    border-radius: 4px;
+    box-shadow: 0 0 0 1px rgba(27, 31, 28, 0.12);
+    object-fit: cover;
 }
 
 .login-display-controls {
