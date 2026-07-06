@@ -1533,7 +1533,7 @@
                 });
             };
 
-            document.querySelectorAll("input[data-table-search]").forEach((input) => {
+            const applyTableSearchFilter = (input) => {
                 const target = document.getElementById(input.dataset.tableSearch);
                 if (!target) {
                     return;
@@ -1542,10 +1542,10 @@
                 const tbody = target.querySelector("tbody");
                 if (!tbody) {
                     const cards = Array.from(target.querySelectorAll(".request-card-item"));
-                    const emptyState = target.querySelector(".empty-state");
+                    const emptyState = target.querySelector('.empty-state:not([data-search-helper="1"])');
                     let helperCard = target.querySelector('[data-search-helper="1"]');
 
-                    if (!cards.length && !emptyState) {
+                    if (!cards.length && !emptyState && !helperCard) {
                         return;
                     }
 
@@ -1558,39 +1558,31 @@
                         target.appendChild(helperCard);
                     }
 
-                    const filterCards = () => {
-                        const term = normalizeSearchText(input.value.trim());
-                        let visibleCount = 0;
+                    const term = normalizeSearchText(input.value.trim());
+                    let visibleCount = 0;
 
-                        if (emptyState) {
-                            emptyState.hidden = term.length > 0;
+                    if (emptyState) {
+                        emptyState.hidden = term.length > 0;
+                    }
+
+                    cards.forEach((card) => {
+                        const cardText = normalizeSearchText(card.innerText);
+                        const isVisible = !term || cardText.includes(term);
+                        card.hidden = !isVisible;
+                        if (isVisible) {
+                            visibleCount += 1;
                         }
-
-                        cards.forEach((card) => {
-                            const cardText = normalizeSearchText(card.innerText);
-                            const isVisible = !term || cardText.includes(term);
-                            card.hidden = !isVisible;
-                            if (isVisible) {
-                                visibleCount += 1;
-                            }
-                        });
-
-                        helperCard.hidden = !term || visibleCount > 0 || cards.length === 0;
-                    };
-
-                    input.addEventListener("input", () => {
-                        filterCards();
-                        syncTableExportLinks(input);
                     });
-                    filterCards();
+
+                    helperCard.hidden = !term || visibleCount > 0 || cards.length === 0;
                     syncTableExportLinks(input);
                     return;
                 }
 
-                const headerCount = target.querySelectorAll("thead th").length || 1;
                 let helperRow = tbody.querySelector('tr[data-search-helper="1"]');
 
                 if (!helperRow) {
+                    const headerCount = target.querySelectorAll("thead th").length || 1;
                     helperRow = document.createElement("tr");
                     helperRow.dataset.searchHelper = "1";
                     helperRow.hidden = true;
@@ -1598,42 +1590,62 @@
                     tbody.appendChild(helperRow);
                 }
 
-                const filterTable = () => {
-                    const term = normalizeSearchText(input.value.trim());
-                    const rows = Array.from(tbody.querySelectorAll("tr")).filter(
-                        (row) => row.dataset.searchHelper !== "1"
-                    );
-                    let visibleCount = 0;
-                    let hasDataRows = false;
+                const term = normalizeSearchText(input.value.trim());
+                const rows = Array.from(tbody.querySelectorAll("tr")).filter(
+                    (row) => row.dataset.searchHelper !== "1"
+                );
+                let visibleCount = 0;
+                let hasDataRows = false;
 
-                    rows.forEach((row) => {
-                        const singleCell = row.cells.length === 1 ? row.cells[0] : null;
-                        const isEmptyState = Boolean(singleCell && singleCell.colSpan > 1);
+                rows.forEach((row) => {
+                    const singleCell = row.cells.length === 1 ? row.cells[0] : null;
+                    const isEmptyState = Boolean(singleCell && singleCell.colSpan > 1);
 
-                        if (isEmptyState) {
-                            row.hidden = term.length > 0;
-                            return;
-                        }
+                    if (isEmptyState) {
+                        row.hidden = term.length > 0;
+                        return;
+                    }
 
-                        hasDataRows = true;
-                        const rowText = normalizeSearchText(row.innerText);
-                        const isVisible = !term || rowText.includes(term);
-                        row.hidden = !isVisible;
-                        if (isVisible) {
-                            visibleCount += 1;
+                    hasDataRows = true;
+                    const rowText = normalizeSearchText(row.innerText);
+                    const isVisible = !term || rowText.includes(term);
+                    row.hidden = !isVisible;
+                    if (isVisible) {
+                        visibleCount += 1;
+                    }
+                });
+
+                helperRow.hidden = !term || visibleCount > 0 || !hasDataRows;
+                syncTableExportLinks(input);
+            };
+
+            const bindTableSearchInput = (input) => {
+                if (input.dataset.tableSearchBound === "1") {
+                    return;
+                }
+                input.dataset.tableSearchBound = "1";
+                input.addEventListener("input", () => applyTableSearchFilter(input));
+            };
+
+            const initializeTableSearch = (scope = document) => {
+                scope.querySelectorAll("input[data-table-search]").forEach((input) => {
+                    bindTableSearchInput(input);
+                    applyTableSearchFilter(input);
+                });
+            };
+
+            window.traeTableSearch = {
+                init: initializeTableSearch,
+                refresh(targetId) {
+                    document.querySelectorAll("input[data-table-search]").forEach((input) => {
+                        if (!targetId || input.dataset.tableSearch === targetId) {
+                            applyTableSearchFilter(input);
                         }
                     });
+                },
+            };
 
-                    helperRow.hidden = !term || visibleCount > 0 || !hasDataRows;
-                };
-
-                input.addEventListener("input", () => {
-                    filterTable();
-                    syncTableExportLinks(input);
-                });
-                filterTable();
-                syncTableExportLinks(input);
-            });
+            initializeTableSearch();
 
             const topbar = document.querySelector(".topbar");
             const mobileSidebar = document.getElementById("mobileSidebar");

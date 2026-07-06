@@ -10,6 +10,7 @@ from django.db import transaction
 from django.db.models import Count
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.template.loader import render_to_string
 from django.urls import reverse
 from django.utils.timezone import localtime
 
@@ -603,6 +604,47 @@ def _build_excel_response(filename, sheet_title, headers, rows):
     return response
 
 
+def _build_admin_dashboard_payload(current_profile):
+    employees = _visible_employee_queryset(current_profile)
+    actionable_requests = _scoped_request_queryset(
+        StaffRequest.objects.all(),
+        current_profile,
+        actionable_only=True,
+    )
+    leave_chart_labels, leave_chart_values = _build_balance_distribution(
+        employees,
+        "leave_balance",
+        "jour(s)",
+    )
+    recovery_chart_labels, recovery_chart_values = _build_balance_distribution(
+        employees,
+        "recovery_balance",
+        "unite(s)",
+    )
+    return {
+        "employees": employees,
+        "employee_count": employees.count(),
+        "pending_count": actionable_requests.count(),
+        "low_leave_count": employees.filter(leave_balance__lt=Decimal("2.0")).count(),
+        "low_recovery_count": employees.filter(recovery_balance__lt=Decimal("2.0")).count(),
+        "leave_chart_labels": leave_chart_labels,
+        "leave_chart_values": leave_chart_values,
+        "recovery_chart_labels": recovery_chart_labels,
+        "recovery_chart_values": recovery_chart_values,
+    }
+
+
+def _build_requests_overview_context(current_profile, show_history):
+    requests = StaffRequest.objects.select_related("employee", "employee__user")
+    submitted_requests = _scoped_request_queryset(requests, current_profile, actionable_only=True)
+    return {
+        "requests": submitted_requests,
+        "history_requests": _build_history_requests(current_profile) if show_history else [],
+        "pending_count": submitted_requests.count(),
+        "show_history": show_history,
+    }
+
+
 def _build_requests_export_response(requests):
     headers, rows = _export_request_rows(requests)
     return _build_excel_response("demandes.xlsx", "Demandes", headers, rows)
@@ -848,58 +890,29 @@ def _apply_request_balance(request_item):
 @approval_required
 def dashboard_view(request):
     current_profile = getattr(request.user, "profile", None)
-    employees = _visible_employee_queryset(current_profile)
-    actionable_requests = _scoped_request_queryset(StaffRequest.objects.all(), current_profile, actionable_only=True)
-    leave_chart_labels, leave_chart_values = _build_balance_distribution(
-        employees,
-        "leave_balance",
-        "jour(s)",
-    )
-    recovery_chart_labels, recovery_chart_values = _build_balance_distribution(
-        employees,
-        "recovery_balance",
-        "unite(s)",
-    )
-    context = {
-        "employees": employees,
-        "employee_count": employees.count(),
-        "pending_count": actionable_requests.count(),
-        "low_leave_count": employees.filter(leave_balance__lt=Decimal("2.0")).count(),
-        "low_recovery_count": employees.filter(recovery_balance__lt=Decimal("2.0")).count(),
-        "leave_chart_labels": leave_chart_labels,
-        "leave_chart_values": leave_chart_values,
-        "recovery_chart_labels": recovery_chart_labels,
-        "recovery_chart_values": recovery_chart_values,
-    }
-    return render(request, "administration/dashboard.html", context)
+    return render(request, "administration/dashboard.html", _build_admin_dashboard_payload(current_profile))
 
 
 @login_required
 @approval_required
 def dashboard_data_view(request):
     current_profile = getattr(request.user, "profile", None)
-    employees = _visible_employee_queryset(current_profile)
-    actionable_requests = _scoped_request_queryset(StaffRequest.objects.all(), current_profile, actionable_only=True)
-    leave_chart_labels, leave_chart_values = _build_balance_distribution(
-        employees,
-        "leave_balance",
-        "jour(s)",
-    )
-    recovery_chart_labels, recovery_chart_values = _build_balance_distribution(
-        employees,
-        "recovery_balance",
-        "unite(s)",
-    )
+    payload = _build_admin_dashboard_payload(current_profile)
     return JsonResponse(
         {
-            "employee_count": employees.count(),
-            "pending_count": actionable_requests.count(),
-            "low_leave_count": employees.filter(leave_balance__lt=Decimal("2.0")).count(),
-            "low_recovery_count": employees.filter(recovery_balance__lt=Decimal("2.0")).count(),
-            "leave_chart_labels": json.loads(leave_chart_labels),
-            "leave_chart_values": json.loads(leave_chart_values),
-            "recovery_chart_labels": json.loads(recovery_chart_labels),
-            "recovery_chart_values": json.loads(recovery_chart_values),
+            "employee_count": payload["employee_count"],
+            "pending_count": payload["pending_count"],
+            "low_leave_count": payload["low_leave_count"],
+            "low_recovery_count": payload["low_recovery_count"],
+            "leave_chart_labels": json.loads(payload["leave_chart_labels"]),
+            "leave_chart_values": json.loads(payload["leave_chart_values"]),
+            "recovery_chart_labels": json.loads(payload["recovery_chart_labels"]),
+            "recovery_chart_values": json.loads(payload["recovery_chart_values"]),
+            "employees_rows_html": render_to_string(
+                "administration/includes/dashboard_employees_rows.html",
+                payload,
+                request=request,
+            ),
         }
     )
 
@@ -908,17 +921,36 @@ def dashboard_data_view(request):
 @approval_required
 def requests_overview_view(request):
     current_profile = getattr(request.user, "profile", None)
-    requests = StaffRequest.objects.select_related("employee", "employee__user")
-    submitted_requests = _scoped_request_queryset(requests, current_profile, actionable_only=True)
+    show_history = request.GET.get("show_history") == "1"
     return render(
         request,
         "administration/requests_overview.html",
+        _build_requests_overview_context(current_profile, show_history),
+    )
+
+
+@login_required
+@approval_required
+def requests_overview_data_view(request):
+    current_profile = getattr(request.user, "profile", None)
+    show_history = request.GET.get("show_history") == "1"
+    context = _build_requests_overview_context(current_profile, show_history)
+    return JsonResponse(
         {
-            "requests": submitted_requests,
-            "history_requests": _build_history_requests(current_profile),
-            "pending_count": submitted_requests.count(),
-            "show_history": request.GET.get("show_history") == "1",
-        },
+            "pending_count": context["pending_count"],
+            "pending_requests_html": render_to_string(
+                "administration/includes/pending_requests_rows.html",
+                context,
+                request=request,
+            ),
+            "requests_history_html": render_to_string(
+                "administration/includes/request_history_rows.html",
+                context,
+                request=request,
+            )
+            if show_history
+            else "",
+        }
     )
 
 

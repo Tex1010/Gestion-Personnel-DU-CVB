@@ -116,41 +116,8 @@
                             <th>Action</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        {% for item in recent_requests %}
-                            <tr>
-                                <td data-label="Type">{{ item.type_label }}</td>
-                                <td data-label="Date">{{ item.created_at|date:"d/m/Y" }}</td>
-                                <td data-label="Periode">
-                                    {% for period in item.period_entries %}
-                                        {{ period }}{% if not forloop.last %}<br>{% endif %}
-                                    {% endfor %}
-                                </td>
-                                <td data-label="Chef hier."><span class="badge {{ item.hierarchy_status_badge_class }}">{{ item.hierarchy_status_label }}</span></td>
-                                <td data-label="Administration"><span class="badge {{ item.administration_status_badge_class }}">{{ item.administration_status_label }}</span></td>
-                                <td data-label="Direction"><span class="badge {{ item.direction_status_badge_class }}">{{ item.direction_status_label }}</span></td>
-                                <td data-label="Action">
-                                                <button
-                                                    type="button"
-                                                    class="btn-secondary action-toggle"
-                                                    aria-label="Actions"
-                                                    data-bs-toggle="modal"
-                                                    data-bs-target="#employeeActionModal"
-                                                    data-print-url="{% url 'requests_management:print' item.id %}"
-                                                    data-png-url="{% url 'requests_management:print' item.id %}?download=png"
-                                                    data-delete-url="{% url 'requests_management:delete' item.id %}"
-                                                    data-delete-title="Supprimer cette demande"
-                                                    data-delete-message="Cette demande sera retiree de votre historique."
-                                                >
-                                                    <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
-                                                </button>
-                                </td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="7">Aucune demande pour le moment.</td>
-                            </tr>
-                        {% endfor %}
+                    <tbody id="employee-recent-requests-tbody">
+                        {% include "personnel/includes/recent_requests_rows.html" with recent_requests=recent_requests %}
                     </tbody>
                 </table>
             </div>
@@ -172,39 +139,7 @@
                 </label>
             </div>
             <div class="request-card-list" id="employee-absence-table">
-                {% for item in absence_requests %}
-                    <article class="request-card-item">
-                        <div class="request-card-main">
-                            <div>
-                                <strong>{% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %}</strong>
-                                <div class="request-card-subtitle">Absence • {{ item.total_days }} jour{{ item.total_days|pluralize }}</div>
-                            </div>
-                            <div class="request-card-meta">
-                                <span class="meta-pill"><i class="bi bi-calendar3"></i> {{ item.start_date|date:"d/m/Y" }}</span>
-                                <span class="meta-pill"><i class="bi bi-clock-history"></i> {{ item.total_days }} j</span>
-                            </div>
-                        </div>
-                        <div class="request-card-actions">
-                            <span class="badge {{ item.employee_simple_status_badge_class }}">{{ item.employee_simple_status_label }}</span>
-                            <button
-                                type="button"
-                                class="btn-secondary action-toggle"
-                                aria-label="Actions"
-                                data-bs-toggle="modal"
-                                data-bs-target="#employeeActionModal"
-                                data-print-url="{% url 'requests_management:print' item.id %}"
-                                data-png-url="{% url 'requests_management:print' item.id %}?download=png"
-                                data-delete-url="{% url 'requests_management:delete' item.id %}"
-                                data-delete-title="Supprimer cette absence"
-                                data-delete-message="Cette demande sera retiree de votre historique."
-                            >
-                                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </article>
-                {% empty %}
-                    <div class="empty-state">Aucune demande d'absence.</div>
-                {% endfor %}
+                {% include "personnel/includes/request_cards_items.html" with items=absence_requests empty_message="Aucune demande d'absence." request_label="Absence" delete_title="Supprimer cette absence" delete_message="Cette demande sera retiree de votre historique." %}
             </div>
         </article>
         <article class="card employee-request-card">
@@ -221,43 +156,7 @@
                 </label>
             </div>
             <div class="request-card-list" id="employee-recovery-table">
-                {% for item in recovery_requests %}
-                    <article class="request-card-item">
-                        <div class="request-card-main">
-                            <div>
-                                <strong>
-                                    {% for period in item.period_entries %}
-                                        {{ period }}{% if not forloop.last %}<br>{% endif %}
-                                    {% endfor %}
-                                </strong>
-                                <div class="request-card-subtitle">Récupération • {{ item.project_name|default:"Sans projet" }}</div>
-                            </div>
-                            <div class="request-card-meta">
-                                <span class="meta-pill"><i class="bi bi-folder2-open"></i> {{ item.project_name|default:"Sans projet" }}</span>
-                                <span class="meta-pill"><i class="bi bi-hourglass-split"></i> {{ item.total_days }} j</span>
-                            </div>
-                        </div>
-                        <div class="request-card-actions">
-                            <span class="badge {{ item.employee_simple_status_badge_class }}">{{ item.employee_simple_status_label }}</span>
-                            <button
-                                type="button"
-                                class="btn-secondary action-toggle"
-                                aria-label="Actions"
-                                data-bs-toggle="modal"
-                                data-bs-target="#employeeActionModal"
-                                data-print-url="{% url 'requests_management:print' item.id %}"
-                                data-png-url="{% url 'requests_management:print' item.id %}?download=png"
-                                data-delete-url="{% url 'requests_management:delete' item.id %}"
-                                data-delete-title="Supprimer cette recuperation"
-                                data-delete-message="Cette demande sera retiree de votre historique."
-                            >
-                                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </article>
-                {% empty %}
-                    <div class="empty-state">Aucune fiche de recuperation.</div>
-                {% endfor %}
+                {% include "personnel/includes/request_cards_items.html" with items=recovery_requests empty_message="Aucune fiche de recuperation." request_label="Recuperation" delete_title="Supprimer cette recuperation" delete_message="Cette demande sera retiree de votre historique." %}
             </div>
         </article>
         <article class="card employee-request-card">
@@ -274,40 +173,7 @@
                 </label>
             </div>
             <div class="request-card-list" id="employee-leave-table">
-                {% for item in leave_requests %}
-                    <article class="request-card-item">
-                        <div class="request-card-main">
-                            <div>
-                                <strong>{% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %} → {% if item.end_date %}{{ item.end_date|date:"d/m/Y" }}{% else %}-{% endif %}</strong>
-                                <div class="request-card-subtitle">Congé • {{ item.total_days }} jour{{ item.total_days|pluralize }}</div>
-                            </div>
-                            <div class="request-card-meta">
-                                <span class="meta-pill"><i class="bi bi-calendar2-week"></i> {{ item.total_days }} j</span>
-                                <span class="meta-pill"><i class="bi bi-flag"></i> {{ item.employee_simple_status_label }}</span>
-                            </div>
-                        </div>
-                        <div class="request-card-actions">
-                            <span class="badge {{ item.employee_simple_status_badge_class }}">{{ item.employee_simple_status_label }}</span>
-                            <button
-                                type="button"
-                                class="btn-secondary action-toggle"
-                                aria-label="Actions"
-                                data-bs-toggle="modal"
-                                data-bs-target="#employeeActionModal"
-                                data-print-url="{% url 'requests_management:print' item.id %}"
-                                data-png-url="{% url 'requests_management:print' item.id %}?download=png"
-                                data-email="{{ branding.email|default:'centrevalbio@gmail.com' }}"
-                                data-delete-url="{% url 'requests_management:delete' item.id %}"
-                                data-delete-title="Supprimer ce conge"
-                                data-delete-message="Cette demande sera retiree de votre historique."
-                            >
-                                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
-                            </button>
-                        </div>
-                    </article>
-                {% empty %}
-                    <div class="empty-state">Aucun conge enregistre.</div>
-                {% endfor %}
+                {% include "personnel/includes/request_cards_items.html" with items=leave_requests empty_message="Aucun conge enregistre." request_label="Conge" delete_title="Supprimer ce conge" delete_message="Cette demande sera retiree de votre historique." %}
             </div>
         </article>
     </div>
@@ -463,6 +329,28 @@
             if (approvedCount) approvedCount.innerText = data.approved_count;
             if (rejectedCount) rejectedCount.innerText = data.rejected_count;
 
+            const recentRequestsTbody = document.getElementById("employee-recent-requests-tbody");
+            const absenceTable = document.getElementById("employee-absence-table");
+            const recoveryTable = document.getElementById("employee-recovery-table");
+            const leaveTable = document.getElementById("employee-leave-table");
+
+            if (recentRequestsTbody && typeof data.recent_requests_html === "string" && recentRequestsTbody.innerHTML !== data.recent_requests_html) {
+                recentRequestsTbody.innerHTML = data.recent_requests_html;
+                window.traeTableSearch?.refresh("employee-recent-requests-table");
+            }
+            if (absenceTable && typeof data.absence_requests_html === "string" && absenceTable.innerHTML !== data.absence_requests_html) {
+                absenceTable.innerHTML = data.absence_requests_html;
+                window.traeTableSearch?.refresh("employee-absence-table");
+            }
+            if (recoveryTable && typeof data.recovery_requests_html === "string" && recoveryTable.innerHTML !== data.recovery_requests_html) {
+                recoveryTable.innerHTML = data.recovery_requests_html;
+                window.traeTableSearch?.refresh("employee-recovery-table");
+            }
+            if (leaveTable && typeof data.leave_requests_html === "string" && leaveTable.innerHTML !== data.leave_requests_html) {
+                leaveTable.innerHTML = data.leave_requests_html;
+                window.traeTableSearch?.refresh("employee-leave-table");
+            }
+
             if (employeeChartInstance && Array.isArray(data.chart_values)) {
                 employeeChartOriginalLabels.splice(0, employeeChartOriginalLabels.length, ...(data.chart_labels || []));
                 employeeChartInstance.data.labels = employeeChartOriginalLabels.map((label) => translateEmployeeText(label));
@@ -477,8 +365,13 @@
 
     if (employeeChart || document.getElementById("employee-leave-balance")) {
         refreshEmployeeDashboard();
-        window.setInterval(refreshEmployeeDashboard, 60000);
+        window.setInterval(refreshEmployeeDashboard, 10000);
     }
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+            refreshEmployeeDashboard();
+        }
+    });
     document.addEventListener("trae:language-changed", applyEmployeeChartTranslations);
 </script>
 <script>

@@ -1,0 +1,58 @@
+{% for item in items %}
+    <article class="request-card-item">
+        <div class="request-card-main">
+            {% if request_label == "Absence" %}
+                <div>
+                    <strong>{% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %}</strong>
+                    <div class="request-card-subtitle">{{ request_label }} • {{ item.total_days }} jour{{ item.total_days|pluralize }}</div>
+                </div>
+                <div class="request-card-meta">
+                    <span class="meta-pill"><i class="bi bi-calendar3"></i> {{ item.start_date|date:"d/m/Y" }}</span>
+                    <span class="meta-pill"><i class="bi bi-clock-history"></i> {{ item.total_days }} j</span>
+                </div>
+            {% elif request_label == "Recuperation" %}
+                <div>
+                    <strong>
+                        {% for period in item.period_entries %}
+                            {{ period }}{% if not forloop.last %}<br>{% endif %}
+                        {% endfor %}
+                    </strong>
+                    <div class="request-card-subtitle">{{ request_label }} • {{ item.project_name|default:"Sans projet" }}</div>
+                </div>
+                <div class="request-card-meta">
+                    <span class="meta-pill"><i class="bi bi-folder2-open"></i> {{ item.project_name|default:"Sans projet" }}</span>
+                    <span class="meta-pill"><i class="bi bi-hourglass-split"></i> {{ item.total_days }} j</span>
+                </div>
+            {% else %}
+                <div>
+                    <strong>{% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %} -> {% if item.end_date %}{{ item.end_date|date:"d/m/Y" }}{% else %}-{% endif %}</strong>
+                    <div class="request-card-subtitle">{{ request_label }} • {{ item.total_days }} jour{{ item.total_days|pluralize }}</div>
+                </div>
+                <div class="request-card-meta">
+                    <span class="meta-pill"><i class="bi bi-calendar2-week"></i> {{ item.total_days }} j</span>
+                    <span class="meta-pill"><i class="bi bi-flag"></i> {{ item.employee_simple_status_label }}</span>
+                </div>
+            {% endif %}
+        </div>
+        <div class="request-card-actions">
+            <span class="badge {{ item.employee_simple_status_badge_class }}">{{ item.employee_simple_status_label }}</span>
+            <button
+                type="button"
+                class="btn-secondary action-toggle"
+                aria-label="Actions"
+                data-bs-toggle="modal"
+                data-bs-target="#employeeActionModal"
+                data-print-url="{% url 'requests_management:print' item.id %}"
+                data-png-url="{% url 'requests_management:print' item.id %}?download=png"
+                data-email="{{ branding.email|default:'centrevalbio@gmail.com' }}"
+                data-delete-url="{% url 'requests_management:delete' item.id %}"
+                data-delete-title="{{ delete_title }}"
+                data-delete-message="{{ delete_message }}"
+            >
+                <i class="bi bi-three-dots-vertical" aria-hidden="true"></i>
+            </button>
+        </div>
+    </article>
+{% empty %}
+    <div class="empty-state">{{ empty_message }}</div>
+{% endfor %}
