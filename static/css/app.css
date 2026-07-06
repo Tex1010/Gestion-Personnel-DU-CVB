@@ -1093,6 +1093,35 @@ th {
     gap: 12px;
 }
 
+.settings-form-block {
+    display: grid;
+    gap: 14px;
+    padding: 18px;
+    border: 1px solid rgba(37, 92, 58, 0.12);
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.72);
+}
+
+.settings-form-heading {
+    display: grid;
+    gap: 4px;
+}
+
+.settings-form-heading h3,
+.settings-form-heading h4 {
+    margin: 0;
+}
+
+.settings-form-heading p {
+    margin: 0;
+}
+
+.settings-toggle-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+}
+
 .toggle-setting-card {
     padding: 16px 18px;
     border-radius: 18px;
@@ -1935,6 +1964,7 @@ th {
 [data-theme="dark"] .login-kpi-card,
 [data-theme="dark"] .table-shell,
 [data-theme="dark"] .employee-request-card .table-wrap,
+[data-theme="dark"] .settings-form-block,
 [data-theme="dark"] .toggle-setting-card,
 [data-theme="dark"] .sticky-table tr,
 [data-theme="dark"] .recovery-lines-table tr,
@@ -2457,7 +2487,8 @@ th {
 
     .form-grid.two,
     .login-kpi-grid,
-    .stats-grid.fixed-four {
+    .stats-grid.fixed-four,
+    .settings-toggle-grid {
         grid-template-columns: 1fr;
     }
 

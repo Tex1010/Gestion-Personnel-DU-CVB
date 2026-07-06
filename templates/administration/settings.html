@@ -322,15 +322,16 @@
         <article class="card">
             <div class="card-head">
                 <div>
-                    <h2>Roles</h2>
-                    <p class="helper">Ajoutez, modifiez ou supprimez les roles utilises dans la connexion, la creation de compte et les validations.</p>
+                    <h2>Roles et acces</h2>
+                    <p class="helper">Creez des roles plus simplement, puis reglez leur acces a la connexion, a l'administration et aux etapes de validation.</p>
                 </div>
             </div>
             {% if role_editor %}
                 <div class="edit-panel">
                     <div class="card-head">
                         <div>
-                            <h3>Modifier {{ role_editor.label_fr }}</h3>
+                            <h3>Modifier le role {{ role_editor.label_fr }}</h3>
+                            <p class="helper">Retouchez seulement les informations utiles. Les options sont regroupees pour aller plus vite.</p>
                         </div>
                         <a href="{% url 'administration:settings' %}?panel=roles" class="btn-secondary"><i class="bi bi-arrow-left"></i>Annuler</a>
                     </div>
@@ -339,17 +340,7 @@
                         <input type="hidden" name="panel" value="roles">
                         <input type="hidden" name="role_id" value="{{ role_editor.id }}">
                         <input type="hidden" name="update-role" value="1">
-                        <div class="form-grid two">
-                            {% for field in role_form %}
-                                <div>
-                                    {{ field.label_tag }}
-                                    {{ field }}
-                                    {% for error in field.errors %}
-                                        <small class="error-text">{{ error }}</small>
-                                    {% endfor %}
-                                </div>
-                            {% endfor %}
-                        </div>
+                        {% include "administration/includes/role_form_fields.html" %}
                         <button type="submit" class="btn-primary"><i class="bi bi-save2"></i>Enregistrer le role</button>
                     </form>
                 </div>
@@ -358,17 +349,11 @@
                 {% csrf_token %}
                 <input type="hidden" name="panel" value="roles">
                 <input type="hidden" name="save-role" value="1">
-                <div class="form-grid two">
-                    {% for field in role_form %}
-                        <div>
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% for error in field.errors %}
-                                <small class="error-text">{{ error }}</small>
-                            {% endfor %}
-                        </div>
-                    {% endfor %}
+                <div class="settings-form-heading">
+                    <h3>Ajouter un role</h3>
+                    <p class="helper">Utilisez ce formulaire simplifie pour creer un nouveau role sans perdre la logique de validation existante.</p>
                 </div>
+                {% include "administration/includes/role_form_fields.html" %}
                 <button type="submit" class="btn-primary"><i class="bi bi-plus-lg"></i>Ajouter un role</button>
             </form>
             <div class="table-toolbar" style="margin-top: 20px;">

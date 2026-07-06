@@ -1,0 +1,141 @@
+<div class="settings-form-block">
+    <div class="settings-form-heading">
+        <h4>Informations generales</h4>
+        <p class="helper">Renseignez le nom du role, son code interne, l'espace d'acces et son ordre d'affichage.</p>
+    </div>
+    <div class="form-grid two">
+        <div>
+            {{ role_form.label_fr.label_tag }}
+            {{ role_form.label_fr }}
+            {% if role_form.label_fr.help_text %}<small class="helper">{{ role_form.label_fr.help_text }}</small>{% endif %}
+            {% for error in role_form.label_fr.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div>
+            {{ role_form.code.label_tag }}
+            {{ role_form.code }}
+            {% if role_form.code.help_text %}<small class="helper">{{ role_form.code.help_text }}</small>{% endif %}
+            {% for error in role_form.code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div>
+            {{ role_form.portal.label_tag }}
+            {{ role_form.portal }}
+            {% if role_form.portal.help_text %}<small class="helper">{{ role_form.portal.help_text }}</small>{% endif %}
+            {% for error in role_form.portal.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div>
+            {{ role_form.order.label_tag }}
+            {{ role_form.order }}
+            {% if role_form.order.help_text %}<small class="helper">{{ role_form.order.help_text }}</small>{% endif %}
+            {% for error in role_form.order.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="settings-form-block">
+    <div class="settings-form-heading">
+        <h4>Traductions</h4>
+        <p class="helper">Gardez le francais comme libelle principal. Les autres langues restent facultatives.</p>
+    </div>
+    <div class="form-grid two">
+        <div>
+            {{ role_form.label_en.label_tag }}
+            {{ role_form.label_en }}
+            {% if role_form.label_en.help_text %}<small class="helper">{{ role_form.label_en.help_text }}</small>{% endif %}
+            {% for error in role_form.label_en.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div>
+            {{ role_form.label_mg.label_tag }}
+            {{ role_form.label_mg }}
+            {% if role_form.label_mg.help_text %}<small class="helper">{{ role_form.label_mg.help_text }}</small>{% endif %}
+            {% for error in role_form.label_mg.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="settings-form-block">
+    <div class="settings-form-heading">
+        <h4>Options du role</h4>
+        <p class="helper">Activez seulement les options utiles pour ce role.</p>
+    </div>
+    <div class="settings-toggle-grid">
+        <div class="toggle-setting-card">
+            <label class="toggle-setting-label" for="{{ role_form.show_in_login.id_for_label }}">
+                <span>
+                    <strong>{{ role_form.show_in_login.label }}</strong>
+                    <small class="helper">{{ role_form.show_in_login.help_text }}</small>
+                </span>
+                {{ role_form.show_in_login }}
+            </label>
+            {% for error in role_form.show_in_login.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="toggle-setting-card">
+            <label class="toggle-setting-label" for="{{ role_form.is_active.id_for_label }}">
+                <span>
+                    <strong>{{ role_form.is_active.label }}</strong>
+                    <small class="helper">{{ role_form.is_active.help_text }}</small>
+                </span>
+                {{ role_form.is_active }}
+            </label>
+            {% for error in role_form.is_active.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="toggle-setting-card">
+            <label class="toggle-setting-label" for="{{ role_form.is_department_scoped.id_for_label }}">
+                <span>
+                    <strong>{{ role_form.is_department_scoped.label }}</strong>
+                    <small class="helper">{{ role_form.is_department_scoped.help_text }}</small>
+                </span>
+                {{ role_form.is_department_scoped }}
+            </label>
+            {% for error in role_form.is_department_scoped.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+    </div>
+</div>
+
+<div class="settings-form-block">
+    <div class="settings-form-heading">
+        <h4>Validations et administration</h4>
+        <p class="helper">Definissez clairement ce que ce role peut valider ou administrer.</p>
+    </div>
+    <div class="settings-toggle-grid">
+        <div class="toggle-setting-card">
+            <label class="toggle-setting-label" for="{{ role_form.can_manage_settings.id_for_label }}">
+                <span>
+                    <strong>{{ role_form.can_manage_settings.label }}</strong>
+                    <small class="helper">{{ role_form.can_manage_settings.help_text }}</small>
+                </span>
+                {{ role_form.can_manage_settings }}
+            </label>
+            {% for error in role_form.can_manage_settings.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="toggle-setting-card">
+            <label class="toggle-setting-label" for="{{ role_form.can_validate_hierarchy.id_for_label }}">
+                <span>
+                    <strong>{{ role_form.can_validate_hierarchy.label }}</strong>
+                    <small class="helper">{{ role_form.can_validate_hierarchy.help_text }}</small>
+                </span>
+                {{ role_form.can_validate_hierarchy }}
+            </label>
+            {% for error in role_form.can_validate_hierarchy.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="toggle-setting-card">
+            <label class="toggle-setting-label" for="{{ role_form.can_validate_administration.id_for_label }}">
+                <span>
+                    <strong>{{ role_form.can_validate_administration.label }}</strong>
+                    <small class="helper">{{ role_form.can_validate_administration.help_text }}</small>
+                </span>
+                {{ role_form.can_validate_administration }}
+            </label>
+            {% for error in role_form.can_validate_administration.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+        <div class="toggle-setting-card">
+            <label class="toggle-setting-label" for="{{ role_form.can_validate_direction.id_for_label }}">
+                <span>
+                    <strong>{{ role_form.can_validate_direction.label }}</strong>
+                    <small class="helper">{{ role_form.can_validate_direction.help_text }}</small>
+                </span>
+                {{ role_form.can_validate_direction }}
+            </label>
+            {% for error in role_form.can_validate_direction.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+        </div>
+    </div>
+</div>

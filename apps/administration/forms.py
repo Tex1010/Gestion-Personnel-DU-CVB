@@ -159,6 +159,64 @@ class DepartmentForm(forms.ModelForm):
 
 
 class RoleForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        labels = {
+            "code": "Code interne",
+            "label_fr": "Libelle en francais",
+            "label_en": "Libelle en anglais",
+            "label_mg": "Libelle en malgache",
+            "portal": "Espace d'acces",
+            "is_department_scoped": "Limiter au departement",
+            "can_manage_settings": "Acces aux parametres",
+            "can_validate_hierarchy": "Validation chef hierarchique",
+            "can_validate_administration": "Validation administration",
+            "can_validate_direction": "Validation direction",
+            "show_in_login": "Visible a la connexion",
+            "is_active": "Role actif",
+            "order": "Ordre d'affichage",
+        }
+        help_texts = {
+            "code": "Identifiant technique unique du role. Utilisez un mot simple, sans espace.",
+            "label_fr": "Nom affiche par defaut dans l'application.",
+            "label_en": "Optionnel. Utilise pour les affichages en anglais.",
+            "label_mg": "Optionnel. Utilise pour les affichages en malgache.",
+            "portal": "Choisissez l'espace dans lequel ce role sera utilise.",
+            "is_department_scoped": "Activez cette option si ce role ne doit voir ou traiter que son departement.",
+            "can_manage_settings": "Autorise l'acces au panneau Parametres.",
+            "can_validate_hierarchy": "Permet de valider a l'etape chef hierarchique.",
+            "can_validate_administration": "Permet de valider a l'etape administration.",
+            "can_validate_direction": "Permet de valider a l'etape direction.",
+            "show_in_login": "Affiche ce role dans l'ecran de connexion.",
+            "is_active": "Desactivez pour masquer le role sans le supprimer.",
+            "order": "Plus la valeur est petite, plus le role apparait en haut.",
+        }
+        placeholders = {
+            "code": "Ex: chef-hierarchique",
+            "label_fr": "Ex: Chef hierarchique",
+            "label_en": "Ex: Line manager",
+            "label_mg": "Ex: Tompon'andraikitra mivantana",
+            "order": "0",
+        }
+
+        for field_name, label in labels.items():
+            if field_name in self.fields:
+                self.fields[field_name].label = label
+
+        for field_name, help_text in help_texts.items():
+            if field_name in self.fields:
+                self.fields[field_name].help_text = help_text
+
+        for field_name, placeholder in placeholders.items():
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs["placeholder"] = placeholder
+
+        if "portal" in self.fields:
+            self.fields["portal"].choices = [
+                (Role.PORTAL_EMPLOYEE, "Employe"),
+                (Role.PORTAL_ADMIN, "Administration"),
+            ]
+
     class Meta:
         model = Role
         fields = [
