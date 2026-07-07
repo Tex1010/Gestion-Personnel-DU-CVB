@@ -14,6 +14,7 @@ class StaffRequest(models.Model):
     STATUS_SUBMITTED = "submitted"
     STATUS_APPROVED = "approved"
     STATUS_REJECTED = "rejected"
+    STATUS_CANCELLED = "cancelled"
 
     APPROVAL_HIERARCHY = "hierarchy"
     APPROVAL_ADMINISTRATION = "administration"
@@ -30,6 +31,7 @@ class StaffRequest(models.Model):
         (STATUS_SUBMITTED, "Soumise"),
         (STATUS_APPROVED, "Approuvee"),
         (STATUS_REJECTED, "Rejetee"),
+        (STATUS_CANCELLED, "Annulee"),
     ]
     APPROVAL_STAGE_CHOICES = [
         (APPROVAL_HIERARCHY, "Chef hierarchique"),
@@ -120,6 +122,8 @@ class StaffRequest(models.Model):
     def employee_simple_status_label(self):
         if self.status == self.STATUS_REJECTED:
             return "Refusee"
+        if self.status == self.STATUS_CANCELLED:
+            return "Annulee"
         if self.status == self.STATUS_APPROVED or self.approval_stage == self.APPROVAL_COMPLETED:
             return "Approuvee"
         return "En attente"
@@ -130,6 +134,8 @@ class StaffRequest(models.Model):
             return "approved"
         if self.employee_simple_status_label == "Refusee":
             return "rejected"
+        if self.employee_simple_status_label == "Annulee":
+            return "cancelled"
         return "stage-pending"
 
     def _approval_status_for_stage(self, stage):

@@ -886,6 +886,30 @@ def _apply_request_balance(request_item):
     return True, "La demande a ete approuvee."
 
 
+def _restore_request_balance_for_cancellation(request_item):
+    profile = request_item.employee
+    amount = request_item.total_days or Decimal("0.0")
+
+    if request_item.request_type == StaffRequest.TYPE_LEAVE:
+        profile.leave_balance += amount
+        profile.save(update_fields=["leave_balance", "updated_at"])
+        return True, "Le solde de conge a ete restaure."
+
+    if request_item.request_type == StaffRequest.TYPE_ABSENCE:
+        profile.recovery_balance += amount
+        profile.save(update_fields=["recovery_balance", "updated_at"])
+        return True, "Le solde de recuperation a ete restaure."
+
+    if request_item.request_type == StaffRequest.TYPE_RECOVERY:
+        if profile.recovery_balance < amount:
+            return False, "Impossible d'annuler cette recuperation approuvee car son solde a deja ete utilise."
+        profile.recovery_balance -= amount
+        profile.save(update_fields=["recovery_balance", "updated_at"])
+        return True, "Le solde de recuperation a ete ajuste."
+
+    return True, ""
+
+
 @login_required
 @approval_required
 def dashboard_view(request):
@@ -1028,7 +1052,7 @@ def request_action_view(request, request_id, action):
         StaffRequest.objects.select_related("employee", "employee__user"),
         pk=request_id,
     )
-    if request_item.status != StaffRequest.STATUS_SUBMITTED:
+    if action != "cancel" and request_item.status != StaffRequest.STATUS_SUBMITTED:
         messages.error(request, "Cette demande a deja ete traitee.")
         return redirect(_requests_redirect(show_history=True))
 
@@ -1042,6 +1066,37 @@ def request_action_view(request, request_id, action):
     is_admin = bool(current_profile and (current_profile.can_manage_settings or current_profile.can_validate_administration))
     if not _is_request_in_scope(request_item, current_profile):
         messages.error(request, "Cette demande n'est pas disponible dans votre perimetre de validation.")
+        return redirect(_requests_redirect(show_history=True))
+
+    if action == "cancel":
+        if not (is_admin or is_direction):
+            messages.error(request, "Impossible : seuls l'administration ou la direction peuvent annuler cette demande.")
+            return redirect(_requests_redirect(show_history=True))
+        if request_item.status != StaffRequest.STATUS_APPROVED:
+            messages.error(request, "Cette demande n'est pas approuvee et ne peut pas etre annulee.")
+            return redirect(_requests_redirect(show_history=True))
+        success, balance_message = _restore_request_balance_for_cancellation(request_item)
+        if not success:
+            messages.error(request, balance_message)
+            return redirect(_requests_redirect(show_history=True))
+        request_item.status = StaffRequest.STATUS_CANCELLED
+        request_item.approval_stage = StaffRequest.APPROVAL_COMPLETED
+        request_item.admin_comment = comment or request_item.admin_comment
+        request_item.save(update_fields=[
+            "status",
+            "approval_stage",
+            "admin_comment",
+            "updated_at",
+        ])
+        RequestActionHistory.objects.create(
+            request=request_item,
+            actor=request.user,
+            action=RequestActionHistory.ACTION_REJECTED,
+            previous_status=previous_status,
+            new_status=request_item.status,
+            comment=comment or "Annulation par l'administration",
+        )
+        messages.success(request, "La demande a ete annulee." + (f" {balance_message}" if balance_message else ""))
         return redirect(_requests_redirect(show_history=True))
 
     if action == "reject":

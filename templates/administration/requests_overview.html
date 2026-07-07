@@ -117,6 +117,7 @@
                                 <th>Direction</th>
                                 <th>Statut final</th>
                                 <th>Commentaire</th>
+                                <th>Annuler</th>
                                 <th>Supprimer</th>
                             </tr>
                         </thead>
@@ -143,6 +144,18 @@
                                         <span class="badge {{ item.request.status }}">{{ item.request.status_label }}</span>
                                     </td>
                                     <td data-label="Commentaire">{{ item.request.admin_comment|default:"-" }}</td>
+                                    <td data-label="Annuler">
+                                        {% if item.request.status == "approved" %}
+                                            <form method="post" action="{% url 'administration:request_action' item.request.id 'cancel' %}" class="inline-action-form">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Annuler cette demande" data-confirm-message="Cette demande approuvee sera marquee comme annulee et son solde sera restaure." data-confirm-label="Oui, annuler" data-confirm-class="btn-danger" title="Annuler">
+                                                    <i class="bi bi-x-circle"></i>
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
                                     <td data-label="Supprimer">
                                         {% if request.user.profile.can_manage_settings %}
                                             <form method="post" action="{% url 'administration:request_history_delete' item.request.id %}" class="inline-action-form">

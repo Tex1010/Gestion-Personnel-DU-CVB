@@ -186,6 +186,31 @@ class AdministrationViewsTests(TestCase):
         self.assertEqual(staff_request.approval_stage, StaffRequest.APPROVAL_DIRECTION)
         self.assertEqual(self.employee.profile.recovery_balance, Decimal("6.0"))
 
+    def test_admin_can_cancel_approved_request_and_restore_balance(self):
+        staff_request = StaffRequest.objects.create(
+            employee=self.employee.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_APPROVED,
+            approval_stage=StaffRequest.APPROVAL_COMPLETED,
+            total_days=Decimal("2.0"),
+            reason="Conge annuel",
+            admin_comment="Deja approuvee.",
+        )
+        self.employee.profile.leave_balance = Decimal("8.0")
+        self.employee.profile.save(update_fields=["leave_balance", "updated_at"])
+
+        response = self.client.post(
+            reverse("administration:request_action", args=[staff_request.id, "cancel"]),
+            follow=True,
+        )
+
+        staff_request.refresh_from_db()
+        self.employee.profile.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(staff_request.status, StaffRequest.STATUS_CANCELLED)
+        self.assertEqual(self.employee.profile.leave_balance, Decimal("10.0"))
+
     def test_request_history_groups_multiple_actions_on_single_row(self):
         staff_request = StaffRequest.objects.create(
             employee=self.employee.profile,
