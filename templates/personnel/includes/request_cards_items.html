@@ -44,7 +44,7 @@
                 data-bs-target="#employeeActionModal"
                 data-print-url="{% url 'requests_management:print' item.id %}"
                 data-png-url="{% url 'requests_management:print' item.id %}?download=png"
-                data-email="{{ branding.email|default:'centrevalbio@gmail.com' }}"
+                data-email="{{ branding_email|default:'centrevalbio@gmail.com' }}"
                 data-delete-url="{% url 'requests_management:delete' item.id %}"
                 data-delete-title="{{ delete_title }}"
                 data-delete-message="{{ delete_message }}"

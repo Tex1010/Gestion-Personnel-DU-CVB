@@ -7,12 +7,20 @@ from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
 
 from apps.accounts.utils import get_user_profile, normalize_portal_role
+from apps.administration.models import LoginBranding
 from apps.personnel.models import Role
 from apps.requests_management.models import StaffRequest
 
 
 def _employee_request_queryset(profile):
     return profile.requests.prefetch_related("recovery_lines").order_by("-created_at")
+
+
+def _get_branding_email():
+    branding = LoginBranding.objects.first()
+    if not branding:
+        return ""
+    return (branding.email or "").strip()
 
 
 def _employee_dashboard_payload(profile):
@@ -58,6 +66,7 @@ def dashboard_view(request):
         "absence_requests": payload["absence_requests"],
         "recovery_requests": payload["recovery_requests"],
         "leave_requests": payload["leave_requests"],
+        "branding_email": _get_branding_email(),
         "submitted_count": payload["submitted_count"],
         "approved_count": payload["approved_count"],
         "rejected_count": payload["rejected_count"],
@@ -85,6 +94,7 @@ def dashboard_data_view(request):
         "absence_requests": payload["absence_requests"],
         "recovery_requests": payload["recovery_requests"],
         "leave_requests": payload["leave_requests"],
+        "branding_email": _get_branding_email(),
     }
     return JsonResponse(
         {

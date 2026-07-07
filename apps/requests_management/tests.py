@@ -2,19 +2,37 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
 
-from apps.personnel.models import Department, EmployeeProfile
+from apps.administration.models import LoginBranding
+from apps.personnel.models import Department, EmployeeProfile, Role
 from apps.requests_management.models import StaffRequest
 
 
 class RequestsTests(TestCase):
     def setUp(self):
+        self.employee_role = Role.objects.create(
+            code=EmployeeProfile.ROLE_USER,
+            label_fr="Employe",
+            portal=Role.PORTAL_EMPLOYEE,
+        )
+        self.hierarchical_role = Role.objects.create(
+            code=EmployeeProfile.ROLE_HIERARCHICAL,
+            label_fr="Chef hierarchique",
+            portal=Role.PORTAL_ADMIN,
+            can_validate_hierarchy=True,
+        )
+        self.direction_role = Role.objects.create(
+            code=EmployeeProfile.ROLE_DIRECTION,
+            label_fr="Direction",
+            portal=Role.PORTAL_ADMIN,
+            can_validate_direction=True,
+        )
         self.user = User.objects.create_user(
             username="agent",
             password="TestPass123!",
             first_name="Mamy",
             last_name="Agent",
         )
-        self.user.profile.role = EmployeeProfile.ROLE_USER
+        self.user.profile.role = self.employee_role
         self.user.profile.leave_balance = 10
         self.user.profile.recovery_balance = 4
         self.user.profile.save()
@@ -119,7 +137,7 @@ class RequestsTests(TestCase):
         self.user.profile.save()
         approver = User.objects.create_user(username="chef", password="TestPass123!")
         approver_profile = approver.profile
-        approver_profile.role = EmployeeProfile.ROLE_HIERARCHICAL
+        approver_profile.role = self.hierarchical_role
         approver_profile.department = department
         approver_profile.save()
         self.client.logout()
@@ -157,7 +175,7 @@ class RequestsTests(TestCase):
         )
         direction_user = User.objects.create_user(username="direction", password="TestPass123!")
         direction_profile = direction_user.profile
-        direction_profile.role = EmployeeProfile.ROLE_DIRECTION
+        direction_profile.role = self.direction_role
         direction_profile.save()
         self.client.logout()
         self.client.login(username="direction", password="TestPass123!")
@@ -230,3 +248,38 @@ class RequestsTests(TestCase):
             f"{reverse('requests_management:print', args=[request_item.id])}?download=1",
         )
         self.assertContains(response, reverse("requests_management:delete", args=[request_item.id]))
+
+    def test_employee_dashboard_email_action_uses_admin_branding_email(self):
+        LoginBranding.objects.create(email="direction@example.com")
+        request_item = StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_ABSENCE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_HIERARCHY,
+            total_days=1,
+            remaining_days_for_reason=3,
+            reason="Absence test",
+        )
+
+        response = self.client.get(reverse("personnel:dashboard"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'data-email="direction@example.com"')
+        self.assertContains(response, reverse("requests_management:print", args=[request_item.id]))
+
+    def test_employee_dashboard_refresh_email_action_uses_admin_branding_email(self):
+        LoginBranding.objects.create(email="direction@example.com")
+        StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_RECOVERY,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_HIERARCHY,
+            total_days=1,
+            remaining_days_for_reason=3,
+            reason="Recuperation test",
+        )
+
+        response = self.client.get(reverse("personnel:dashboard_data"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('data-email="direction@example.com"', response.json()["recovery_requests_html"])
