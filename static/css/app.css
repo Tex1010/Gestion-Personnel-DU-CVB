@@ -893,6 +893,9 @@ textarea:focus {
     overflow-x: auto;
     max-width: 100%;
     -webkit-overflow-scrolling: touch;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
 }
 
 .recovery-lines-table-wrapper {
@@ -985,6 +988,9 @@ textarea:focus {
     overflow: hidden;
     background: rgba(255, 255, 255, 0.72);
     backdrop-filter: blur(8px);
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
 }
 
 .table-shell-dashboard .sticky-table {
@@ -995,11 +1001,17 @@ textarea:focus {
     overflow: auto;
     max-height: 420px;
     max-width: 100%;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
 }
 
 table {
     width: 100%;
     border-collapse: collapse;
+    overflow-wrap: normal;
+    word-break: normal;
+    hyphens: none;
 }
 
 th,
