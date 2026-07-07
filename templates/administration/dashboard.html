@@ -223,6 +223,11 @@
                 recoveryBalanceChartInstance.data.datasets[0].data = data.recovery_chart_values;
                 recoveryBalanceChartInstance.update();
             }
+            const employeesTable = document.getElementById("admin-employees-table");
+            const employeesBody = employeesTable ? employeesTable.querySelector("tbody") : null;
+            if (employeesBody && typeof data.employees_rows_html === "string") {
+                employeesBody.innerHTML = data.employees_rows_html;
+            }
             window.traeI18n?.apply?.();
         } catch (error) {
             return;

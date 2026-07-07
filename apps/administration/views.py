@@ -660,7 +660,7 @@ def _build_admin_table_export_response(current_profile, table_key, search_term="
         return _build_excel_response("soldes-employes.xlsx", "Soldes", headers, rows)
 
     if table_key == "pending_requests":
-        requests = StaffRequest.objects.select_related("employee", "employee__user")
+        requests = StaffRequest.objects.select_related("employee", "employee__user").prefetch_related("recovery_lines")
         requests = _scoped_request_queryset(requests, current_profile, actionable_only=True)
         requests = requests.order_by("-created_at")
         requests = _filter_items_for_search(requests, search_term, _request_table_search_values)
@@ -682,7 +682,7 @@ def _build_admin_table_export_response(current_profile, table_key, search_term="
 
     if table_key == "accounts":
         employees = (
-            EmployeeProfile.objects.select_related("user", "department")
+            EmployeeProfile.objects.select_related("user", "department", "role", "contract_type")
             .exclude(user__username="cvbadmin")
             .order_by("user__first_name", "user__last_name", "user__username")
         )
@@ -958,7 +958,7 @@ def requests_overview_data_view(request):
 @approval_required
 def export_requests_view(request, export_format):
     current_profile = getattr(request.user, "profile", None)
-    requests = StaffRequest.objects.select_related("employee", "employee__user")
+    requests = StaffRequest.objects.select_related("employee", "employee__user").prefetch_related("recovery_lines")
     requests = _scoped_request_queryset(requests, current_profile, actionable_only=False)
     requests = requests.order_by("-created_at")
     requests = _filter_items_for_search(requests, request.GET.get("search", ""), _request_table_search_values)
@@ -1196,7 +1196,7 @@ def settings_view(request):
     branding = LoginBranding.objects.first() or LoginBranding.objects.create()
     panel = request.GET.get("panel", "create")
     show_history = request.GET.get("show_history") == "1"
-    all_employees = EmployeeProfile.objects.select_related("user", "department")
+    all_employees = EmployeeProfile.objects.select_related("user", "department", "role", "contract_type")
     employees = all_employees.exclude(user__username="cvbadmin")
     departments = Department.objects.filter(is_active=True).order_by("name")
     projects = Project.objects.order_by("name")

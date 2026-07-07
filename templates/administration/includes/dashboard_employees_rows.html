@@ -1,0 +1,12 @@
+{% for employee in employees %}
+    <tr>
+        <td data-label="Employe">{{ employee.display_name }}</td>
+        <td data-label="Poste">{{ employee.position|default:"-" }}</td>
+        <td data-label="Conge">{{ employee.leave_balance }}</td>
+        <td data-label="Recuperation">{{ employee.recovery_balance }}</td>
+    </tr>
+{% empty %}
+    <tr>
+        <td colspan="4">Aucun employe enregistre.</td>
+    </tr>
+{% endfor %}

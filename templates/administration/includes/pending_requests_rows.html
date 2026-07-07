@@ -1,0 +1,27 @@
+{% for item in requests %}
+    <tr>
+        <td data-label="Employe">{{ item.employee.display_name }}</td>
+        <td data-label="Type">{{ item.type_label }}</td>
+        <td data-label="Periode / date">{{ item.start_date|default:item.created_at|date:"d/m/Y" }}{% if item.end_date %} - {{ item.end_date|date:"d/m/Y" }}{% endif %}</td>
+        <td data-label="Nombre de jours">{{ item.total_days }}</td>
+        <td data-label="Motif">{{ item.reason|default:item.project_name|truncatechars:70 }}</td>
+        <td data-label="Etape"><span class="badge approved">{{ item.get_approval_stage_display }}</span></td>
+        <td data-label="Commentaire">
+            <textarea name="admin_comment" rows="2" placeholder="Commentaire optionnel" form="request-review-{{ item.id }}">{{ item.admin_comment }}</textarea>
+        </td>
+        <td data-label="Actions">
+            <form method="post" action="{% url 'administration:request_action' item.id 'approve' %}" class="row-actions" id="request-review-{{ item.id }}">
+                {% csrf_token %}
+                <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Accepter cette demande" data-confirm-message="Cette demande sera approuvee et le solde sera mis a jour si necessaire." data-confirm-label="Oui, accepter" data-confirm-class="btn-primary"><i class="bi bi-check2-circle"></i></button>
+                <button type="submit" formaction="{% url 'administration:request_action' item.id 'reject' %}" class="btn-danger" data-confirm-action="1" data-confirm-title="Refuser cette demande" data-confirm-message="Cette demande sera marquee comme rejetee dans l'historique." data-confirm-label="Oui, refuser" data-confirm-class="btn-danger"><i class="bi bi-x-circle"></i></button>
+            </form>
+        </td>
+        <td data-label="Statut">
+            <span class="badge {{ item.status }}">{{ item.status_label }}</span>
+        </td>
+    </tr>
+{% empty %}
+    <tr>
+        <td colspan="9">Aucune demande en attente pour le moment.</td>
+    </tr>
+{% endfor %}

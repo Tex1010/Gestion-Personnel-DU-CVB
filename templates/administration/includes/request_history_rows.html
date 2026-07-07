@@ -1,0 +1,38 @@
+{% for item in history_requests %}
+    <tr>
+        <td data-label="Date">{{ item.request.updated_at|date:"d/m/Y H:i" }}</td>
+        <td data-label="Employe">{{ item.request.employee.display_name }}</td>
+        <td data-label="Type">{{ item.request.type_label }}</td>
+        <td data-label="Nombre de jours">{{ item.request.total_days }}</td>
+        <td data-label="Chef hierarchique">
+            <span class="badge {{ item.stage_statuses.0.badge_class }}">{{ item.stage_statuses.0.status }}</span>
+            <div class="helper">{{ item.stage_statuses.0.username }}</div>
+        </td>
+        <td data-label="Administration">
+            <span class="badge {{ item.stage_statuses.1.badge_class }}">{{ item.stage_statuses.1.status }}</span>
+            <div class="helper">{{ item.stage_statuses.1.username }}</div>
+        </td>
+        <td data-label="Direction">
+            <span class="badge {{ item.stage_statuses.2.badge_class }}">{{ item.stage_statuses.2.status }}</span>
+            <div class="helper">{{ item.stage_statuses.2.username }}</div>
+        </td>
+        <td data-label="Statut final">
+            <span class="badge {{ item.request.status }}">{{ item.request.status_label }}</span>
+        </td>
+        <td data-label="Commentaire">{{ item.request.admin_comment|default:"-" }}</td>
+        <td data-label="Supprimer">
+            {% if request.user.profile.can_manage_settings %}
+                <form method="post" action="{% url 'administration:request_history_delete' item.request.id %}" class="inline-action-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer cet historique" data-confirm-message="Toutes les entrees d'historique de cette demande seront retirees." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger"><i class="bi bi-trash3"></i></button>
+                </form>
+            {% else %}
+                -
+            {% endif %}
+        </td>
+    </tr>
+{% empty %}
+    <tr>
+        <td colspan="10">Aucune action enregistree.</td>
+    </tr>
+{% endfor %}

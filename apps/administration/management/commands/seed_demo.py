@@ -1,8 +1,9 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth.models import User
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 from apps.accounts.utils import ensure_reference_data, get_contract_type_by_code, get_role_by_code
 from apps.administration.models import LoginBranding
@@ -14,6 +15,8 @@ class Command(BaseCommand):
     help = "Charge des donnees de demonstration pour l'application Centre ValBio."
 
     def handle(self, *args, **options):
+        if not settings.DEBUG:
+            raise CommandError("Cette commande est reservee a l'environnement de developpement (DEBUG=True).")
         ensure_reference_data()
         branding, _ = LoginBranding.objects.get_or_create(
             id=1,
