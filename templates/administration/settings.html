@@ -25,22 +25,128 @@
     {% if panel == "create" %}
         <article class="card">
             <div class="card-head">
-                <h2>Creer un compte employe</h2>
+                <div>
+                    <h2>Creer un compte employe</h2>
+                    <p class="helper">Renseignez les informations de connexion, le profil RH et les droits d'acces dans un ordre simple et clair.</p>
+                </div>
             </div>
             <form method="post" enctype="multipart/form-data" class="stack-form">
                 {% csrf_token %}
                 <input type="hidden" name="panel" value="create">
                 <input type="hidden" name="create-account" value="1">
-                <div class="form-grid two">
-                    {% for field in account_form %}
+
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Connexion</h3>
+                        <p class="helper">Ces informations servent a l'ouverture de session de l'employe.</p>
+                    </div>
+                    <div class="form-grid two">
                         <div>
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% for error in field.errors %}
-                                <small class="error-text">{{ error }}</small>
-                            {% endfor %}
+                            {{ account_form.username.label_tag }}
+                            {{ account_form.username }}
+                            {% if account_form.username.help_text %}<small class="helper">{{ account_form.username.help_text }}</small>{% endif %}
+                            {% for error in account_form.username.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
-                    {% endfor %}
+                        <div>
+                            {{ account_form.password.label_tag }}
+                            {{ account_form.password }}
+                            {% if account_form.password.help_text %}<small class="helper">{{ account_form.password.help_text }}</small>{% endif %}
+                            {% for error in account_form.password.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Identite</h3>
+                        <p class="helper">Completer l'identite de base rend les tableaux et les historiques plus faciles a lire.</p>
+                    </div>
+                    <div class="form-grid two">
+                        <div>
+                            {{ account_form.first_name.label_tag }}
+                            {{ account_form.first_name }}
+                            {% if account_form.first_name.help_text %}<small class="helper">{{ account_form.first_name.help_text }}</small>{% endif %}
+                            {% for error in account_form.first_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ account_form.last_name.label_tag }}
+                            {{ account_form.last_name }}
+                            {% if account_form.last_name.help_text %}<small class="helper">{{ account_form.last_name.help_text }}</small>{% endif %}
+                            {% for error in account_form.last_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ account_form.email.label_tag }}
+                            {{ account_form.email }}
+                            {% if account_form.email.help_text %}<small class="helper">{{ account_form.email.help_text }}</small>{% endif %}
+                            {% for error in account_form.email.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ account_form.photo.label_tag }}
+                            {{ account_form.photo }}
+                            {% if account_form.photo.help_text %}<small class="helper">{{ account_form.photo.help_text }}</small>{% endif %}
+                            {% for error in account_form.photo.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Informations RH</h3>
+                        <p class="helper">Associez le compte au poste, au matricule et a la structure adaptee.</p>
+                    </div>
+                    <div class="form-grid two">
+                        <div>
+                            {{ account_form.employee_number.label_tag }}
+                            {{ account_form.employee_number }}
+                            {% if account_form.employee_number.help_text %}<small class="helper">{{ account_form.employee_number.help_text }}</small>{% endif %}
+                            {% for error in account_form.employee_number.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ account_form.position.label_tag }}
+                            {{ account_form.position }}
+                            {% if account_form.position.help_text %}<small class="helper">{{ account_form.position.help_text }}</small>{% endif %}
+                            {% for error in account_form.position.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ account_form.contract_type.label_tag }}
+                            {{ account_form.contract_type }}
+                            {% if account_form.contract_type.help_text %}<small class="helper">{{ account_form.contract_type.help_text }}</small>{% endif %}
+                            {% for error in account_form.contract_type.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ account_form.department.label_tag }}
+                            {{ account_form.department }}
+                            {% if account_form.department.help_text %}<small class="helper">{{ account_form.department.help_text }}</small>{% endif %}
+                            {% for error in account_form.department.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Acces et soldes</h3>
+                        <p class="helper">Definissez le role applique et les soldes initiaux disponibles pour ce compte.</p>
+                    </div>
+                    <div class="form-grid two">
+                        <div>
+                            {{ account_form.role.label_tag }}
+                            {{ account_form.role }}
+                            {% if account_form.role.help_text %}<small class="helper">{{ account_form.role.help_text }}</small>{% endif %}
+                            {% for error in account_form.role.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ account_form.leave_balance.label_tag }}
+                            {{ account_form.leave_balance }}
+                            {% if account_form.leave_balance.help_text %}<small class="helper">{{ account_form.leave_balance.help_text }}</small>{% endif %}
+                            {% for error in account_form.leave_balance.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ account_form.recovery_balance.label_tag }}
+                            {{ account_form.recovery_balance }}
+                            {% if account_form.recovery_balance.help_text %}<small class="helper">{{ account_form.recovery_balance.help_text }}</small>{% endif %}
+                            {% for error in account_form.recovery_balance.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
                 </div>
                 <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Creer ce compte employe" data-confirm-message="Le nouveau compte sera enregistre et apparaitra dans les comptes existants." data-confirm-label="Oui, creer" data-confirm-class="btn-primary"><i class="bi bi-person-check"></i>Creer le compte</button>
             </form>
@@ -221,7 +327,7 @@
             <div class="card-head">
                 <div>
                     <h2>Departements</h2>
-                    <p class="helper">Ajoutez, modifiez ou supprimez les structures de votre organisme.</p>
+                    <p class="helper">Centralisez vos structures avec une fiche claire: identite du departement, description et statut d'utilisation.</p>
                 </div>
             </div>
             {% if department_editor %}
@@ -229,6 +335,7 @@
                     <div class="card-head">
                         <div>
                             <h3>Modifier {{ department_editor.name }}</h3>
+                            <p class="helper">Mettez a jour uniquement les informations necessaires. Le statut permet de masquer un departement sans perdre l'historique.</p>
                         </div>
                         <a href="{% url 'administration:settings' %}?panel=departments" class="btn-secondary"><i class="bi bi-arrow-left"></i>Annuler</a>
                     </div>
@@ -237,16 +344,49 @@
                         <input type="hidden" name="panel" value="departments">
                         <input type="hidden" name="department_id" value="{{ department_editor.id }}">
                         <input type="hidden" name="update-department" value="1">
-                        <div class="form-grid two">
-                            {% for field in department_form %}
+                        <div class="settings-form-block">
+                            <div class="settings-form-heading">
+                                <h4>Informations du departement</h4>
+                                <p class="helper">Nom, code et description permettent d'identifier rapidement la structure.</p>
+                            </div>
+                            <div class="form-grid two">
                                 <div>
-                                    {{ field.label_tag }}
-                                    {{ field }}
-                                    {% for error in field.errors %}
-                                        <small class="error-text">{{ error }}</small>
-                                    {% endfor %}
+                                    {{ department_form.name.label_tag }}
+                                    {{ department_form.name }}
+                                    {% if department_form.name.help_text %}<small class="helper">{{ department_form.name.help_text }}</small>{% endif %}
+                                    {% for error in department_form.name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                                 </div>
-                            {% endfor %}
+                                <div>
+                                    {{ department_form.code.label_tag }}
+                                    {{ department_form.code }}
+                                    {% if department_form.code.help_text %}<small class="helper">{{ department_form.code.help_text }}</small>{% endif %}
+                                    {% for error in department_form.code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                                <div style="grid-column: 1 / -1;">
+                                    {{ department_form.description.label_tag }}
+                                    {{ department_form.description }}
+                                    {% if department_form.description.help_text %}<small class="helper">{{ department_form.description.help_text }}</small>{% endif %}
+                                    {% for error in department_form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-form-block">
+                            <div class="settings-form-heading">
+                                <h4>Statut</h4>
+                                <p class="helper">Activez ou desactivez le departement pour controler sa disponibilite dans les formulaires.</p>
+                            </div>
+                            <div class="settings-toggle-grid">
+                                <div class="toggle-setting-card">
+                                    <label class="toggle-setting-label" for="{{ department_form.is_active.id_for_label }}">
+                                        <span>
+                                            <strong>{{ department_form.is_active.label }}</strong>
+                                            <small class="helper">{{ department_form.is_active.help_text }}</small>
+                                        </span>
+                                        {{ department_form.is_active }}
+                                    </label>
+                                    {% for error in department_form.is_active.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                            </div>
                         </div>
                         <button type="submit" class="btn-primary"><i class="bi bi-save2"></i>Enregistrer le departement</button>
                     </form>
@@ -256,16 +396,51 @@
                 {% csrf_token %}
                 <input type="hidden" name="panel" value="departments">
                 <input type="hidden" name="save-department" value="1">
-                <div class="form-grid two">
-                    {% for field in department_form %}
+                <div class="settings-form-heading">
+                    <h3>Ajouter un departement</h3>
+                    <p class="helper">Creez une nouvelle structure avec des informations propres et faciles a relire.</p>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h4>Informations du departement</h4>
+                    </div>
+                    <div class="form-grid two">
                         <div>
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% for error in field.errors %}
-                                <small class="error-text">{{ error }}</small>
-                            {% endfor %}
+                            {{ department_form.name.label_tag }}
+                            {{ department_form.name }}
+                            {% if department_form.name.help_text %}<small class="helper">{{ department_form.name.help_text }}</small>{% endif %}
+                            {% for error in department_form.name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
-                    {% endfor %}
+                        <div>
+                            {{ department_form.code.label_tag }}
+                            {{ department_form.code }}
+                            {% if department_form.code.help_text %}<small class="helper">{{ department_form.code.help_text }}</small>{% endif %}
+                            {% for error in department_form.code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            {{ department_form.description.label_tag }}
+                            {{ department_form.description }}
+                            {% if department_form.description.help_text %}<small class="helper">{{ department_form.description.help_text }}</small>{% endif %}
+                            {% for error in department_form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h4>Statut</h4>
+                    </div>
+                    <div class="settings-toggle-grid">
+                        <div class="toggle-setting-card">
+                            <label class="toggle-setting-label" for="{{ department_form.is_active.id_for_label }}">
+                                <span>
+                                    <strong>{{ department_form.is_active.label }}</strong>
+                                    <small class="helper">{{ department_form.is_active.help_text }}</small>
+                                </span>
+                                {{ department_form.is_active }}
+                            </label>
+                            {% for error in department_form.is_active.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
                 </div>
                 <button type="submit" class="btn-primary"><i class="bi bi-plus-lg"></i>Ajouter un departement</button>
             </form>
@@ -423,7 +598,7 @@
             <div class="card-head">
                 <div>
                     <h2>Types de contrat</h2>
-                    <p class="helper">Ajoutez, modifiez ou supprimez les types de contrat proposes dans la creation et la mise a jour de compte.</p>
+                    <p class="helper">Organisez clairement les types utilises dans les comptes avec un libelle principal, des traductions et un statut visible.</p>
                 </div>
             </div>
             {% if contract_type_editor %}
@@ -431,6 +606,7 @@
                     <div class="card-head">
                         <div>
                             <h3>Modifier {{ contract_type_editor.label_fr }}</h3>
+                            <p class="helper">Ajustez les informations utiles sans perdre la logique d'affichage des types existants.</p>
                         </div>
                         <a href="{% url 'administration:settings' %}?panel=contract_types" class="btn-secondary"><i class="bi bi-arrow-left"></i>Annuler</a>
                     </div>
@@ -439,16 +615,68 @@
                         <input type="hidden" name="panel" value="contract_types">
                         <input type="hidden" name="contract_type_id" value="{{ contract_type_editor.id }}">
                         <input type="hidden" name="update-contract-type" value="1">
-                        <div class="form-grid two">
-                            {% for field in contract_type_form %}
+                        <div class="settings-form-block">
+                            <div class="settings-form-heading">
+                                <h4>Informations generales</h4>
+                                <p class="helper">Le code, le libelle principal et l'ordre servent au tri et a l'affichage quotidien.</p>
+                            </div>
+                            <div class="form-grid two">
                                 <div>
-                                    {{ field.label_tag }}
-                                    {{ field }}
-                                    {% for error in field.errors %}
-                                        <small class="error-text">{{ error }}</small>
-                                    {% endfor %}
+                                    {{ contract_type_form.label_fr.label_tag }}
+                                    {{ contract_type_form.label_fr }}
+                                    {% if contract_type_form.label_fr.help_text %}<small class="helper">{{ contract_type_form.label_fr.help_text }}</small>{% endif %}
+                                    {% for error in contract_type_form.label_fr.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                                 </div>
-                            {% endfor %}
+                                <div>
+                                    {{ contract_type_form.code.label_tag }}
+                                    {{ contract_type_form.code }}
+                                    {% if contract_type_form.code.help_text %}<small class="helper">{{ contract_type_form.code.help_text }}</small>{% endif %}
+                                    {% for error in contract_type_form.code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                                <div>
+                                    {{ contract_type_form.order.label_tag }}
+                                    {{ contract_type_form.order }}
+                                    {% if contract_type_form.order.help_text %}<small class="helper">{{ contract_type_form.order.help_text }}</small>{% endif %}
+                                    {% for error in contract_type_form.order.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-form-block">
+                            <div class="settings-form-heading">
+                                <h4>Traductions</h4>
+                                <p class="helper">Gardez le francais comme reference. Les autres langues restent facultatives.</p>
+                            </div>
+                            <div class="form-grid two">
+                                <div>
+                                    {{ contract_type_form.label_en.label_tag }}
+                                    {{ contract_type_form.label_en }}
+                                    {% if contract_type_form.label_en.help_text %}<small class="helper">{{ contract_type_form.label_en.help_text }}</small>{% endif %}
+                                    {% for error in contract_type_form.label_en.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                                <div>
+                                    {{ contract_type_form.label_mg.label_tag }}
+                                    {{ contract_type_form.label_mg }}
+                                    {% if contract_type_form.label_mg.help_text %}<small class="helper">{{ contract_type_form.label_mg.help_text }}</small>{% endif %}
+                                    {% for error in contract_type_form.label_mg.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-form-block">
+                            <div class="settings-form-heading">
+                                <h4>Statut</h4>
+                            </div>
+                            <div class="settings-toggle-grid">
+                                <div class="toggle-setting-card">
+                                    <label class="toggle-setting-label" for="{{ contract_type_form.is_active.id_for_label }}">
+                                        <span>
+                                            <strong>{{ contract_type_form.is_active.label }}</strong>
+                                            <small class="helper">{{ contract_type_form.is_active.help_text }}</small>
+                                        </span>
+                                        {{ contract_type_form.is_active }}
+                                    </label>
+                                    {% for error in contract_type_form.is_active.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                            </div>
                         </div>
                         <button type="submit" class="btn-primary"><i class="bi bi-save2"></i>Enregistrer le type de contrat</button>
                     </form>
@@ -458,16 +686,70 @@
                 {% csrf_token %}
                 <input type="hidden" name="panel" value="contract_types">
                 <input type="hidden" name="save-contract-type" value="1">
-                <div class="form-grid two">
-                    {% for field in contract_type_form %}
+                <div class="settings-form-heading">
+                    <h3>Ajouter un type de contrat</h3>
+                    <p class="helper">Preparez un type bien nomme, bien classe et facile a reutiliser dans la creation des comptes.</p>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h4>Informations generales</h4>
+                    </div>
+                    <div class="form-grid two">
                         <div>
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% for error in field.errors %}
-                                <small class="error-text">{{ error }}</small>
-                            {% endfor %}
+                            {{ contract_type_form.label_fr.label_tag }}
+                            {{ contract_type_form.label_fr }}
+                            {% if contract_type_form.label_fr.help_text %}<small class="helper">{{ contract_type_form.label_fr.help_text }}</small>{% endif %}
+                            {% for error in contract_type_form.label_fr.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
-                    {% endfor %}
+                        <div>
+                            {{ contract_type_form.code.label_tag }}
+                            {{ contract_type_form.code }}
+                            {% if contract_type_form.code.help_text %}<small class="helper">{{ contract_type_form.code.help_text }}</small>{% endif %}
+                            {% for error in contract_type_form.code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ contract_type_form.order.label_tag }}
+                            {{ contract_type_form.order }}
+                            {% if contract_type_form.order.help_text %}<small class="helper">{{ contract_type_form.order.help_text }}</small>{% endif %}
+                            {% for error in contract_type_form.order.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h4>Traductions</h4>
+                    </div>
+                    <div class="form-grid two">
+                        <div>
+                            {{ contract_type_form.label_en.label_tag }}
+                            {{ contract_type_form.label_en }}
+                            {% if contract_type_form.label_en.help_text %}<small class="helper">{{ contract_type_form.label_en.help_text }}</small>{% endif %}
+                            {% for error in contract_type_form.label_en.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ contract_type_form.label_mg.label_tag }}
+                            {{ contract_type_form.label_mg }}
+                            {% if contract_type_form.label_mg.help_text %}<small class="helper">{{ contract_type_form.label_mg.help_text }}</small>{% endif %}
+                            {% for error in contract_type_form.label_mg.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h4>Statut</h4>
+                    </div>
+                    <div class="settings-toggle-grid">
+                        <div class="toggle-setting-card">
+                            <label class="toggle-setting-label" for="{{ contract_type_form.is_active.id_for_label }}">
+                                <span>
+                                    <strong>{{ contract_type_form.is_active.label }}</strong>
+                                    <small class="helper">{{ contract_type_form.is_active.help_text }}</small>
+                                </span>
+                                {{ contract_type_form.is_active }}
+                            </label>
+                            {% for error in contract_type_form.is_active.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
                 </div>
                 <button type="submit" class="btn-primary"><i class="bi bi-plus-lg"></i>Ajouter un type de contrat</button>
             </form>
@@ -529,7 +811,7 @@
             <div class="card-head">
                 <div>
                     <h2>Projets</h2>
-                    <p class="helper">Ajoutez, modifiez ou supprimez les projets disponibles dans la fiche de recuperation.</p>
+                    <p class="helper">Gardez une liste de projets claire avec un nom explicite, un code de suivi, une description utile et un statut visible.</p>
                 </div>
             </div>
             {% if project_editor %}
@@ -537,6 +819,7 @@
                     <div class="card-head">
                         <div>
                             <h3>Modifier {{ project_editor.name }}</h3>
+                            <p class="helper">Les informations du projet restent centralisees pour les recuperations, exports et filtres.</p>
                         </div>
                         <a href="{% url 'administration:settings' %}?panel=projects" class="btn-secondary"><i class="bi bi-arrow-left"></i>Annuler</a>
                     </div>
@@ -545,16 +828,49 @@
                         <input type="hidden" name="panel" value="projects">
                         <input type="hidden" name="project_id" value="{{ project_editor.id }}">
                         <input type="hidden" name="update-project" value="1">
-                        <div class="form-grid two">
-                            {% for field in project_form %}
+                        <div class="settings-form-block">
+                            <div class="settings-form-heading">
+                                <h4>Informations du projet</h4>
+                                <p class="helper">Le nom, le code et la description permettent d'identifier rapidement le bon projet dans les demandes.</p>
+                            </div>
+                            <div class="form-grid two">
                                 <div>
-                                    {{ field.label_tag }}
-                                    {{ field }}
-                                    {% for error in field.errors %}
-                                        <small class="error-text">{{ error }}</small>
-                                    {% endfor %}
+                                    {{ project_form.name.label_tag }}
+                                    {{ project_form.name }}
+                                    {% if project_form.name.help_text %}<small class="helper">{{ project_form.name.help_text }}</small>{% endif %}
+                                    {% for error in project_form.name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                                 </div>
-                            {% endfor %}
+                                <div>
+                                    {{ project_form.code.label_tag }}
+                                    {{ project_form.code }}
+                                    {% if project_form.code.help_text %}<small class="helper">{{ project_form.code.help_text }}</small>{% endif %}
+                                    {% for error in project_form.code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                                <div style="grid-column: 1 / -1;">
+                                    {{ project_form.description.label_tag }}
+                                    {{ project_form.description }}
+                                    {% if project_form.description.help_text %}<small class="helper">{{ project_form.description.help_text }}</small>{% endif %}
+                                    {% for error in project_form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                            </div>
+                        </div>
+                        <div class="settings-form-block">
+                            <div class="settings-form-heading">
+                                <h4>Statut</h4>
+                                <p class="helper">Un projet inactif disparait des nouvelles selections mais reste visible dans l'historique.</p>
+                            </div>
+                            <div class="settings-toggle-grid">
+                                <div class="toggle-setting-card">
+                                    <label class="toggle-setting-label" for="{{ project_form.is_active.id_for_label }}">
+                                        <span>
+                                            <strong>{{ project_form.is_active.label }}</strong>
+                                            <small class="helper">{{ project_form.is_active.help_text }}</small>
+                                        </span>
+                                        {{ project_form.is_active }}
+                                    </label>
+                                    {% for error in project_form.is_active.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                            </div>
                         </div>
                         <button type="submit" class="btn-primary"><i class="bi bi-save2"></i>Enregistrer le projet</button>
                     </form>
@@ -564,16 +880,51 @@
                 {% csrf_token %}
                 <input type="hidden" name="panel" value="projects">
                 <input type="hidden" name="save-project" value="1">
-                <div class="form-grid two">
-                    {% for field in project_form %}
+                <div class="settings-form-heading">
+                    <h3>Ajouter un projet</h3>
+                    <p class="helper">Creez un projet bien documente pour rendre la saisie des recuperations plus nette et plus fiable.</p>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h4>Informations du projet</h4>
+                    </div>
+                    <div class="form-grid two">
                         <div>
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% for error in field.errors %}
-                                <small class="error-text">{{ error }}</small>
-                            {% endfor %}
+                            {{ project_form.name.label_tag }}
+                            {{ project_form.name }}
+                            {% if project_form.name.help_text %}<small class="helper">{{ project_form.name.help_text }}</small>{% endif %}
+                            {% for error in project_form.name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
-                    {% endfor %}
+                        <div>
+                            {{ project_form.code.label_tag }}
+                            {{ project_form.code }}
+                            {% if project_form.code.help_text %}<small class="helper">{{ project_form.code.help_text }}</small>{% endif %}
+                            {% for error in project_form.code.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            {{ project_form.description.label_tag }}
+                            {{ project_form.description }}
+                            {% if project_form.description.help_text %}<small class="helper">{{ project_form.description.help_text }}</small>{% endif %}
+                            {% for error in project_form.description.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h4>Statut</h4>
+                    </div>
+                    <div class="settings-toggle-grid">
+                        <div class="toggle-setting-card">
+                            <label class="toggle-setting-label" for="{{ project_form.is_active.id_for_label }}">
+                                <span>
+                                    <strong>{{ project_form.is_active.label }}</strong>
+                                    <small class="helper">{{ project_form.is_active.help_text }}</small>
+                                </span>
+                                {{ project_form.is_active }}
+                            </label>
+                            {% for error in project_form.is_active.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
                 </div>
                 <button type="submit" class="btn-primary"><i class="bi bi-plus-lg"></i>Ajouter un projet</button>
             </form>

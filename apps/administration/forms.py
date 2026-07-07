@@ -38,6 +38,41 @@ class EmployeeAccountForm(forms.Form):
         self.profile = profile
         super().__init__(*args, **kwargs)
         ensure_reference_data()
+        help_texts = {
+            "username": "Identifiant unique utilise pour la connexion de l'employe.",
+            "password": "Definissez un mot de passe temporaire que l'employe pourra changer ensuite.",
+            "first_name": "Nom de famille de l'employe.",
+            "last_name": "Prenom de l'employe.",
+            "email": "Optionnel. Utilise pour les notifications et les fiches personnelles.",
+            "employee_number": "Optionnel. Renseignez le matricule interne si disponible.",
+            "position": "Fonction ou poste affiche dans les tableaux et suivis.",
+            "contract_type": "Choisissez un type de contrat actif parmi ceux definis dans les parametres.",
+            "leave_balance": "Solde initial de conge attribue a ce compte.",
+            "recovery_balance": "Solde initial de recuperation attribue a ce compte.",
+            "role": "Determine l'espace d'acces et les permissions de l'employe.",
+            "department": "Optionnel. Permet de rattacher l'employe a une structure existante.",
+            "photo": "Optionnel. Photo de profil affichee dans l'interface.",
+        }
+        placeholders = {
+            "username": "Ex: jrakoto",
+            "password": "Mot de passe temporaire",
+            "first_name": "Ex: Rakoto",
+            "last_name": "Ex: Jean",
+            "email": "Ex: jean.rakoto@centrevalbio.org",
+            "employee_number": "Ex: CVB-024",
+            "position": "Ex: Assistant administratif",
+            "leave_balance": "30",
+            "recovery_balance": "0",
+        }
+
+        for field_name, help_text in help_texts.items():
+            if field_name in self.fields:
+                self.fields[field_name].help_text = help_text
+
+        for field_name, placeholder in placeholders.items():
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs["placeholder"] = placeholder
+
         self.fields["contract_type"].queryset = ContractType.objects.filter(is_active=True).order_by(
             "order", "label_fr"
         )
@@ -153,6 +188,38 @@ class LoginBrandingForm(forms.ModelForm):
 
 
 class DepartmentForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        labels = {
+            "name": "Nom du departement",
+            "code": "Code interne",
+            "description": "Description",
+            "is_active": "Departement actif",
+        }
+        help_texts = {
+            "name": "Nom visible dans les comptes, filtres et tableaux.",
+            "code": "Optionnel. Utilisez un code court pour faciliter le reperage.",
+            "description": "Optionnel. Resume le perimetre ou la mission du departement.",
+            "is_active": "Desactivez pour le retirer des choix sans supprimer l'historique existant.",
+        }
+        placeholders = {
+            "name": "Ex: Administration",
+            "code": "Ex: ADMIN",
+            "description": "Ex: Gestion administrative et support interne",
+        }
+
+        for field_name, label in labels.items():
+            if field_name in self.fields:
+                self.fields[field_name].label = label
+
+        for field_name, help_text in help_texts.items():
+            if field_name in self.fields:
+                self.fields[field_name].help_text = help_text
+
+        for field_name, placeholder in placeholders.items():
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs["placeholder"] = placeholder
+
     class Meta:
         model = Department
         fields = ["name", "code", "description", "is_active"]
@@ -237,6 +304,44 @@ class RoleForm(forms.ModelForm):
 
 
 class ContractTypeForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        labels = {
+            "code": "Code interne",
+            "label_fr": "Libelle en francais",
+            "label_en": "Libelle en anglais",
+            "label_mg": "Libelle en malgache",
+            "is_active": "Type actif",
+            "order": "Ordre d'affichage",
+        }
+        help_texts = {
+            "code": "Identifiant technique unique du type de contrat.",
+            "label_fr": "Libelle principal affiche dans l'application.",
+            "label_en": "Optionnel. Utilise pour l'affichage en anglais.",
+            "label_mg": "Optionnel. Utilise pour l'affichage en malgache.",
+            "is_active": "Desactivez pour masquer ce type dans les formulaires sans le supprimer.",
+            "order": "Plus la valeur est petite, plus le type remonte dans les listes.",
+        }
+        placeholders = {
+            "code": "Ex: consultant",
+            "label_fr": "Ex: Consultant",
+            "label_en": "Ex: Consultant",
+            "label_mg": "Ex: Mpanolotsaina",
+            "order": "0",
+        }
+
+        for field_name, label in labels.items():
+            if field_name in self.fields:
+                self.fields[field_name].label = label
+
+        for field_name, help_text in help_texts.items():
+            if field_name in self.fields:
+                self.fields[field_name].help_text = help_text
+
+        for field_name, placeholder in placeholders.items():
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs["placeholder"] = placeholder
+
     class Meta:
         model = ContractType
         fields = [
@@ -250,6 +355,38 @@ class ContractTypeForm(forms.ModelForm):
 
 
 class ProjectForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        labels = {
+            "name": "Nom du projet",
+            "code": "Code interne",
+            "description": "Description",
+            "is_active": "Projet actif",
+        }
+        help_texts = {
+            "name": "Nom visible dans les demandes de recuperation.",
+            "code": "Optionnel. Utilisez un code court pour les exports et suivis.",
+            "description": "Optionnel. Resume l'objectif ou le contexte du projet.",
+            "is_active": "Desactivez pour retirer le projet des nouvelles demandes sans perdre l'historique.",
+        }
+        placeholders = {
+            "name": "Ex: Projet Biodiversite 2026",
+            "code": "Ex: BIO-2026",
+            "description": "Ex: Suivi des activites de terrain et collecte des donnees",
+        }
+
+        for field_name, label in labels.items():
+            if field_name in self.fields:
+                self.fields[field_name].label = label
+
+        for field_name, help_text in help_texts.items():
+            if field_name in self.fields:
+                self.fields[field_name].help_text = help_text
+
+        for field_name, placeholder in placeholders.items():
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs["placeholder"] = placeholder
+
     class Meta:
         model = Project
         fields = ["name", "code", "description", "is_active"]
