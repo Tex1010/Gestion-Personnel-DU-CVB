@@ -146,13 +146,25 @@
                                     <td data-label="Commentaire">{{ item.request.admin_comment|default:"-" }}</td>
                                     <td data-label="Annuler">
                                         {% if request.resolver_match and request.resolver_match.namespace == 'administration' %}
-                                            {% if item.request.status == "approved" %}
-                                                <form method="post" action="{% url 'administration:request_action' item.request.id 'cancel' %}" class="inline-action-form">
-                                                    {% csrf_token %}
-                                                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Annuler cette demande" data-confirm-message="Cette demande approuvee sera marquee comme annulee et son solde sera restaure." data-confirm-label="Oui, annuler" data-confirm-class="btn-danger" title="Annuler">
-                                                        <i class="bi bi-x-circle"></i>
-                                                    </button>
-                                                </form>
+                                            {% if request.user.profile %}
+                                                {% if request.user.profile.can_manage_settings or request.user.profile.can_validate_administration %}
+                                                    {% if not request.user.profile.can_validate_hierarchy and not request.user.profile.can_validate_direction %}
+                                                        {% if item.request.status == "approved" %}
+                                                            <form method="post" action="{% url 'administration:request_action' item.request.id 'cancel' %}" class="inline-action-form">
+                                                                {% csrf_token %}
+                                                                <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Annuler cette demande" data-confirm-message="Cette demande approuvee sera marquee comme annulee et son solde sera restaure." data-confirm-label="Oui, annuler" data-confirm-class="btn-danger" title="Annuler">
+                                                                    <i class="bi bi-x-circle"></i>
+                                                                </button>
+                                                            </form>
+                                                        {% else %}
+                                                            -
+                                                        {% endif %}
+                                                    {% else %}
+                                                        -
+                                                    {% endif %}
+                                                {% else %}
+                                                    -
+                                                {% endif %}
                                             {% else %}
                                                 -
                                             {% endif %}
