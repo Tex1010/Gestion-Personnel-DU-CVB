@@ -10,6 +10,7 @@
         <td data-label="Chef hier."><span class="badge {{ item.hierarchy_status_badge_class }}">{{ item.hierarchy_status_label }}</span></td>
         <td data-label="Administration"><span class="badge {{ item.administration_status_badge_class }}">{{ item.administration_status_label }}</span></td>
         <td data-label="Direction"><span class="badge {{ item.direction_status_badge_class }}">{{ item.direction_status_label }}</span></td>
+        <td data-label="Statut final"><span class="badge {{ item.employee_simple_status_badge_class }}">{{ item.employee_simple_status_label }}</span></td>
         <td data-label="Action">
             <button
                 type="button"
@@ -29,6 +30,6 @@
     </tr>
 {% empty %}
     <tr>
-        <td colspan="7">Aucune demande pour le moment.</td>
+        <td colspan="8">Aucune demande pour le moment.</td>
     </tr>
 {% endfor %}

@@ -25,3 +25,7 @@ python manage.py createsuperuser
 python manage.py runserver
 
 python manage.py runserver 10.0.2.76:8000
+
+start nginx
+
+.\nginx.exe -s reload

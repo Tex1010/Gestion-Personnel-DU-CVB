@@ -84,6 +84,8 @@ class StaffRequest(models.Model):
 
     @property
     def status_label(self):
+        if self.status == self.STATUS_CANCELLED:
+            return "Annuler"
         return self.get_status_display()
 
     @property

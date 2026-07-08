@@ -1064,9 +1064,6 @@ def request_action_view(request, request_id, action):
     is_hierarchical = bool(current_profile and current_profile.can_validate_hierarchy)
     is_direction = bool(current_profile and current_profile.can_validate_direction)
     is_admin = bool(current_profile and (current_profile.can_manage_settings or current_profile.can_validate_administration))
-    if not _is_request_in_scope(request_item, current_profile):
-        messages.error(request, "Cette demande n'est pas disponible dans votre perimetre de validation.")
-        return redirect(_requests_redirect(show_history=True))
 
     if action == "cancel":
         if not (is_admin or is_direction):
@@ -1097,6 +1094,10 @@ def request_action_view(request, request_id, action):
             comment=comment or "Annulation par l'administration",
         )
         messages.success(request, "La demande a ete annulee." + (f" {balance_message}" if balance_message else ""))
+        return redirect(_requests_redirect(show_history=True))
+
+    if not _is_request_in_scope(request_item, current_profile):
+        messages.error(request, "Cette demande n'est pas disponible dans votre perimetre de validation.")
         return redirect(_requests_redirect(show_history=True))
 
     if action == "reject":

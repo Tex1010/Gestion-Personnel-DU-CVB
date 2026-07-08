@@ -1071,6 +1071,12 @@ th {
     color: #8c2f2f;
 }
 
+.badge.cancelled {
+    background: rgba(155, 54, 54, 0.12);
+    color: black;
+    text-shadow: #0b100d;
+}
+
 .badge.draft {
     background: rgba(108, 115, 111, 0.14);
     color: var(--muted);

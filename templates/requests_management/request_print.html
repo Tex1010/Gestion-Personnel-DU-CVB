@@ -135,6 +135,39 @@
             font-weight: 700;
         }
 
+        .request-status {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 14px;
+            border-radius: 999px;
+            margin-top: 10px;
+            font-weight: 700;
+            background: #f1f6f2;
+            color: #29426c;
+        }
+
+        .request-status.approved {
+            background: rgba(37, 92, 58, 0.12);
+            color: #255c3a;
+        }
+
+        .request-status.rejected,
+        .request-status.cancelled {
+            background: rgba(155, 54, 54, 0.12);
+            color: #8c2f2f;
+        }
+
+        .request-status.submitted {
+            background: rgba(156, 107, 28, 0.12);
+            color: #9c6b1c;
+        }
+
+        .request-status.draft {
+            background: rgba(108, 115, 111, 0.14);
+            color: #576159;
+        }
+
         .grid {
             display: grid;
             grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -335,6 +368,7 @@
             </div>
             <div>
                 <div class="request-badge">{{ request_item.type_label }}</div>
+                <div class="request-status {{ request_item.status }}">Statut final : {{ request_item.status_label }}</div>
                 <p class="subtitle">Creee le {{ request_item.created_at|date:"d/m/Y H:i" }}</p>
             </div>
         </header>
@@ -466,6 +500,7 @@
                     "Informations demande": "Request information",
                     "Statut global": "Overall status",
                     "Etape en cours": "Current stage",
+                    "Statut final :": "Final status:",
                     "Periode": "Period",
                     "Date debut": "Start date",
                     "Date fin": "End date",
@@ -490,6 +525,7 @@
                     "Approuvee": "Approved",
                     "Rejetee": "Rejected",
                     "Soumise": "Submitted",
+                    "Annuler": "Cancelled",
                     "Conge": "Leave",
                     "Absence": "Absence",
                     "Recuperation": "Recovery",
@@ -520,6 +556,7 @@
                     "Informations demande": "Mombamomba ny fangatahana",
                     "Statut global": "Sata ankapobeny",
                     "Etape en cours": "Dingana ankehitriny",
+                    "Statut final :": "Sata farany :",
                     "Periode": "Fe-potoana",
                     "Date debut": "Daty fanombohana",
                     "Date fin": "Daty fiafarana",
@@ -544,6 +581,7 @@
                     "Approuvee": "Nekena",
                     "Rejetee": "Nolavina",
                     "Soumise": "Nalefa",
+                    "Annuler": "Nofoanana",
                     "Conge": "Fialan-tsasatra",
                     "Absence": "Tsy fahatongavana",
                     "Recuperation": "Fanarenana",
