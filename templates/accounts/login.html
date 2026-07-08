@@ -14,25 +14,30 @@
                 {% endif %}
                 <h1>{{ branding.site_name|default:"Centre ValBio" }}</h1>
                 <p>{{ branding.subtitle|default:"Centre International pour la Valorisation de la Biodiversite" }}</p>
-                <div class="login-kpi-grid">
-                    <div class="login-kpi-card">
-                        <strong>1</strong>
-                        <span data-i18n="centralizedLogin">Connexion centralisee</span>
-                    </div>
-                    <div class="login-kpi-card">
-                        <strong>3</strong>
-                        <span data-i18n="securedProfiles">Profils securises</span>
-                    </div>
-                    <div class="login-kpi-card">
-                        <strong>24/7</strong>
-                        <span data-i18n="internalAccess">Acces interne</span>
-                    </div>
-                </div>
-                <ul class="brand-list">
-                    <li><i class="bi bi-geo-alt"></i><span>{{ branding.address|default:"BP 33 Ranomafana Ifanadiana 312" }}</span></li>
-                    <li><i class="bi bi-envelope"></i><span>{{ branding.email|default:"centrevalbio@gmail.com" }}</span></li>
-                    <li><i class="bi bi-globe2"></i><span>{{ branding.website|default:"www.centrevalbio.org" }}</span></li>
-                </ul>
+                {% if branding %}
+                    {% if branding.address or branding.email or branding.website %}
+                        <div class="login-brand-details">
+                            {% if branding.email %}
+                                <a href="mailto:{{ branding.email }}" class="brand-contact-card">
+                                    <span class="brand-contact-label" data-i18n="Email">Email</span>
+                                    <strong>{{ branding.email }}</strong>
+                                </a>
+                            {% endif %}
+                            {% if branding.website %}
+                                <a href="{% if branding.website|slice:':4' == 'http' %}{{ branding.website }}{% else %}https://{{ branding.website }}{% endif %}" target="_blank" rel="noopener" class="brand-contact-card">
+                                    <span class="brand-contact-label" data-i18n="Site web">Site web</span>
+                                    <strong>{{ branding.website }}</strong>
+                                </a>
+                            {% endif %}
+                            {% if branding.address %}
+                                <div class="brand-contact-card is-static">
+                                    <span class="brand-contact-label" data-i18n="Adresse">Adresse</span>
+                                    <strong>{{ branding.address }}</strong>
+                                </div>
+                            {% endif %}
+                        </div>
+                    {% endif %}
+                {% endif %}
                 {% if branding.announcement %}
                     <div class="announcement">{{ branding.announcement }}</div>
                 {% endif %}
@@ -105,25 +110,8 @@
                 </div>
                 <button type="submit" class="btn-primary full login-submit-button"><i class="bi bi-box-arrow-in-right"></i><span data-i18n="signIn">Se connecter</span></button>
             </form>
-            <div class="card employee-help-card">
-                <div class="help-icon">
-                    <i class="bi bi-whatsapp"></i>
-                </div>
-
-                <h2 data-i18n="needHelp">Besoin d'aide ?</h2>
-
-                <p data-i18n="helpQuestion">
-                    Une question concernant votre demande d'absence, de congé,
-                    de récupération ou le fonctionnement de la plateforme ?
-                </p>
-
-                <p class="helper" data-i18n="helpAvailability">
-                    Je suis disponible pour vous accompagner et répondre à vos questions.
-                </p>
-
-                <a href="https://wa.me/261347794791"
-                target="_blank"
-                class="btn-whatsapp">
+            <div class="login-support">
+                <a href="https://wa.me/261347794791" target="_blank" class="login-support-link">
                     <i class="bi bi-whatsapp"></i>
                     <span data-i18n="contactWhatsApp">Contacter sur WhatsApp</span>
                 </a>
