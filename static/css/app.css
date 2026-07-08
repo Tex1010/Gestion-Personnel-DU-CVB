@@ -592,6 +592,11 @@ h3 {
     white-space: nowrap;
 }
 
+.meta-pill.cancelled {
+    background:rgb(255, 0, 0);
+    color: #ffffff;
+}
+
 .request-card-actions {
     display: flex;
     align-items: center;
@@ -1072,9 +1077,8 @@ th {
 }
 
 .badge.cancelled {
-    background: rgba(155, 54, 54, 0.12);
-    color: black;
-    text-shadow: #0b100d;
+    background:rgb(255, 0, 0);
+    color: #ffffff;
 }
 
 .badge.draft {
@@ -2014,6 +2018,11 @@ th {
 [data-theme="dark"] .help-icon {
     background: rgba(158, 215, 175, 0.12);
     color: var(--green);
+}
+
+[data-theme="dark"] .meta-pill.cancelled {
+    background: rgba(155, 54, 54, 0.18);
+    color: #ffb3b3;
 }
 
 [data-theme="dark"] .sidebar-nav a:hover,

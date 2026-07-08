@@ -30,7 +30,7 @@
                 </div>
                 <div class="request-card-meta">
                     <span class="meta-pill"><i class="bi bi-calendar2-week"></i> {{ item.total_days }} j</span>
-                    <span class="meta-pill"><i class="bi bi-flag"></i> {{ item.employee_simple_status_label }}</span>
+                    <span class="meta-pill {{ item.employee_simple_status_badge_class }}"><i class="bi bi-flag"></i> {{ item.employee_simple_status_label }}</span>
                 </div>
             {% endif %}
         </div>
