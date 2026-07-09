@@ -56,6 +56,8 @@ class StaffRequest(models.Model):
     project_name = models.CharField("Projet", max_length=150, blank=True)
     start_date = models.DateField("Date debut", blank=True, null=True)
     end_date = models.DateField("Date fin", blank=True, null=True)
+    start_time = models.TimeField("Heure debut", blank=True, null=True)
+    end_time = models.TimeField("Heure fin", blank=True, null=True)
     total_days = models.DecimalField(
         "Total jours", max_digits=6, decimal_places=1, default=0
     )
@@ -210,6 +212,16 @@ class StaffRequest(models.Model):
         return value.strftime("%H:%M") if value else "-"
 
     @property
+    def has_custom_time_range(self):
+        return bool(
+            self.start_date
+            and self.end_date
+            and self.start_date == self.end_date
+            and self.start_time
+            and self.end_time
+        )
+
+    @property
     def period_entries(self):
         if self.request_type == self.TYPE_RECOVERY:
             entries = [
@@ -222,6 +234,15 @@ class StaffRequest(models.Model):
             return entries or ["-"]
 
         start_label = self._format_date(self.start_date) if self.start_date else "-"
+        if self.has_custom_time_range:
+            return [
+                (
+                    f"{start_label} "
+                    f"{self._format_time(self.start_time)} - {self._format_time(self.end_time)}"
+                )
+            ]
+        if self.start_date and self.end_date and self.start_date == self.end_date:
+            return [start_label]
         if self.end_date:
             return [f"{start_label} - {self._format_date(self.end_date)}"]
         return [start_label]

@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from django.contrib.auth.models import User
 from django.test import TestCase
 from django.urls import reverse
@@ -60,8 +62,8 @@ class RequestsTests(TestCase):
         response = self.client.post(
             reverse("requests_management:leave_create"),
             {
-                "start_date": "2026-07-10",
-                "end_date": "2026-07-12",
+                "start_date": "2026-07-13",
+                "end_date": "2026-07-15",
                 "total_days": "3",
                 "remaining_days_for_reason": "",
                 "reason": "Conge annuel",
@@ -73,6 +75,46 @@ class RequestsTests(TestCase):
         request_item = StaffRequest.objects.latest("id")
         self.assertEqual(request_item.request_type, StaffRequest.TYPE_LEAVE)
         self.assertEqual(request_item.remaining_days_for_reason, 7)
+
+    def test_leave_request_excludes_weekends_by_default_for_multi_day_period(self):
+        response = self.client.post(
+            reverse("requests_management:leave_create"),
+            {
+                "start_date": "2026-07-06",
+                "end_date": "2026-07-17",
+                "total_days": "",
+                "remaining_days_for_reason": "",
+                "reason": "Conge avec weekend",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        request_item = StaffRequest.objects.latest("id")
+        self.assertEqual(request_item.total_days, Decimal("10"))
+        self.assertEqual(request_item.remaining_days_for_reason, Decimal("0.0"))
+
+    def test_leave_request_can_count_weekends_when_toggle_is_disabled(self):
+        self.user.profile.leave_balance = Decimal("20.0")
+        self.user.profile.save()
+
+        response = self.client.post(
+            reverse("requests_management:leave_create"),
+            {
+                "start_date": "2026-07-06",
+                "end_date": "2026-07-17",
+                "exclude_weekends": "0",
+                "total_days": "",
+                "remaining_days_for_reason": "",
+                "reason": "Conge avec weekend compte",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        request_item = StaffRequest.objects.latest("id")
+        self.assertEqual(request_item.total_days, Decimal("12"))
+        self.assertEqual(request_item.remaining_days_for_reason, Decimal("8.0"))
 
     def test_request_submission_sets_floating_notification(self):
         self.client.post(
@@ -89,6 +131,69 @@ class RequestsTests(TestCase):
         session = self.client.session
         self.assertIn("floating_notification", session)
         self.assertEqual(session["floating_notification"]["title"], "Demande envoyee")
+
+    def test_single_day_absence_with_hours_computes_fractional_total_days(self):
+        response = self.client.post(
+            reverse("requests_management:absence_create"),
+            {
+                "start_date": "2026-07-15",
+                "end_date": "2026-07-15",
+                "duration_mode": "custom_hours",
+                "start_time": "08:00",
+                "end_time": "11:00",
+                "total_days": "",
+                "remaining_days_for_reason": "",
+                "reason": "Rendez-vous medical",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        request_item = StaffRequest.objects.latest("id")
+        self.assertEqual(request_item.total_days, Decimal("0.4"))
+        self.assertEqual(request_item.remaining_days_for_reason, Decimal("3.6"))
+        self.assertEqual(request_item.period_label, "15/07/2026 08:00 - 11:00")
+
+    def test_single_day_absence_on_weekend_is_rejected_when_weekend_exclusion_is_active(self):
+        response = self.client.post(
+            reverse("requests_management:absence_create"),
+            {
+                "start_date": "2026-07-11",
+                "end_date": "2026-07-11",
+                "duration_mode": "full_day",
+                "total_days": "",
+                "remaining_days_for_reason": "",
+                "reason": "Absence samedi",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(StaffRequest.objects.filter(reason="Absence samedi").count(), 0)
+        self.assertContains(response, "La periode selectionnee ne contient aucun jour ouvrable.")
+
+    def test_single_day_leave_full_day_mode_forces_one_day_and_clears_hours(self):
+        response = self.client.post(
+            reverse("requests_management:leave_create"),
+            {
+                "start_date": "2026-07-20",
+                "end_date": "2026-07-20",
+                "duration_mode": "full_day",
+                "start_time": "08:00",
+                "end_time": "10:00",
+                "total_days": "0.3",
+                "remaining_days_for_reason": "",
+                "reason": "Conge personnel",
+            },
+            follow=True,
+        )
+
+        self.assertEqual(response.status_code, 200)
+        request_item = StaffRequest.objects.latest("id")
+        self.assertEqual(request_item.total_days, Decimal("1.0"))
+        self.assertEqual(request_item.remaining_days_for_reason, Decimal("9.0"))
+        self.assertIsNone(request_item.start_time)
+        self.assertIsNone(request_item.end_time)
 
     def test_employee_can_delete_own_request_from_history(self):
         request_item = StaffRequest.objects.create(

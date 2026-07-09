@@ -36,6 +36,49 @@
                     {{ form.end_date }}
                 </div>
             </div>
+            <div class="card accent-amber">
+                {{ form.exclude_weekends }}
+                <button type="button" class="display-chip weekend-toggle-button" id="excludeWeekendsToggle">
+                    <i class="bi bi-toggle-on" aria-hidden="true"></i>
+                    <span>{{ form.exclude_weekends.label }}</span>
+                </button>
+                {% for error in form.exclude_weekends.errors %}
+                    <small class="error-text">{{ error }}</small>
+                {% endfor %}
+            </div>
+            <div class="card accent-slate" id="sameDayDurationPanel" hidden>
+                <div class="form-grid two">
+                    <div>
+                        {{ form.duration_mode.label_tag }}
+                        <div id="sameDayDurationChoices">
+                            {% for radio in form.duration_mode %}
+                                <label class="choice-chip">{{ radio.tag }} <span>{{ radio.choice_label }}</span></label>
+                            {% endfor %}
+                        </div>
+                        {% for error in form.duration_mode.errors %}
+                            <small class="error-text">{{ error }}</small>
+                        {% endfor %}
+                    </div>
+                    <div id="sameDayTimeFields" hidden>
+                        <div class="form-grid two">
+                            <div>
+                                {{ form.start_time.label_tag }}
+                                {{ form.start_time }}
+                                {% for error in form.start_time.errors %}
+                                    <small class="error-text">{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                            <div>
+                                {{ form.end_time.label_tag }}
+                                {{ form.end_time }}
+                                {% for error in form.end_time.errors %}
+                                    <small class="error-text">{{ error }}</small>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
             <div class="stats-grid compact">
                 <div class="card accent-slate stat-card">
                     <span>Total jours</span>
@@ -69,6 +112,14 @@
     document.addEventListener("DOMContentLoaded", () => {
         const startDateInput = document.querySelector("#id_start_date");
         const endDateInput = document.querySelector("#id_end_date");
+        const startTimeInput = document.querySelector("#id_start_time");
+        const endTimeInput = document.querySelector("#id_end_time");
+        const durationPanel = document.getElementById("sameDayDurationPanel");
+        const timeFields = document.getElementById("sameDayTimeFields");
+        const durationModeInputs = document.querySelectorAll('input[name="duration_mode"]');
+        const excludeWeekendsInput = document.querySelector("[data-exclude-weekends]");
+        const excludeWeekendsToggle = document.getElementById("excludeWeekendsToggle");
+        const excludeWeekendsToggleIcon = excludeWeekendsToggle?.querySelector("i");
         const totalDaysInput = document.querySelector("[data-total-days]");
         const remainingInput = document.querySelector("[data-remaining-balance]");
         const totalDaysDisplay = document.getElementById("totalDaysDisplay");
@@ -87,16 +138,109 @@
             return Number.isInteger(normalized) ? String(normalized) : normalized.toFixed(1);
         };
 
+        const parseTimeToMinutes = (value) => {
+            if (!value || !value.includes(":")) {
+                return null;
+            }
+            const [hours, minutes] = value.split(":").map((part) => Number.parseInt(part, 10));
+            if (!Number.isInteger(hours) || !Number.isInteger(minutes)) {
+                return null;
+            }
+            return (hours * 60) + minutes;
+        };
+
+        const computeWorkedDayValue = () => {
+            const startMinutes = parseTimeToMinutes(startTimeInput?.value);
+            const endMinutes = parseTimeToMinutes(endTimeInput?.value);
+            if (startMinutes === null || endMinutes === null || endMinutes <= startMinutes) {
+                return 0;
+            }
+            const pauseStart = 12 * 60;
+            const pauseEnd = 13 * 60;
+            const overlap = Math.max(0, Math.min(endMinutes, pauseEnd) - Math.max(startMinutes, pauseStart));
+            const workedMinutes = (endMinutes - startMinutes) - overlap;
+            if (workedMinutes <= 0) {
+                return 0;
+            }
+            return Math.round((workedMinutes / 480) * 10) / 10;
+        };
+
+        const countWeekdaysInclusive = (start, end) => {
+            let businessDays = 0;
+            const current = new Date(start.getTime());
+            while (current <= end) {
+                const weekday = current.getDay();
+                if (weekday !== 0 && weekday !== 6) {
+                    businessDays += 1;
+                }
+                current.setDate(current.getDate() + 1);
+            }
+            return businessDays;
+        };
+
+        const selectedDurationMode = () => {
+            const checkedInput = Array.from(durationModeInputs).find((input) => input.checked);
+            return checkedInput?.value || "full_day";
+        };
+
+        const isWeekendExclusionActive = () => excludeWeekendsInput?.value !== "0";
+
+        const syncWeekendToggleUI = () => {
+            if (!excludeWeekendsToggle) {
+                return;
+            }
+            const active = isWeekendExclusionActive();
+            excludeWeekendsToggle.classList.toggle("is-active", active);
+            excludeWeekendsToggle.setAttribute("aria-pressed", active ? "true" : "false");
+            if (excludeWeekendsToggleIcon) {
+                excludeWeekendsToggleIcon.className = active ? "bi bi-toggle-on" : "bi bi-toggle-off";
+            }
+        };
+
+        const syncSameDayFields = () => {
+            const isSameDay = Boolean(startDateInput.value && endDateInput.value && startDateInput.value === endDateInput.value);
+            const useCustomHours = isSameDay && selectedDurationMode() === "custom_hours";
+            if (durationPanel) {
+                durationPanel.hidden = !isSameDay;
+            }
+            if (timeFields) {
+                timeFields.hidden = !useCustomHours;
+            }
+            [startTimeInput, endTimeInput].forEach((field) => {
+                if (field) {
+                    field.disabled = !useCustomHours;
+                }
+            });
+        };
+
         const updateDaysAndRemaining = () => {
             const startDate = startDateInput.value;
             const endDate = endDateInput.value;
+            syncSameDayFields();
             if (startDate && endDate) {
                 const start = new Date(`${startDate}T00:00:00`);
                 const end = new Date(`${endDate}T00:00:00`);
                 if (end >= start) {
-                    const diffDays = Math.round((end - start) / 86400000) + 1;
-                    totalDaysInput.value = diffDays;
+                    if (startDate === endDate) {
+                        const isWeekend = start.getDay() === 0 || start.getDay() === 6;
+                        if (isWeekendExclusionActive() && isWeekend) {
+                            totalDaysInput.value = "0";
+                        } else {
+                            totalDaysInput.value = selectedDurationMode() === "custom_hours"
+                                ? formatValue(computeWorkedDayValue())
+                                : "1";
+                        }
+                    } else {
+                        const totalRangeDays = isWeekendExclusionActive()
+                            ? countWeekdaysInclusive(start, end)
+                            : Math.round((end - start) / 86400000) + 1;
+                        totalDaysInput.value = totalRangeDays;
+                    }
+                } else {
+                    totalDaysInput.value = "0";
                 }
+            } else {
+                totalDaysInput.value = "0";
             }
 
             const currentBalance = parseValue(remainingInput.dataset.currentBalance);
@@ -112,6 +256,21 @@
 
         [startDateInput, endDateInput].forEach((field) => field.addEventListener("change", updateDaysAndRemaining));
         [startDateInput, endDateInput].forEach((field) => field.addEventListener("input", updateDaysAndRemaining));
+        durationModeInputs.forEach((field) => field.addEventListener("change", updateDaysAndRemaining));
+        excludeWeekendsInput?.addEventListener("change", () => {
+            syncWeekendToggleUI();
+            updateDaysAndRemaining();
+        });
+        excludeWeekendsToggle?.addEventListener("click", () => {
+            if (!excludeWeekendsInput) {
+                return;
+            }
+            excludeWeekendsInput.value = isWeekendExclusionActive() ? "0" : "1";
+            excludeWeekendsInput.dispatchEvent(new Event("change", { bubbles: true }));
+        });
+        [startTimeInput, endTimeInput].forEach((field) => field?.addEventListener("change", updateDaysAndRemaining));
+        [startTimeInput, endTimeInput].forEach((field) => field?.addEventListener("input", updateDaysAndRemaining));
+        syncWeekendToggleUI();
         updateDaysAndRemaining();
     });
 </script>

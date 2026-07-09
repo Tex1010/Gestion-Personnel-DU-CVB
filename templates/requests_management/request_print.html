@@ -399,8 +399,22 @@
                             </span>
                         </div>
                     {% else %}
+                        <div>
+                            <span>Periode</span>
+                            <span>
+                                {% for period in request_item.period_entries %}
+                                    {{ period }}{% if not forloop.last %}<br>{% endif %}
+                                {% endfor %}
+                            </span>
+                        </div>
                         <div><span>Date debut</span><span>{{ request_item.start_date|date:"d/m/Y"|default:"-" }}</span></div>
                         <div><span>Date fin</span><span>{{ request_item.end_date|date:"d/m/Y"|default:"-" }}</span></div>
+                        {% if request_item.start_time %}
+                            <div><span>Heure debut</span><span>{{ request_item.start_time|time:"H:i" }}</span></div>
+                        {% endif %}
+                        {% if request_item.end_time %}
+                            <div><span>Heure fin</span><span>{{ request_item.end_time|time:"H:i" }}</span></div>
+                        {% endif %}
                     {% endif %}
                     <div><span>Total jours</span><span>{{ request_item.total_days }}</span></div>
                     <div><span>Projet</span><span>{{ request_item.project_name|default:"-" }}</span></div>
@@ -504,6 +518,8 @@
                     "Periode": "Period",
                     "Date debut": "Start date",
                     "Date fin": "End date",
+                    "Heure debut": "Start time",
+                    "Heure fin": "End time",
                     "Total jours": "Total days",
                     "Projet": "Project",
                     "Motif": "Reason",
@@ -560,6 +576,8 @@
                     "Periode": "Fe-potoana",
                     "Date debut": "Daty fanombohana",
                     "Date fin": "Daty fiafarana",
+                    "Heure debut": "Ora fanombohana",
+                    "Heure fin": "Ora fiafarana",
                     "Total jours": "Andro rehetra",
                     "Projet": "Tetikasa",
                     "Motif": "Antony",

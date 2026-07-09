@@ -150,7 +150,7 @@ img {
 .section-header p,
 .login-form-panel p,
 .helper {
-    color: rgba(255, 255, 255, 0.74);
+    color: rgb(255, 255, 255);
 }
 
 .sidebar-brand strong,
@@ -1069,7 +1069,7 @@ th {
 .badge.approved {
     background: rgba(37, 92, 58, 0.12);
     color: var(--green);
-}
+}l
 
 .badge.rejected {
     background: rgba(155, 54, 54, 0.12);
@@ -1077,7 +1077,7 @@ th {
 }
 
 .badge.cancelled {
-    background:rgb(255, 0, 0);
+    background:rgba(255, 0, 0, 0.795);
     color: #ffffff;
 }
 
@@ -2252,7 +2252,7 @@ th {
 .section-header p,
 .meta-copy,
 .login-form-panel p {
-    color: var(--muted);
+    color:white;
 }
 
 [data-theme="dark"] body {

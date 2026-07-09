@@ -3,11 +3,15 @@
         <div class="request-card-main">
             {% if request_label == "Absence" %}
                 <div>
-                    <strong>{% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %}</strong>
+                    <strong>
+                        {% for period in item.period_entries %}
+                            {{ period }}{% if not forloop.last %}<br>{% endif %}
+                        {% endfor %}
+                    </strong>
                     <div class="request-card-subtitle">{{ request_label }} • {{ item.total_days }} jour{{ item.total_days|pluralize }}</div>
                 </div>
                 <div class="request-card-meta">
-                    <span class="meta-pill"><i class="bi bi-calendar3"></i> {{ item.start_date|date:"d/m/Y" }}</span>
+                    <span class="meta-pill"><i class="bi bi-calendar3"></i> {% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %}</span>
                     <span class="meta-pill"><i class="bi bi-clock-history"></i> {{ item.total_days }} j</span>
                 </div>
             {% elif request_label == "Recuperation" %}
@@ -25,7 +29,11 @@
                 </div>
             {% else %}
                 <div>
-                    <strong>{% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %} -> {% if item.end_date %}{{ item.end_date|date:"d/m/Y" }}{% else %}-{% endif %}</strong>
+                    <strong>
+                        {% for period in item.period_entries %}
+                            {{ period }}{% if not forloop.last %}<br>{% endif %}
+                        {% endfor %}
+                    </strong>
                     <div class="request-card-subtitle">{{ request_label }} • {{ item.total_days }} jour{{ item.total_days|pluralize }}</div>
                 </div>
                 <div class="request-card-meta">
@@ -43,6 +51,7 @@
                 data-bs-toggle="modal"
                 data-bs-target="#employeeActionModal"
                 data-print-url="{% url 'requests_management:print' item.id %}"
+                data-pdf-url="{% url 'requests_management:print' item.id %}?download=1"
                 data-png-url="{% url 'requests_management:print' item.id %}?download=png"
                 data-email="{{ branding_email|default:'centrevalbio@gmail.com' }}"
                 data-delete-url="{% url 'requests_management:delete' item.id %}"

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import timedelta
 from decimal import Decimal
 
 from django import forms
@@ -9,10 +9,45 @@ from apps.requests_management.models import RecoveryLine, StaffRequest
 
 
 class AbsenceRequestForm(forms.ModelForm):
+    DURATION_MODE_FULL_DAY = "full_day"
+    DURATION_MODE_CUSTOM_HOURS = "custom_hours"
+    SAME_DAY_DURATION_CHOICES = [
+        (DURATION_MODE_FULL_DAY, "1 jour"),
+        (DURATION_MODE_CUSTOM_HOURS, "Par heures"),
+    ]
+    WEEKEND_EXCLUSION_LABEL = "Exclure samedi et dimanche"
+
+    duration_mode = forms.ChoiceField(
+        label="Option pour une seule journee",
+        required=False,
+        choices=SAME_DAY_DURATION_CHOICES,
+        initial=DURATION_MODE_FULL_DAY,
+        widget=forms.RadioSelect,
+    )
+    exclude_weekends = forms.TypedChoiceField(
+        label=WEEKEND_EXCLUSION_LABEL,
+        required=False,
+        choices=[
+            ("1", "1"),
+            ("0", "0"),
+        ],
+        coerce=lambda value: str(value) == "1",
+        initial="1",
+        widget=forms.HiddenInput,
+    )
+
     def __init__(self, *args, profile=None, request_type=StaffRequest.TYPE_ABSENCE, **kwargs):
         super().__init__(*args, **kwargs)
         self.profile = profile
         self.request_type = request_type
+        self.fields["duration_mode"].required = False
+        self.fields["duration_mode"].initial = self._get_initial_duration_mode()
+        self.fields["start_time"].required = False
+        self.fields["end_time"].required = False
+        self.fields["start_time"].widget.attrs["data-start-time"] = "1"
+        self.fields["end_time"].widget.attrs["data-end-time"] = "1"
+        self.fields["exclude_weekends"].required = False
+        self.fields["exclude_weekends"].widget.attrs["data-exclude-weekends"] = "1"
         self.fields["remaining_days_for_reason"].required = False
         self.fields["remaining_days_for_reason"].widget.attrs.update(
             {
@@ -47,12 +82,60 @@ class AbsenceRequestForm(forms.ModelForm):
             Decimal("0.0"), current_balance - initial_total_days
         )
 
+    def _get_initial_duration_mode(self):
+        raw_mode = self.data.get("duration_mode") if self.is_bound else None
+        if raw_mode in {
+            self.DURATION_MODE_FULL_DAY,
+            self.DURATION_MODE_CUSTOM_HOURS,
+        }:
+            return raw_mode
+        if getattr(self.instance, "start_time", None) and getattr(self.instance, "end_time", None):
+            return self.DURATION_MODE_CUSTOM_HOURS
+        return self.DURATION_MODE_FULL_DAY
+
+    @staticmethod
+    def _compute_same_day_duration(start_time, end_time):
+        start_minutes = start_time.hour * 60 + start_time.minute
+        end_minutes = end_time.hour * 60 + end_time.minute
+        if end_minutes <= start_minutes:
+            raise forms.ValidationError("L'heure de fin doit etre apres l'heure de debut.")
+
+        pause_start = 12 * 60
+        pause_end = 13 * 60
+        overlap = max(0, min(end_minutes, pause_end) - max(start_minutes, pause_start))
+        worked_minutes = (end_minutes - start_minutes) - overlap
+        if worked_minutes <= 0:
+            raise forms.ValidationError("La plage horaire choisie ne couvre aucun temps de travail.")
+
+        worked_hours = Decimal(worked_minutes) / Decimal("60")
+        return (worked_hours / Decimal("8")).quantize(Decimal("0.1"))
+
+    @staticmethod
+    def _count_weekdays_inclusive(start_date, end_date):
+        total_days = (end_date - start_date).days + 1
+        business_days = 0
+        for day_offset in range(total_days):
+            current_date = start_date + timedelta(days=day_offset)
+            if current_date.weekday() < 5:
+                business_days += 1
+        return business_days
+
     class Meta:
         model = StaffRequest
-        fields = ["start_date", "end_date", "total_days", "reason", "remaining_days_for_reason"]
+        fields = [
+            "start_date",
+            "end_date",
+            "start_time",
+            "end_time",
+            "total_days",
+            "reason",
+            "remaining_days_for_reason",
+        ]
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date"}),
             "end_date": forms.DateInput(attrs={"type": "date"}),
+            "start_time": forms.TimeInput(attrs={"type": "time"}),
+            "end_time": forms.TimeInput(attrs={"type": "time"}),
             "reason": forms.Textarea(attrs={"rows": 3}),
         }
 
@@ -60,12 +143,63 @@ class AbsenceRequestForm(forms.ModelForm):
         cleaned_data = super().clean()
         start_date = cleaned_data.get("start_date")
         end_date = cleaned_data.get("end_date")
-        total_days = cleaned_data.get("total_days")
+        start_time = cleaned_data.get("start_time")
+        end_time = cleaned_data.get("end_time")
+        duration_mode = cleaned_data.get("duration_mode") or self.DURATION_MODE_FULL_DAY
+        exclude_weekends = cleaned_data.get("exclude_weekends")
+        if self.is_bound and "exclude_weekends" not in self.data:
+            exclude_weekends = True
+        if exclude_weekends is None:
+            exclude_weekends = True
         if start_date and end_date and end_date < start_date:
             self.add_error("end_date", "La date de fin doit etre apres la date de debut.")
-        if start_date and end_date and not total_days:
-            cleaned_data["total_days"] = Decimal((end_date - start_date).days + 1)
-            total_days = cleaned_data["total_days"]
+        elif start_date and end_date:
+            if start_date == end_date:
+                if exclude_weekends and start_date.weekday() >= 5:
+                    self.add_error(
+                        "start_date",
+                        "La periode selectionnee ne contient aucun jour ouvrable.",
+                    )
+                    cleaned_data["total_days"] = Decimal("0.0")
+                if duration_mode == self.DURATION_MODE_CUSTOM_HOURS:
+                    if not start_time:
+                        self.add_error("start_time", "Renseignez l'heure de debut.")
+                    if not end_time:
+                        self.add_error("end_time", "Renseignez l'heure de fin.")
+                    if (
+                        start_time
+                        and end_time
+                        and not self.has_error("start_date")
+                        and not self.has_error("start_time")
+                        and not self.has_error("end_time")
+                    ):
+                        try:
+                            cleaned_data["total_days"] = self._compute_same_day_duration(
+                                start_time,
+                                end_time,
+                            )
+                        except forms.ValidationError as error:
+                            self.add_error("end_time", error.message)
+                else:
+                    cleaned_data["start_time"] = None
+                    cleaned_data["end_time"] = None
+                    if not self.has_error("start_date"):
+                        cleaned_data["total_days"] = Decimal("1.0")
+            else:
+                cleaned_data["start_time"] = None
+                cleaned_data["end_time"] = None
+                if exclude_weekends:
+                    total_days = Decimal(str(self._count_weekdays_inclusive(start_date, end_date)))
+                else:
+                    total_days = Decimal((end_date - start_date).days + 1)
+                cleaned_data["total_days"] = total_days
+                if total_days <= Decimal("0.0"):
+                    self.add_error(
+                        "start_date",
+                        "La periode selectionnee ne contient aucun jour ouvrable.",
+                    )
+
+        total_days = cleaned_data.get("total_days")
 
         current_balance = Decimal("0.0")
         if self.profile:

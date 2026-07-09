@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'apps.personnel',
     'apps.requests_management',
     'apps.administration',
+    'apps.mobile_api',
 ]
 
 MIDDLEWARE = [

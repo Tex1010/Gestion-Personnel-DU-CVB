@@ -142,15 +142,13 @@ def _filter_items_for_search(items, search_term, values_getter):
 
 
 def _request_period_search_label(item):
+    if item.period_label and item.period_label != "-":
+        return item.period_label
     if item.start_date:
-        start_label = item.start_date.strftime("%d/%m/%Y")
-    elif item.created_at:
-        start_label = localtime(item.created_at).strftime("%d/%m/%Y")
-    else:
-        start_label = ""
-    if item.end_date:
-        return f"{start_label} - {item.end_date.strftime('%d/%m/%Y')}"
-    return start_label
+        return item.start_date.strftime("%d/%m/%Y")
+    if item.created_at:
+        return localtime(item.created_at).strftime("%d/%m/%Y")
+    return ""
 
 
 def _request_table_search_values(item):
