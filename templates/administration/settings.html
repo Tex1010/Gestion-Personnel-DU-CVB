@@ -498,7 +498,7 @@
             <div class="card-head">
                 <div>
                     <h2>Roles et acces</h2>
-                    <p class="helper">Creez des roles plus simplement, puis reglez leur acces a la connexion, a l'administration et aux etapes de validation.</p>
+                    <p class="helper">Creez des roles plus simplement, puis reglez leur acces a la connexion, a la Ressource Humain (RH) et aux etapes de validation.</p>
                 </div>
             </div>
             {% if role_editor %}
@@ -564,7 +564,7 @@
                                     <td data-label="Permissions">
                                         {% if role.can_manage_settings %}Parametres {% endif %}
                                         {% if role.can_validate_hierarchy %}Hierarchie {% endif %}
-                                        {% if role.can_validate_administration %}Administration {% endif %}
+                                        {% if role.can_validate_administration %}Ressource Humain (RH) {% endif %}
                                         {% if role.can_validate_direction %}Direction{% endif %}
                                     </td>
                                     <td data-label="Statut">{% if role.is_active %}Actif{% else %}Inactif{% endif %}</td>
@@ -579,7 +579,15 @@
                                                     <input type="hidden" name="panel" value="roles">
                                                     <input type="hidden" name="role_id" value="{{ role.id }}">
                                                     <input type="hidden" name="delete-role" value="1">
-                                                    <button type="submit" class="btn-danger"><i class="bi bi-trash3"></i>Supprimer</button>
+                                                    <button
+                                                        type="submit"
+                                                        class="btn-danger"
+                                                        data-confirm-action="1"
+                                                        data-confirm-title="Supprimer ce role"
+                                                        data-confirm-message="Ce role sera supprime s'il n'est pas utilise par un compte."
+                                                        data-confirm-label="Oui, supprimer"
+                                                        data-confirm-class="btn-danger"
+                                                    ><i class="bi bi-trash3"></i>Supprimer</button>
                                                 </form>
                                             {% endif %}
                                         </div>
@@ -999,7 +1007,7 @@
                                 <label class="toggle-setting-label" for="{{ field.id_for_label }}">
                                     <span>
                                         <strong>Alertes email a la soumission</strong>
-                                        <small class="helper">Utilise l'adresse email definie dans ce panneau pour prevenir l'administration a chaque nouvelle demande.</small>
+                                        <small class="helper">Utilise l'adresse email definie dans ce panneau pour prevenir la Ressource Humain (RH) a chaque nouvelle demande.</small>
                                     </span>
                                     {{ field }}
                                 </label>

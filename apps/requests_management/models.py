@@ -35,7 +35,7 @@ class StaffRequest(models.Model):
     ]
     APPROVAL_STAGE_CHOICES = [
         (APPROVAL_HIERARCHY, "Chef hierarchique"),
-        (APPROVAL_ADMINISTRATION, "Administration"),
+        (APPROVAL_ADMINISTRATION, "Ressource Humain (RH)"),
         (APPROVAL_DIRECTION, "Direction"),
         (APPROVAL_COMPLETED, "Terminee"),
     ]

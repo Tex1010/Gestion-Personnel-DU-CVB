@@ -240,7 +240,7 @@ def _role_permissions_search_label(role):
     if role.can_validate_hierarchy:
         permissions.append("Hierarchie")
     if role.can_validate_administration:
-        permissions.append("Administration")
+        permissions.append("Ressource Humain (RH)")
     if role.can_validate_direction:
         permissions.append("Direction")
     return " ".join(permissions)
@@ -342,7 +342,7 @@ def _export_history_request_rows(history_requests):
         "Type",
         "Nombre de jours",
         "Chef hierarchique",
-        "Administration",
+        "Ressource Humain (RH)",
         "Direction",
         "Statut final",
         "Commentaire",
@@ -485,7 +485,7 @@ def _export_role_rows(roles):
         "Connexion",
         "Parametres",
         "Validation hiérarchie",
-        "Validation administration",
+        "Validation Ressource Humain (RH)",
         "Validation direction",
         "Statut",
     ]
@@ -833,7 +833,7 @@ def _build_history_stage_statuses(request_item):
     }
     label_map = {
         StaffRequest.APPROVAL_HIERARCHY: "Chef hierarchique",
-        StaffRequest.APPROVAL_ADMINISTRATION: "Administration",
+        StaffRequest.APPROVAL_ADMINISTRATION: "Ressource Humain (RH)",
         StaffRequest.APPROVAL_DIRECTION: "Direction",
     }
     rejection_stage = request_item.approval_stage if request_item.status == StaffRequest.STATUS_REJECTED else ""
@@ -1131,7 +1131,7 @@ def request_action_view(request, request_id, action):
 
     if action == "cancel":
         if not (is_admin or is_direction):
-            messages.error(request, "Impossible : seuls l'administration ou la direction peuvent annuler cette demande.")
+            messages.error(request, "Impossible : seules la Ressource Humain (RH) ou la direction peuvent annuler cette demande.")
             return redirect(_requests_redirect(show_history=True))
         if request_item.status != StaffRequest.STATUS_APPROVED:
             messages.error(request, "Cette demande n'est pas approuvee et ne peut pas etre annulee.")
@@ -1155,7 +1155,7 @@ def request_action_view(request, request_id, action):
             action=RequestActionHistory.ACTION_REJECTED,
             previous_status=previous_status,
             new_status=request_item.status,
-            comment=comment or "Annulation par l'administration",
+            comment=comment or "Annulation par la Ressource Humain (RH)",
         )
         messages.success(request, "La demande a ete annulee." + (f" {balance_message}" if balance_message else ""))
         return redirect(_requests_redirect(show_history=True))
@@ -1191,7 +1191,7 @@ def request_action_view(request, request_id, action):
                 return redirect(_requests_redirect(show_history=True))
             request_item.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
             request_item.hierarchical_signature = request.user.get_username()
-            confirmation_message = "La demande a ete transmise a l'administration."
+            confirmation_message = "La demande a ete transmise a la Ressource Humain (RH)."
             history_action = RequestActionHistory.ACTION_APPROVED
         elif is_admin:
             if request_item.approval_stage == StaffRequest.APPROVAL_HIERARCHY:
@@ -1226,7 +1226,7 @@ def request_action_view(request, request_id, action):
             if request_item.approval_stage == StaffRequest.APPROVAL_ADMINISTRATION:
                 messages.error(
                     request,
-                    "Impossible : l'administration doit d'abord valider cette demande.",
+                    "Impossible : la Ressource Humain (RH) doit d'abord valider cette demande.",
                 )
                 return redirect(_requests_redirect(show_history=True))
             if request_item.approval_stage != StaffRequest.APPROVAL_DIRECTION:
@@ -1464,7 +1464,7 @@ def settings_view(request):
         elif "update-role" in request.POST:
             role_editor = get_object_or_404(Role, pk=request.POST.get("role_id"))
             if role_editor.is_system and role_editor.code == EmployeeProfile.ROLE_ADMIN and not role_editor.can_manage_settings:
-                messages.error(request, "Le role administration doit conserver l'acces aux parametres.")
+                messages.error(request, "Le role Ressource Humain (RH) doit conserver l'acces aux parametres.")
                 return redirect(_settings_redirect(panel="roles", edit_role=role_editor.id))
             role_form = RoleForm(request.POST, instance=role_editor)
             if role_form.is_valid():

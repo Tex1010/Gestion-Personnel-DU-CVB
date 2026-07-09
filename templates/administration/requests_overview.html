@@ -91,7 +91,7 @@
             <div class="card-head">
                 <div>
                     <h2>Historique des actions</h2>
-                    <p class="helper">Chaque demande apparait sur une seule ligne avec l'etat du chef hierarchique, de l'administration et de la direction.</p>
+                    <p class="helper">Chaque demande apparait sur une seule ligne avec l'etat du chef hierarchique, de la Ressource Humain (RH) et de la direction.</p>
                 </div>
             </div>
             <div class="table-toolbar">
@@ -113,7 +113,7 @@
                                 <th>Type</th>
                             <th>Nombre de jours</th>
                                 <th>Chef hierarchique</th>
-                                <th>Administration</th>
+                                <th>Ressource Humain (RH)</th>
                                 <th>Direction</th>
                                 <th>Statut final</th>
                                 <th>Commentaire</th>
@@ -138,7 +138,7 @@
                                         <span class="badge {{ item.stage_statuses.0.badge_class }}">{{ item.stage_statuses.0.status }}</span>
                                         <div class="helper">{{ item.stage_statuses.0.username }}</div>
                                     </td>
-                                    <td data-label="Administration">
+                                    <td data-label="Ressource Humain (RH)">
                                         <span class="badge {{ item.stage_statuses.1.badge_class }}">{{ item.stage_statuses.1.status }}</span>
                                         <div class="helper">{{ item.stage_statuses.1.username }}</div>
                                     </td>

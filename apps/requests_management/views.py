@@ -217,7 +217,7 @@ def _build_stage_statuses(request_item):
     }
     label_map = {
         StaffRequest.APPROVAL_HIERARCHY: "Chef hierarchique",
-        StaffRequest.APPROVAL_ADMINISTRATION: "Administration",
+        StaffRequest.APPROVAL_ADMINISTRATION: "Ressource Humain (RH)",
         StaffRequest.APPROVAL_DIRECTION: "Direction",
     }
     statuses = []
@@ -269,7 +269,7 @@ def _balance_request_view(request, request_type):
             "description": "Formulaire inspire de la fiche papier fournie pour le Centre ValBio.",
             "submit_label": "Envoyer la demande d'absence",
             "confirm_title": "Envoyer cette demande d'absence",
-            "confirm_message": "La demande sera transmise a l'administration pour traitement.",
+            "confirm_message": "La demande sera transmise a la Ressource Humain (RH) pour traitement.",
         },
         StaffRequest.TYPE_LEAVE: {
             "page_title": "Demande de conge",
@@ -277,7 +277,7 @@ def _balance_request_view(request, request_type):
             "description": "Formulaire numerique pour demander un conge et suivre automatiquement le solde restant.",
             "submit_label": "Envoyer la demande de conge",
             "confirm_title": "Envoyer cette demande de conge",
-            "confirm_message": "La demande de conge sera transmise a l'administration pour validation.",
+            "confirm_message": "La demande de conge sera transmise a la Ressource Humain (RH) pour validation.",
         },
     }
     form = AbsenceRequestForm(
@@ -287,10 +287,10 @@ def _balance_request_view(request, request_type):
     )
     if profile.role_code == EmployeeProfile.ROLE_USER:
         request_titles[StaffRequest.TYPE_ABSENCE]["confirm_message"] = (
-            "La demande sera transmise au chef hierarchique, puis a l'administration et a la direction."
+            "La demande sera transmise au chef hierarchique, puis a la Ressource Humain (RH) et a la direction."
         )
         request_titles[StaffRequest.TYPE_LEAVE]["confirm_message"] = (
-            "La demande sera transmise au chef hierarchique, puis a l'administration et a la direction."
+            "La demande sera transmise au chef hierarchique, puis a la Ressource Humain (RH) et a la direction."
         )
     if request.method == "POST" and form.is_valid():
         balance_request = form.save(commit=False)

@@ -203,7 +203,7 @@ class DepartmentForm(forms.ModelForm):
             "is_active": "Desactivez pour le retirer des choix sans supprimer l'historique existant.",
         }
         placeholders = {
-            "name": "Ex: Administration",
+            "name": "Ex: Ressource Humain (RH)",
             "code": "Ex: ADMIN",
             "description": "Ex: Gestion administrative et support interne",
         }
@@ -237,7 +237,7 @@ class RoleForm(forms.ModelForm):
             "is_department_scoped": "Limiter au departement",
             "can_manage_settings": "Acces aux parametres",
             "can_validate_hierarchy": "Validation chef hierarchique",
-            "can_validate_administration": "Validation administration",
+            "can_validate_administration": "Validation Ressource Humain (RH)",
             "can_validate_direction": "Validation direction",
             "show_in_login": "Visible a la connexion",
             "is_active": "Role actif",
@@ -252,7 +252,7 @@ class RoleForm(forms.ModelForm):
             "is_department_scoped": "Activez cette option si ce role ne doit voir ou traiter que son departement.",
             "can_manage_settings": "Autorise l'acces au panneau Parametres.",
             "can_validate_hierarchy": "Permet de valider a l'etape chef hierarchique.",
-            "can_validate_administration": "Permet de valider a l'etape administration.",
+            "can_validate_administration": "Permet de valider a l'etape Ressource Humain (RH).",
             "can_validate_direction": "Permet de valider a l'etape direction.",
             "show_in_login": "Affiche ce role dans l'ecran de connexion.",
             "is_active": "Desactivez pour masquer le role sans le supprimer.",
@@ -281,7 +281,7 @@ class RoleForm(forms.ModelForm):
         if "portal" in self.fields:
             self.fields["portal"].choices = [
                 (Role.PORTAL_EMPLOYEE, "Employe"),
-                (Role.PORTAL_ADMIN, "Administration"),
+                (Role.PORTAL_ADMIN, "Ressource Humain (RH)"),
             ]
 
     class Meta:

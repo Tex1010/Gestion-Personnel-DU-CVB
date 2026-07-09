@@ -20,7 +20,7 @@ class LoginBranding(models.Model):
     )
     request_submission_email_enabled = models.BooleanField(
         default=True,
-        help_text="Active l'envoi d'un email a l'adresse d'administration a chaque nouvelle demande.",
+        help_text="Active l'envoi d'un email a l'adresse de la Ressource Humain (RH) a chaque nouvelle demande.",
     )
     logo_image = models.FileField(upload_to="branding/logos/", blank=True, null=True)
     hero_image = models.FileField(upload_to="branding/", blank=True, null=True)

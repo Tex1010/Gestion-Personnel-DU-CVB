@@ -42,7 +42,7 @@ class Role(models.Model):
 
     PORTAL_CHOICES = [
         (PORTAL_EMPLOYEE, "Employe"),
-        (PORTAL_ADMIN, "Administration"),
+        (PORTAL_ADMIN, "Ressource Humain (RH)"),
     ]
 
     code = models.SlugField(max_length=50, unique=True)

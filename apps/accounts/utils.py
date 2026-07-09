@@ -34,9 +34,9 @@ DEFAULT_ROLE_DEFINITIONS = [
     },
     {
         "code": EmployeeProfile.ROLE_ADMIN,
-        "label_fr": "Administration",
-        "label_en": "Administration",
-        "label_mg": "Fitantanana",
+        "label_fr": "Ressource Humain (RH)",
+        "label_en": "Human Resources (HR)",
+        "label_mg": "Ressource Humain (RH)",
         "portal": Role.PORTAL_ADMIN,
         "can_manage_settings": True,
         "can_validate_administration": True,
@@ -102,10 +102,26 @@ DEFAULT_CONTRACT_TYPE_DEFINITIONS = [
 def ensure_reference_data():
     try:
         for role_defaults in DEFAULT_ROLE_DEFINITIONS:
-            Role.objects.get_or_create(
+            role, created = Role.objects.get_or_create(
                 code=role_defaults["code"],
                 defaults=role_defaults,
             )
+            # Keep system roles aligned with defaults when the app boots.
+            # This ensures label updates (ex: Administration -> Ressource Humain (RH)) are applied
+            # without requiring manual database edits.
+            if (
+                not created
+                and getattr(role, "is_system", False)
+                and role_defaults.get("code") == EmployeeProfile.ROLE_ADMIN
+            ):
+                update_fields = []
+                for field_name in ["label_fr", "label_en", "label_mg"]:
+                    new_value = role_defaults.get(field_name)
+                    if new_value is not None and getattr(role, field_name) != new_value:
+                        setattr(role, field_name, new_value)
+                        update_fields.append(field_name)
+                if update_fields:
+                    role.save(update_fields=update_fields + ["updated_at"])
         for contract_defaults in DEFAULT_CONTRACT_TYPE_DEFINITIONS:
             ContractType.objects.get_or_create(
                 code=contract_defaults["code"],
