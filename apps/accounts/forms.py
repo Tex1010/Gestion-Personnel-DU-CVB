@@ -1,5 +1,4 @@
 from django import forms
-from django.contrib.auth import password_validation
 from django.contrib.auth.forms import PasswordChangeForm
 
 from apps.accounts.utils import ensure_reference_data
@@ -47,12 +46,40 @@ class LoginForm(forms.Form):
 
 
 class StyledPasswordChangeForm(PasswordChangeForm):
-    old_password = forms.CharField(label="Mot de passe actuel", widget=forms.PasswordInput)
+    old_password = forms.CharField(
+        label="Mot de passe actuel",
+        widget=forms.PasswordInput(
+            attrs={
+                "autocomplete": "current-password",
+                "data-password-current": "1",
+            }
+        ),
+        help_text="Utilisez le mot de passe actif de votre compte pour autoriser cette modification.",
+    )
     new_password1 = forms.CharField(
         label="Nouveau mot de passe",
-        widget=forms.PasswordInput,
-        help_text=password_validation.password_validators_help_text_html(),
+        widget=forms.PasswordInput(
+            attrs={
+                "autocomplete": "new-password",
+                "data-password-new": "1",
+            }
+        ),
+        help_text=(
+            "<ul class='password-rule-list'>"
+            "<li>Au moins 8 caracteres.</li>"
+            "<li>Evitez les informations trop proches de votre identite.</li>"
+            "<li>Ne choisissez pas un mot de passe trop commun.</li>"
+            "<li>Le mot de passe ne peut pas etre uniquement numerique.</li>"
+            "</ul>"
+        ),
     )
     new_password2 = forms.CharField(
-        label="Confirmation du nouveau mot de passe", widget=forms.PasswordInput
+        label="Confirmation du nouveau mot de passe",
+        widget=forms.PasswordInput(
+            attrs={
+                "autocomplete": "new-password",
+                "data-password-confirm": "1",
+            }
+        ),
+        help_text="Retapez exactement le nouveau mot de passe pour valider sans erreur de saisie.",
     )

@@ -125,3 +125,13 @@ class AccountsViewsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Tableau de bord admin")
+
+    def test_password_change_page_uses_custom_security_interface(self):
+        self.client.login(username="employe_test", password="TestPass123!")
+
+        response = self.client.get(reverse("accounts:password_change"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Console de securite")
+        self.assertContains(response, "Construire un mot de passe solide")
+        self.assertContains(response, 'id="passwordStrengthBar"', html=False)

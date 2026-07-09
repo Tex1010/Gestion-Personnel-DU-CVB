@@ -2255,6 +2255,407 @@ th {
     color:white;
 }
 
+.password-change-page {
+    gap: 28px;
+}
+
+.password-change-hero {
+    position: relative;
+    overflow: hidden;
+    display: grid;
+    gap: 24px;
+    grid-template-columns: minmax(0, 1.7fr) minmax(280px, 0.95fr);
+    padding: 30px;
+    background:
+        radial-gradient(circle at top right, rgba(255, 255, 255, 0.22), transparent 28%),
+        linear-gradient(135deg, rgba(19, 49, 34, 0.98), rgba(37, 92, 58, 0.92) 45%, rgba(106, 74, 22, 0.88));
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    box-shadow: 0 26px 60px rgba(15, 27, 20, 0.2);
+}
+
+.password-change-hero::before,
+.password-change-hero::after {
+    content: "";
+    position: absolute;
+    inset: auto;
+    border-radius: 999px;
+    pointer-events: none;
+}
+
+.password-change-hero::before {
+    width: 240px;
+    height: 240px;
+    right: -60px;
+    top: -80px;
+    background: radial-gradient(circle, rgba(255, 255, 255, 0.22), transparent 68%);
+}
+
+.password-change-hero::after {
+    width: 220px;
+    height: 220px;
+    left: -70px;
+    bottom: -120px;
+    background: radial-gradient(circle, rgba(250, 214, 132, 0.18), transparent 70%);
+}
+
+.password-change-hero-copy,
+.password-hero-panel {
+    position: relative;
+    z-index: 1;
+}
+
+.password-change-hero h1,
+.password-change-hero h2,
+.password-change-hero h3,
+.password-change-hero p,
+.password-change-hero strong,
+.password-change-hero span {
+    color: inherit;
+}
+
+.password-change-hero-copy {
+    display: grid;
+    gap: 16px;
+}
+
+.password-change-hero-copy h1 {
+    margin: 0;
+    font-size: clamp(2rem, 4vw, 3rem);
+    line-height: 1.05;
+}
+
+.password-change-hero-copy p {
+    margin: 0;
+    max-width: 700px;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 1.02rem;
+}
+
+.password-hero-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.password-hero-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 11px 14px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.12);
+    border: 1px solid rgba(255, 255, 255, 0.18);
+    color: #fff;
+    font-weight: 700;
+    backdrop-filter: blur(10px);
+}
+
+.password-hero-panel {
+    padding: 22px;
+    border-radius: 24px;
+    background: rgba(10, 18, 14, 0.24);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(16px);
+}
+
+.password-hero-stats {
+    display: grid;
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.password-hero-stat {
+    display: grid;
+    gap: 6px;
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.password-hero-stat strong {
+    font-size: 1rem;
+}
+
+.password-hero-stat span {
+    color: rgba(255, 255, 255, 0.82);
+}
+
+.password-change-layout {
+    display: grid;
+    gap: 24px;
+    grid-template-columns: minmax(0, 1.55fr) minmax(280px, 0.9fr);
+    align-items: start;
+}
+
+.password-change-form-card {
+    display: grid;
+    gap: 22px;
+    padding: 28px;
+    border-radius: 30px;
+    box-shadow: 0 22px 48px rgba(16, 31, 23, 0.1);
+}
+
+.password-form-topbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.password-form-topbar h2 {
+    margin: 4px 0 8px;
+}
+
+.password-form-topbar p {
+    margin: 0;
+    color: var(--muted);
+    max-width: 640px;
+}
+
+.password-strength-summary {
+    min-width: 180px;
+    display: grid;
+    gap: 6px;
+    padding: 16px 18px;
+    border-radius: 20px;
+    background: linear-gradient(180deg, rgba(37, 92, 58, 0.1), rgba(37, 92, 58, 0.04));
+    border: 1px solid rgba(37, 92, 58, 0.12);
+}
+
+.password-strength-summary span {
+    color: var(--muted);
+    font-size: 0.92rem;
+}
+
+.password-strength-summary strong {
+    color: var(--green);
+    font-size: 1.2rem;
+}
+
+.password-change-form {
+    gap: 18px;
+}
+
+.password-field-card {
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+    border-radius: 24px;
+    background:
+        linear-gradient(180deg, rgba(255, 252, 247, 0.98), rgba(255, 255, 255, 0.98));
+    border: 1px solid rgba(37, 92, 58, 0.1);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
+}
+
+.password-field-header {
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
+}
+
+.password-field-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: inline-grid;
+    place-items: center;
+    background: linear-gradient(135deg, rgba(37, 92, 58, 0.14), rgba(226, 190, 115, 0.18));
+    color: var(--green);
+    font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+.password-field-text {
+    display: grid;
+    gap: 6px;
+}
+
+.password-field-text p {
+    margin: 0;
+    color: var(--muted);
+}
+
+.password-field-text label {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.password-helper-box {
+    padding: 14px 16px;
+    border-radius: 18px;
+    background: rgba(37, 92, 58, 0.06);
+    border: 1px solid rgba(37, 92, 58, 0.08);
+}
+
+.password-helper-box .password-rule-list {
+    margin: 0;
+    padding-left: 18px;
+    color: var(--muted);
+}
+
+.password-helper-box .password-rule-list li + li {
+    margin-top: 6px;
+}
+
+.password-strength-panel {
+    display: grid;
+    gap: 10px;
+}
+
+.password-strength-bar {
+    height: 12px;
+    border-radius: 999px;
+    background: rgba(37, 92, 58, 0.1);
+    overflow: hidden;
+}
+
+.password-strength-bar span {
+    display: block;
+    width: 0;
+    height: 100%;
+    border-radius: inherit;
+    transition: width 0.25s ease, background 0.25s ease, box-shadow 0.25s ease;
+    background: linear-gradient(135deg, rgba(140, 47, 47, 0.85), rgba(180, 78, 78, 0.9));
+}
+
+.password-strength-bar span[data-level="medium"] {
+    background: linear-gradient(135deg, rgba(188, 134, 41, 0.92), rgba(226, 190, 115, 0.95));
+    box-shadow: 0 0 16px rgba(226, 190, 115, 0.34);
+}
+
+.password-strength-bar span[data-level="strong"] {
+    background: linear-gradient(135deg, rgba(37, 92, 58, 0.9), rgba(83, 168, 109, 0.98));
+    box-shadow: 0 0 18px rgba(83, 168, 109, 0.34);
+}
+
+.password-strength-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 14px;
+    flex-wrap: wrap;
+    color: var(--muted);
+}
+
+.password-strength-meta strong {
+    color: var(--text);
+}
+
+.password-live-rules {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.password-live-rule {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 12px;
+    border-radius: 999px;
+    background: rgba(61, 77, 95, 0.08);
+    color: var(--muted);
+    border: 1px solid rgba(61, 77, 95, 0.08);
+    font-weight: 600;
+}
+
+.password-live-rule i {
+    font-size: 1rem;
+}
+
+.password-live-rule.is-valid {
+    background: rgba(37, 92, 58, 0.12);
+    color: var(--green);
+    border-color: rgba(37, 92, 58, 0.18);
+}
+
+.password-match-banner,
+.password-error-banner {
+    padding: 14px 16px;
+    border-radius: 18px;
+    border: 1px solid rgba(61, 77, 95, 0.08);
+    background: rgba(61, 77, 95, 0.06);
+    color: var(--muted);
+    font-weight: 600;
+}
+
+.password-match-banner.is-valid {
+    background: rgba(37, 92, 58, 0.12);
+    border-color: rgba(37, 92, 58, 0.18);
+    color: var(--green);
+}
+
+.password-match-banner.is-invalid,
+.password-error-banner {
+    background: rgba(155, 54, 54, 0.08);
+    border-color: rgba(155, 54, 54, 0.16);
+    color: #8c2f2f;
+}
+
+.password-form-footer {
+    display: grid;
+    gap: 12px;
+}
+
+.password-form-note {
+    margin: 0;
+    color: var(--muted);
+}
+
+.password-change-aside {
+    display: grid;
+    gap: 20px;
+}
+
+.password-side-card {
+    display: grid;
+    gap: 12px;
+    padding: 24px;
+    border-radius: 28px;
+}
+
+.password-side-card h3 {
+    margin: 0;
+}
+
+.password-side-list {
+    margin: 0;
+    padding-left: 18px;
+}
+
+.password-side-list li + li {
+    margin-top: 10px;
+}
+
+@media (max-width: 980px) {
+    .password-change-hero,
+    .password-change-layout {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .password-change-hero,
+    .password-change-form-card,
+    .password-side-card {
+        padding: 20px;
+    }
+
+    .password-field-card {
+        padding: 16px;
+    }
+
+    .password-field-header {
+        flex-direction: column;
+    }
+
+    .password-strength-meta {
+        flex-direction: column;
+    }
+}
+
 [data-theme="dark"] body {
     background:
         radial-gradient(circle at top right, rgba(158, 215, 175, 0.12), transparent 32%),
@@ -2346,6 +2747,12 @@ th {
 [data-theme="dark"] input,
 [data-theme="dark"] select,
 [data-theme="dark"] textarea,
+[data-theme="dark"] .password-field-card,
+[data-theme="dark"] .password-helper-box,
+[data-theme="dark"] .password-strength-summary,
+[data-theme="dark"] .password-match-banner,
+[data-theme="dark"] .password-error-banner,
+[data-theme="dark"] .password-live-rule,
 [data-theme="dark"] .table-search-field {
     background: rgba(15, 21, 18, 0.92);
     color: var(--text);
@@ -2355,6 +2762,39 @@ th {
 [data-theme="dark"] .topbar-menu-button,
 [data-theme="dark"] .display-chip {
     box-shadow: 0 10px 24px rgba(0, 0, 0, 0.24);
+}
+
+[data-theme="dark"] .password-change-form-card {
+    box-shadow: 0 24px 50px rgba(0, 0, 0, 0.28);
+}
+
+[data-theme="dark"] .password-change-hero {
+    background:
+        radial-gradient(circle at top right, rgba(173, 222, 188, 0.16), transparent 30%),
+        linear-gradient(135deg, rgba(7, 18, 12, 0.98), rgba(20, 50, 35, 0.96) 50%, rgba(92, 67, 22, 0.9));
+    border-color: rgba(173, 222, 188, 0.1);
+}
+
+[data-theme="dark"] .password-hero-panel,
+[data-theme="dark"] .password-hero-stat {
+    background: rgba(8, 14, 11, 0.34);
+    border-color: rgba(173, 222, 188, 0.1);
+}
+
+[data-theme="dark"] .password-field-icon {
+    background: linear-gradient(135deg, rgba(158, 215, 175, 0.14), rgba(226, 190, 115, 0.12));
+}
+
+[data-theme="dark"] .password-strength-summary strong,
+[data-theme="dark"] .password-live-rule.is-valid,
+[data-theme="dark"] .password-match-banner.is-valid {
+    color: #9ed7af;
+}
+
+[data-theme="dark"] .password-match-banner.is-invalid,
+[data-theme="dark"] .password-error-banner,
+[data-theme="dark"] .error-text {
+    color: #ffb3b3;
 }
 
 [data-theme="dark"] input::placeholder,
