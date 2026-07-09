@@ -54,14 +54,14 @@ class EmployeeAccountForm(forms.Form):
             "photo": "Optionnel. Photo de profil affichee dans l'interface.",
         }
         placeholders = {
-            "username": "Ex: jrakoto",
+            "username": "Ex: Tendry",
             "password": "Mot de passe temporaire",
-            "first_name": "Ex: Rakoto",
-            "last_name": "Ex: Jean",
-            "email": "Ex: jean.rakoto@centrevalbio.org",
-            "employee_number": "Ex: CVB-024",
+            "first_name": "Ex: TENDRY",
+            "last_name": "Ex: Tahinjanahary",
+            "email": "Ex: tendry.it@valb.io",
+            "employee_number": "Ex: CVB-001",
             "position": "Ex: Assistant administratif",
-            "leave_balance": "30",
+            "leave_balance": " 0",
             "recovery_balance": "0",
         }
 
@@ -115,7 +115,7 @@ class EmployeeAccountForm(forms.Form):
         if self.profile:
             queryset = queryset.exclude(pk=self.profile.user_id)
         if queryset.exists():
-            raise forms.ValidationError("Ce nom d'utilisateur existe deja.")
+            raise forms.ValidationError("Ce nom d'utilisateur existe deja !")
         return username
 
     def save(self):
@@ -171,7 +171,6 @@ class LoginBrandingForm(forms.ModelForm):
         for field_name, label in labels.items():
             if field_name in self.fields:
                 self.fields[field_name].label = label
-
     class Meta:
         model = LoginBranding
         fields = [
@@ -185,7 +184,6 @@ class LoginBrandingForm(forms.ModelForm):
             "logo_image",
             "hero_image",
         ]
-
 
 class DepartmentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
@@ -203,7 +201,7 @@ class DepartmentForm(forms.ModelForm):
             "is_active": "Desactivez pour le retirer des choix sans supprimer l'historique existant.",
         }
         placeholders = {
-            "name": "Ex: Ressource Humain (RH)",
+            "name": "Ex: Ressource Humain",
             "code": "Ex: ADMIN",
             "description": "Ex: Gestion administrative et support interne",
         }

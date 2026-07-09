@@ -29,3 +29,7 @@ python manage.py runserver 10.0.2.76:8000
 start nginx
 
 .\nginx.exe -s reload
+
+.\cloudflared.exe --version
+.\cloudflared.exe tunnel list
+.\cloudflared.exe tunnel create cvb-personnel

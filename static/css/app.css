@@ -2257,7 +2257,7 @@ th {
 .section-header p,
 .meta-copy,
 .login-form-panel p {
-    color:white;
+    color: var(--muted);
 }
 
 .password-change-page {
