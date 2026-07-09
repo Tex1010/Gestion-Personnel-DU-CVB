@@ -69,9 +69,11 @@
                             {% elif not request.user.profile.can_manage_settings %}
                                 <a href="{% url 'administration:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-speedometer2"></i><span data-i18n="requestValidation">Validation des demandes</span></a>
                                 <a href="{% url 'administration:requests' %}" class="{% if request.resolver_match.url_name == 'requests' or request.resolver_match.url_name == 'request_action' %}is-active{% endif %}"><i class="bi bi-ui-checks-grid"></i><span data-i18n="requestsToApprove">Demandes a valider</span></a>
+                                <a href="{% url 'administration:presence_overview' %}" class="{% if request.resolver_match.url_name == 'presence_overview' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-calendar3"></i><span>Conges &amp; absences</span></a>
                             {% else %}
                                 <a href="{% url 'administration:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-speedometer2"></i><span data-i18n="adminDashboard">Tableau de bord admin</span></a>
                                 <a href="{% url 'administration:requests' %}" class="{% if request.resolver_match.url_name == 'requests' or request.resolver_match.url_name == 'request_action' %}is-active{% endif %}"><i class="bi bi-ui-checks-grid"></i><span data-i18n="requests">Demandes</span></a>
+                                <a href="{% url 'administration:presence_overview' %}" class="{% if request.resolver_match.url_name == 'presence_overview' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-calendar3"></i><span>Conges &amp; absences</span></a>
                                 <a href="{% url 'administration:settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}is-active{% endif %}"><i class="bi bi-sliders"></i><span data-i18n="settings">Parametres</span></a>
                             {% endif %}
                         {% endwith %}

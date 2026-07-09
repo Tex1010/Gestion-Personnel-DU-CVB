@@ -1,0 +1,17 @@
+{% for item in leave_requests %}
+    <tr>
+        <td data-label="Employe">{{ item.employee.display_name }}</td>
+        <td data-label="Departement">{{ item.employee.department_name }}</td>
+        <td data-label="Date depart">
+            {% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %}
+        </td>
+        <td data-label="Date arrivee">
+            {% if item.end_date %}{{ item.end_date|date:"d/m/Y" }}{% elif item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %}
+        </td>
+    </tr>
+{% empty %}
+    <tr>
+        <td colspan="4">Aucun employe en conge actuellement.</td>
+    </tr>
+{% endfor %}
+

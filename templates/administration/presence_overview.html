@@ -1,0 +1,143 @@
+{% extends "base.html" %}
+
+{% block title %}Conges et absences{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Suivi presence</span>
+            <h1>Conges et absences en cours</h1>
+            <p>Liste des employes actuellement en conge ou absents (dates de depart et d'arrivee).</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'administration:requests' %}" class="btn-secondary">Voir les demandes</a>
+        </div>
+    </div>
+
+    <div class="stats-scroll">
+        <div class="stats-grid fixed-two">
+            <article class="card stat-card accent-green">
+                <span>Employes en conge</span>
+                <strong id="presence-leave-count">{{ leave_count }}</strong>
+                <small>Actifs aujourd'hui</small>
+            </article>
+            <article class="card stat-card accent-amber">
+                <span>Employes absents</span>
+                <strong id="presence-absence-count">{{ absence_count }}</strong>
+                <small>Actifs aujourd'hui</small>
+            </article>
+        </div>
+    </div>
+
+    <div class="chart-grid">
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Employes en conge</h2>
+                    <p class="helper">Demandes approuvees dont la periode couvre la date du jour.</p>
+                </div>
+            </div>
+            <div class="table-toolbar">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher un employe ou un departement" data-table-search="admin-presence-leave-table">
+                </label>
+            </div>
+            <div class="table-shell">
+                <div class="table-wrap sticky-table">
+                    <table id="admin-presence-leave-table">
+                        <thead>
+                            <tr>
+                                <th>Employe</th>
+                                <th>Departement</th>
+                                <th>Date depart</th>
+                                <th>Date arrivee</th>
+                            </tr>
+                        </thead>
+                        <tbody id="presence-leave-tbody">
+                            {% include "administration/includes/presence_leave_rows.html" %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Employes absents</h2>
+                    <p class="helper">Autorisations d'absence approuvees et actives.</p>
+                </div>
+            </div>
+            <div class="table-toolbar">
+                <label class="table-search-field">
+                    <i class="bi bi-search"></i>
+                    <input type="search" placeholder="Rechercher un employe ou un departement" data-table-search="admin-presence-absence-table">
+                </label>
+            </div>
+            <div class="table-shell">
+                <div class="table-wrap sticky-table">
+                    <table id="admin-presence-absence-table">
+                        <thead>
+                            <tr>
+                                <th>Employe</th>
+                                <th>Departement</th>
+                                <th>Date depart</th>
+                                <th>Date arrivee</th>
+                            </tr>
+                        </thead>
+                        <tbody id="presence-absence-tbody">
+                            {% include "administration/includes/presence_absence_rows.html" %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+    </div>
+</section>
+
+<script>
+    const refreshPresenceOverview = async () => {
+        if (document.hidden) {
+            return;
+        }
+        try {
+            const response = await fetch("{% url 'administration:presence_overview_data' %}", { headers: { "X-Requested-With": "fetch" } });
+            if (!response.ok) {
+                return;
+            }
+            const data = await response.json();
+
+            const leaveCount = document.getElementById("presence-leave-count");
+            const absenceCount = document.getElementById("presence-absence-count");
+            if (leaveCount) leaveCount.innerText = data.leave_count ?? 0;
+            if (absenceCount) absenceCount.innerText = data.absence_count ?? 0;
+
+            const leaveTbody = document.getElementById("presence-leave-tbody");
+            if (leaveTbody && typeof data.leave_rows_html === "string" && leaveTbody.innerHTML !== data.leave_rows_html) {
+                leaveTbody.innerHTML = data.leave_rows_html;
+                window.traeTableSearch?.refresh?.("admin-presence-leave-table");
+            }
+            const absenceTbody = document.getElementById("presence-absence-tbody");
+            if (absenceTbody && typeof data.absence_rows_html === "string" && absenceTbody.innerHTML !== data.absence_rows_html) {
+                absenceTbody.innerHTML = data.absence_rows_html;
+                window.traeTableSearch?.refresh?.("admin-presence-absence-table");
+            }
+
+            window.traeI18n?.apply?.();
+        } catch (error) {
+            return;
+        }
+    };
+
+    refreshPresenceOverview();
+    window.setInterval(refreshPresenceOverview, 15000);
+    document.addEventListener("visibilitychange", () => {
+        if (!document.hidden) {
+            refreshPresenceOverview();
+        }
+    });
+</script>
+{% endblock %}
+

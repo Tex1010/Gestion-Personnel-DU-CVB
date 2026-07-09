@@ -7,11 +7,12 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
 from django.db import transaction
-from django.db.models import Count
+from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.template.loader import render_to_string
 from django.urls import reverse
+from django.utils import timezone
 from django.utils.timezone import localtime
 
 from apps.accounts.utils import approval_required, can_manage_settings, settings_required
@@ -643,6 +644,37 @@ def _build_requests_overview_context(current_profile, show_history):
     }
 
 
+def _build_presence_overview_context(current_profile):
+    today = timezone.localdate()
+    requests = StaffRequest.objects.select_related(
+        "employee",
+        "employee__user",
+        "employee__department",
+    ).filter(status=StaffRequest.STATUS_APPROVED)
+    requests = _scoped_request_queryset(requests, current_profile, actionable_only=False)
+
+    active_window = Q(start_date__lte=today) & (Q(end_date__gte=today) | Q(end_date__isnull=True))
+
+    leave_requests = (
+        requests.filter(request_type=StaffRequest.TYPE_LEAVE)
+        .filter(active_window)
+        .order_by("start_date", "employee__user__first_name", "employee__user__last_name")
+    )
+    absence_requests = (
+        requests.filter(request_type=StaffRequest.TYPE_ABSENCE)
+        .filter(active_window)
+        .order_by("start_date", "employee__user__first_name", "employee__user__last_name")
+    )
+
+    return {
+        "leave_requests": leave_requests,
+        "absence_requests": absence_requests,
+        "leave_count": leave_requests.count(),
+        "absence_count": absence_requests.count(),
+        "today": today,
+    }
+
+
 def _build_requests_export_response(requests):
     headers, rows = _export_request_rows(requests)
     return _build_excel_response("demandes.xlsx", "Demandes", headers, rows)
@@ -972,6 +1004,40 @@ def requests_overview_data_view(request):
             )
             if show_history
             else "",
+        }
+    )
+
+
+@login_required
+@approval_required
+def presence_overview_view(request):
+    current_profile = getattr(request.user, "profile", None)
+    return render(
+        request,
+        "administration/presence_overview.html",
+        _build_presence_overview_context(current_profile),
+    )
+
+
+@login_required
+@approval_required
+def presence_overview_data_view(request):
+    current_profile = getattr(request.user, "profile", None)
+    context = _build_presence_overview_context(current_profile)
+    return JsonResponse(
+        {
+            "leave_count": context["leave_count"],
+            "absence_count": context["absence_count"],
+            "leave_rows_html": render_to_string(
+                "administration/includes/presence_leave_rows.html",
+                context,
+                request=request,
+            ),
+            "absence_rows_html": render_to_string(
+                "administration/includes/presence_absence_rows.html",
+                context,
+                request=request,
+            ),
         }
     )
 

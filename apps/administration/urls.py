@@ -7,6 +7,12 @@ app_name = "administration"
 urlpatterns = [
     path("tableau-de-bord/", views.dashboard_view, name="dashboard"),
     path("tableau-de-bord/donnees/", views.dashboard_data_view, name="dashboard_data"),
+    path("presence/", views.presence_overview_view, name="presence_overview"),
+    path(
+        "presence/donnees/",
+        views.presence_overview_data_view,
+        name="presence_overview_data",
+    ),
     path("exports/<str:table_key>/", views.export_table_view, name="export_table"),
     path("demandes/", views.requests_overview_view, name="requests"),
     path("demandes/export/<str:export_format>/", views.export_requests_view, name="export_requests"),
