@@ -10,6 +10,11 @@
             <h1>Fiche de recuperation</h1>
             <p>Formulaire numerique reprenant la logique de la fiche papier de recuperation.</p>
         </div>
+        {% if is_edit_mode %}
+            <div class="header-actions">
+                <span class="badge approved">Edition active</span>
+            </div>
+        {% endif %}
     </div>
 
     <article class="card printable-form">
@@ -27,6 +32,14 @@
         <form method="post" class="stack-form">
             {% csrf_token %}
             {{ formset.management_form }}
+            {% if is_edit_mode %}
+                <div class="message info" role="status">
+                    <div class="message-body">
+                        <span class="message-icon" aria-hidden="true"></span>
+                        <span>Vous pouvez ajuster cette fiche tant qu'aucune validation n'a encore commence.</span>
+                    </div>
+                </div>
+            {% endif %}
             <div class="form-grid two">
                 <div>
                     {{ form.project_name.label_tag }}
@@ -87,7 +100,7 @@
             {% if form.errors or formset.errors %}
                 <div class="error-box">Veuillez corriger les informations du formulaire.</div>
             {% endif %}
-            <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Enregistrer cette fiche de recuperation" data-confirm-message="La fiche sera envoyee a l'administration pour verification et traitement." data-confirm-label="Oui, enregistrer" data-confirm-class="btn-primary"><i class="bi bi-save2"></i>Enregistrer la fiche</button>
+            <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="{% if is_edit_mode %}Mettre a jour cette fiche de recuperation{% else %}Enregistrer cette fiche de recuperation{% endif %}" data-confirm-message="{% if is_edit_mode %}Les modifications seront enregistrees avant la validation de cette fiche.{% else %}La fiche sera envoyee a l'administration pour verification et traitement.{% endif %}" data-confirm-label="{% if is_edit_mode %}Oui, mettre a jour{% else %}Oui, enregistrer{% endif %}" data-confirm-class="btn-primary"><i class="bi {% if is_edit_mode %}bi-pencil-square{% else %}bi-save2{% endif %}"></i>{% if is_edit_mode %}Mettre a jour la fiche{% else %}Enregistrer la fiche{% endif %}</button>
         </form>
     </article>
 </section>

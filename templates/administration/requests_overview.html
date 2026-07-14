@@ -9,7 +9,7 @@
         <div>
             <span class="eyebrow">Demandes</span>
             <h1>Conge, absence et recuperation</h1>
-            <p>{{ pending_count }} demande(s) en attente de traitement.</p>
+            <p><span id="requests-pending-count">{{ pending_count }}</span> demande(s) en attente de traitement.</p>
         </div>
         <div class="header-actions">
             {% if show_history %}
@@ -52,7 +52,7 @@
                             <th>Statut</th>
                         </tr>
                     </thead>
-                    <tbody>
+                    <tbody id="pending-requests-tbody">
                         {% for item in requests %}
                             <tr>
                                 <td data-label="Employe">{{ item.employee.display_name }}</td>
@@ -67,6 +67,9 @@
                                 <td data-label="Actions">
                                     <form method="post" action="{% url 'administration:request_action' item.id 'approve' %}" class="row-actions" id="request-review-{{ item.id }}">
                                         {% csrf_token %}
+                                        <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener" title="Voir le detail">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
                                         <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Accepter cette demande" data-confirm-message="Cette demande sera approuvee et le solde sera mis a jour si necessaire." data-confirm-label="Oui, accepter" data-confirm-class="btn-primary"><i class="bi bi-check2-circle"></i></button>
                                         <button type="submit" formaction="{% url 'administration:request_action' item.id 'reject' %}" class="btn-danger" data-confirm-action="1" data-confirm-title="Refuser cette demande" data-confirm-message="Cette demande sera marquee comme rejetee dans l'historique." data-confirm-label="Oui, refuser" data-confirm-class="btn-danger"><i class="bi bi-x-circle"></i></button>
                                     </form>
@@ -127,7 +130,7 @@
                                 {% endif %}
                             </tr>
                         </thead>
-                        <tbody>
+                        <tbody id="requests-history-tbody">
                             {% for item in history_requests %}
                                 <tr>
                                     <td data-label="Date">{{ item.request.updated_at|date:"d/m/Y H:i" }}</td>
@@ -195,4 +198,49 @@
         </article>
     {% endif %}
 </section>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const pendingCount = document.getElementById("requests-pending-count");
+        const pendingRequestsTbody = document.getElementById("pending-requests-tbody");
+        const historyTbody = document.getElementById("requests-history-tbody");
+        const showHistory = {{ show_history|yesno:"true,false" }};
+
+        const refreshRequestsOverview = async () => {
+            if (document.hidden || !pendingRequestsTbody) {
+                return;
+            }
+            try {
+                const response = await fetch("{% url 'administration:requests_overview_data' %}?show_history={% if show_history %}1{% else %}0{% endif %}", {
+                    headers: { "X-Requested-With": "fetch" }
+                });
+                if (!response.ok) {
+                    return;
+                }
+                const data = await response.json();
+                if (pendingCount && typeof data.pending_count !== "undefined") {
+                    pendingCount.textContent = data.pending_count;
+                }
+                if (typeof data.pending_requests_html === "string" && pendingRequestsTbody.innerHTML !== data.pending_requests_html) {
+                    pendingRequestsTbody.innerHTML = data.pending_requests_html;
+                    window.traeTableSearch?.refresh("pending-requests-table");
+                }
+                if (showHistory && historyTbody && typeof data.requests_history_html === "string" && historyTbody.innerHTML !== data.requests_history_html) {
+                    historyTbody.innerHTML = data.requests_history_html;
+                    window.traeTableSearch?.refresh("requests-history-table");
+                }
+                window.traeI18n?.apply?.();
+            } catch (error) {
+                return;
+            }
+        };
+
+        refreshRequestsOverview();
+        window.setInterval(refreshRequestsOverview, 10000);
+        document.addEventListener("visibilitychange", () => {
+            if (!document.hidden) {
+                refreshRequestsOverview();
+            }
+        });
+    });
+</script>
 {% endblock %}

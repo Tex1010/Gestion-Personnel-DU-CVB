@@ -87,7 +87,7 @@ class StaffRequest(models.Model):
     @property
     def status_label(self):
         if self.status == self.STATUS_CANCELLED:
-            return "Annuler"
+            return "Annulee"
         return self.get_status_display()
 
     @property
@@ -141,6 +141,16 @@ class StaffRequest(models.Model):
         if self.employee_simple_status_label == "Annulee":
             return "cancelled"
         return "stage-pending"
+
+    @property
+    def employee_can_edit(self):
+        return (
+            self.status == self.STATUS_SUBMITTED
+            and self.approval_stage != self.APPROVAL_COMPLETED
+            and not self.hierarchical_signature
+            and not self.administration_signature
+            and not self.direction_signature
+        )
 
     def _approval_status_for_stage(self, stage):
         if self.status == self.STATUS_DRAFT:

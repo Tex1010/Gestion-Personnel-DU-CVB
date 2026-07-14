@@ -12,6 +12,9 @@
         <td data-label="Actions">
             <form method="post" action="{% url 'administration:request_action' item.id 'approve' %}" class="row-actions" id="request-review-{{ item.id }}">
                 {% csrf_token %}
+                <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener" title="Voir le detail">
+                    <i class="bi bi-eye"></i>
+                </a>
                 <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Accepter cette demande" data-confirm-message="Cette demande sera approuvee et le solde sera mis a jour si necessaire." data-confirm-label="Oui, accepter" data-confirm-class="btn-primary"><i class="bi bi-check2-circle"></i></button>
                 <button type="submit" formaction="{% url 'administration:request_action' item.id 'reject' %}" class="btn-danger" data-confirm-action="1" data-confirm-title="Refuser cette demande" data-confirm-message="Cette demande sera marquee comme rejetee dans l'historique." data-confirm-label="Oui, refuser" data-confirm-class="btn-danger"><i class="bi bi-x-circle"></i></button>
             </form>

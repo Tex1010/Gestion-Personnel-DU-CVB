@@ -10,6 +10,7 @@
     {% else %}
         <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23255c3a'/%3E%3Ctext x='50%25' y='56%25' text-anchor='middle' font-size='20' font-family='Arial' fill='white'%3ECVB%3C/text%3E%3C/svg%3E">
     {% endif %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
         @page {
             size: A4;
@@ -387,7 +388,7 @@
             <article class="panel">
                 <strong>Informations demande</strong>
                 <div class="meta-list">
-                    <div><span>Statut global</span><span>{{ request_item.status_label }}</span></div>
+                    {% comment %} <div><span>Statut global</span><span>{{ request_item.status_label }}</span></div> {% endcomment %}
                     <div><span>Etape en cours</span><span>{{ request_item.get_approval_stage_display }}</span></div>
                     {% if request_item.request_type == "recovery" %}
                         <div>

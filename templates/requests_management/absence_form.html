@@ -10,6 +10,11 @@
             <h1>{{ heading|default:"Demande d'autorisation d'absence" }}</h1>
             <p>{{ description|default:"Formulaire inspire de la fiche papier fournie pour le Centre ValBio." }}</p>
         </div>
+        {% if is_edit_mode %}
+            <div class="header-actions">
+                <span class="badge approved">Edition active</span>
+            </div>
+        {% endif %}
     </div>
 
     <article class="card printable-form">
@@ -26,6 +31,14 @@
         </div>
         <form method="post" class="stack-form">
             {% csrf_token %}
+            {% if is_edit_mode %}
+                <div class="message info" role="status">
+                    <div class="message-body">
+                        <span class="message-icon" aria-hidden="true"></span>
+                        <span>Cette demande reste modifiable tant qu'aucun validateur n'a encore signe.</span>
+                    </div>
+                </div>
+            {% endif %}
             <div class="form-grid two">
                 <div>
                     {{ form.start_date.label_tag }}
@@ -104,7 +117,7 @@
             {% if form.errors %}
                 <div class="error-box">{{ form.errors }}</div>
             {% endif %}
-            <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="{{ confirm_title }}" data-confirm-message="{{ confirm_message }}" data-confirm-label="Oui, envoyer" data-confirm-class="btn-primary"><i class="bi bi-send-check"></i>{{ submit_label }}</button>
+            <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="{% if is_edit_mode %}{{ edit_confirm_title|default:confirm_title }}{% else %}{{ confirm_title }}{% endif %}" data-confirm-message="{% if is_edit_mode %}{{ edit_confirm_message|default:confirm_message }}{% else %}{{ confirm_message }}{% endif %}" data-confirm-label="{% if is_edit_mode %}Oui, mettre a jour{% else %}Oui, envoyer{% endif %}" data-confirm-class="btn-primary"><i class="bi {% if is_edit_mode %}bi-pencil-square{% else %}bi-send-check{% endif %}"></i>{% if is_edit_mode %}{{ edit_submit_label|default:submit_label }}{% else %}{{ submit_label }}{% endif %}</button>
         </form>
     </article>
 </section>

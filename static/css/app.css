@@ -6,6 +6,7 @@
     --green-soft: #dce9df;
     --amber: #9c6b1c;
     --slate: #3d4d5f;
+    --ink: #243427;
     --text: #1b1f1c;
     --muted: #6c736f;
     --border: rgba(37, 92, 58, 0.12);
@@ -25,6 +26,7 @@
     --green-soft: rgba(158, 215, 175, 0.14);
     --amber: #e2be73;
     --slate: #c6d1db;
+    --ink: #edf4ef;
     --text: #edf4ef;
     --muted: #aab7ae;
     --border: rgba(158, 215, 175, 0.14);
@@ -438,7 +440,7 @@ img {
     padding: 6px 12px;
     border-radius: 999px;
     background: var(--green-soft);
-    color: var(--green);
+    color: green;
     font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -595,6 +597,11 @@ h3 {
     color: var(--ink);
     font-size: 0.82rem;
     white-space: nowrap;
+}
+
+.meta-pill.editable {
+    background: rgba(47, 91, 208, 0.12);
+    color: #2f5bd0;
 }
 
 .meta-pill.cancelled {

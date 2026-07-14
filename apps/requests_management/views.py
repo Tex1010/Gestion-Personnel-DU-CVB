@@ -86,6 +86,10 @@ def _get_print_return_url(profile):
     return resolve_url("administration:requests")
 
 
+def _get_branding():
+    return LoginBranding.objects.first()
+
+
 def _pdf_escape(value):
     return (
         str(value)
@@ -262,22 +266,29 @@ def _build_stage_statuses(request_item):
 )
 def _balance_request_view(request, request_type):
     profile = get_user_profile(request.user)
+    branding = _get_branding()
     request_titles = {
         StaffRequest.TYPE_ABSENCE: {
             "page_title": "Demande d'absence",
             "heading": "Demande d'autorisation d'absence",
             "description": "Formulaire inspire de la fiche papier fournie pour le Centre ValBio.",
             "submit_label": "Envoyer la demande d'absence",
+            "edit_submit_label": "Mettre a jour la demande d'absence",
             "confirm_title": "Envoyer cette demande d'absence",
+            "edit_confirm_title": "Mettre a jour cette demande d'absence",
             "confirm_message": "La demande sera transmise a la Ressource Humain (RH) pour traitement.",
+            "edit_confirm_message": "Les modifications seront enregistrees avant l'envoi pour validation.",
         },
         StaffRequest.TYPE_LEAVE: {
             "page_title": "Demande de conge",
             "heading": "Demande de conge",
             "description": "Formulaire numerique pour demander un conge et suivre automatiquement le solde restant.",
             "submit_label": "Envoyer la demande de conge",
+            "edit_submit_label": "Mettre a jour la demande de conge",
             "confirm_title": "Envoyer cette demande de conge",
+            "edit_confirm_title": "Mettre a jour cette demande de conge",
             "confirm_message": "La demande de conge sera transmise a la Ressource Humain (RH) pour validation.",
+            "edit_confirm_message": "Les modifications seront enregistrees avant l'envoi pour validation.",
         },
     }
     form = AbsenceRequestForm(
@@ -300,7 +311,6 @@ def _balance_request_view(request, request_type):
         if profile.role_code != EmployeeProfile.ROLE_USER:
             balance_request.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
         balance_request.save()
-        branding = LoginBranding.objects.first()
         _send_request_email_alert(balance_request, branding=branding)
         success_message = (
             "La demande de conge a ete enregistree."
@@ -324,6 +334,8 @@ def _balance_request_view(request, request_type):
             "form": form,
             "profile": profile,
             "request_type": request_type,
+            "branding": branding,
+            "is_edit_mode": False,
             **request_titles[request_type],
         },
     )
@@ -360,6 +372,7 @@ def leave_request_view(request):
 )
 def recovery_request_view(request):
     profile = get_user_profile(request.user)
+    branding = _get_branding()
     recovery_request = StaffRequest(
         employee=profile,
         request_type=StaffRequest.TYPE_RECOVERY,
@@ -378,7 +391,13 @@ def recovery_request_view(request):
             return render(
                 request,
                 "requests_management/recovery_form.html",
-                {"form": form, "formset": formset, "profile": profile},
+                {
+                    "form": form,
+                    "formset": formset,
+                    "profile": profile,
+                    "branding": branding,
+                    "is_edit_mode": False,
+                },
             )
         recovery_request = form.save(commit=False)
         recovery_request.employee = profile
@@ -394,7 +413,6 @@ def recovery_request_view(request):
             total_hours += line.duration_hours
         recovery_request.total_days = total_hours
         recovery_request.save(update_fields=["total_days", "updated_at"])
-        branding = LoginBranding.objects.first()
         _send_request_email_alert(recovery_request, branding=branding)
         _queue_floating_notification(
             request,
@@ -409,8 +427,141 @@ def recovery_request_view(request):
     return render(
         request,
         "requests_management/recovery_form.html",
-        {"form": form, "formset": formset, "profile": profile},
+        {
+            "form": form,
+            "formset": formset,
+            "profile": profile,
+            "branding": branding,
+            "is_edit_mode": False,
+        },
     )
+
+
+@login_required
+@role_required(
+    EmployeeProfile.ROLE_USER,
+    EmployeeProfile.ROLE_ADMIN,
+    EmployeeProfile.ROLE_HIERARCHICAL,
+    EmployeeProfile.ROLE_DIRECTION,
+)
+def edit_request_view(request, request_id):
+    profile = get_user_profile(request.user)
+    branding = _get_branding()
+    request_item = get_object_or_404(
+        StaffRequest.objects.select_related("employee", "employee__user").prefetch_related("recovery_lines"),
+        pk=request_id,
+        employee=profile,
+    )
+
+    if not request_item.employee_can_edit:
+        messages.error(
+            request,
+            "Cette demande ne peut plus etre modifiee car elle est deja en cours de validation.",
+        )
+        return redirect("personnel:dashboard")
+
+    if request_item.request_type in [StaffRequest.TYPE_ABSENCE, StaffRequest.TYPE_LEAVE]:
+        request_titles = {
+            StaffRequest.TYPE_ABSENCE: {
+                "page_title": "Modifier la demande d'absence",
+                "heading": "Modifier la demande d'autorisation d'absence",
+                "description": "Mettez a jour votre demande avant son traitement par les validateurs.",
+                "submit_label": "Envoyer la demande d'absence",
+                "edit_submit_label": "Mettre a jour la demande d'absence",
+                "confirm_title": "Envoyer cette demande d'absence",
+                "edit_confirm_title": "Mettre a jour cette demande d'absence",
+                "confirm_message": "La demande sera transmise a la Ressource Humain (RH) pour traitement.",
+                "edit_confirm_message": "Les modifications seront enregistrees avant l'envoi pour validation.",
+            },
+            StaffRequest.TYPE_LEAVE: {
+                "page_title": "Modifier la demande de conge",
+                "heading": "Modifier la demande de conge",
+                "description": "Ajustez votre demande de conge tant qu'elle n'a pas encore ete prise en charge.",
+                "submit_label": "Envoyer la demande de conge",
+                "edit_submit_label": "Mettre a jour la demande de conge",
+                "confirm_title": "Envoyer cette demande de conge",
+                "edit_confirm_title": "Mettre a jour cette demande de conge",
+                "confirm_message": "La demande de conge sera transmise a la Ressource Humain (RH) pour validation.",
+                "edit_confirm_message": "Les modifications seront enregistrees avant l'envoi pour validation.",
+            },
+        }
+        form = AbsenceRequestForm(
+            request.POST or None,
+            instance=request_item,
+            profile=profile,
+            request_type=request_item.request_type,
+        )
+        if request.method == "POST" and form.is_valid():
+            updated_request = form.save(commit=False)
+            updated_request.employee = profile
+            updated_request.request_type = request_item.request_type
+            updated_request.status = StaffRequest.STATUS_SUBMITTED
+            if profile.role_code != EmployeeProfile.ROLE_USER:
+                updated_request.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
+            updated_request.save()
+            messages.success(request, "La demande a ete mise a jour avec succes.")
+            return redirect("personnel:dashboard")
+
+        return render(
+            request,
+            "requests_management/absence_form.html",
+            {
+                "form": form,
+                "profile": profile,
+                "request_type": request_item.request_type,
+                "branding": branding,
+                "is_edit_mode": True,
+                **request_titles[request_item.request_type],
+            },
+        )
+
+    if request_item.request_type == StaffRequest.TYPE_RECOVERY:
+        form = RecoveryRequestForm(request.POST or None, instance=request_item)
+        formset = RecoveryLineFormSet(request.POST or None, instance=request_item)
+        if request.method == "POST" and form.is_valid() and formset.is_valid():
+            if not BaseRecoveryValidationMixin.has_any_completed_line(formset):
+                messages.error(
+                    request,
+                    "Ajoutez au moins une ligne de travail dans la fiche de recuperation.",
+                )
+            else:
+                recovery_request = form.save(commit=False)
+                recovery_request.employee = profile
+                recovery_request.request_type = StaffRequest.TYPE_RECOVERY
+                recovery_request.status = StaffRequest.STATUS_SUBMITTED
+                if profile.role_code != EmployeeProfile.ROLE_USER:
+                    recovery_request.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
+                recovery_request.save()
+                formset.instance = recovery_request
+                lines = formset.save(commit=False)
+                for deleted_line in formset.deleted_objects:
+                    deleted_line.delete()
+                for line in lines:
+                    line.request = recovery_request
+                    line.save()
+                total_hours = sum(
+                    (line.duration_hours for line in recovery_request.recovery_lines.all()),
+                    Decimal("0.0"),
+                )
+                recovery_request.total_days = total_hours
+                recovery_request.save(update_fields=["total_days", "updated_at"])
+                messages.success(request, "La fiche de recuperation a ete mise a jour avec succes.")
+                return redirect("personnel:dashboard")
+
+        return render(
+            request,
+            "requests_management/recovery_form.html",
+            {
+                "form": form,
+                "formset": formset,
+                "profile": profile,
+                "branding": branding,
+                "is_edit_mode": True,
+            },
+        )
+
+    messages.error(request, "Ce type de demande ne peut pas etre modifie.")
+    return redirect("personnel:dashboard")
 
 
 @login_required

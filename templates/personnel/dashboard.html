@@ -192,6 +192,10 @@
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
             </div>
             <div class="modal-body">
+                <a href="#" class="employee-action-tile" id="employeeActionEdit" title="Modifier" hidden>
+                    <div class="employee-action-icon edit"><i class="bi bi-pencil-square"></i></div>
+                    <span class="employee-action-label">Modifier</span>
+                </a>
                 <a href="#" target="_blank" rel="noopener" class="employee-action-tile" id="employeeActionPrint" title="Imprimer">
                     <div class="employee-action-icon print"><i class="bi bi-printer"></i></div>
                     <span class="employee-action-label">Imprimer</span>
@@ -232,6 +236,7 @@
     .employee-action-icon.print { background: #eaf5ee; color: #255c3a; }
     .employee-action-icon.pdf { background: #fff1f1; color: #c0392b; }
     .employee-action-icon.image { background: #e8f0ff; color: #1f4fb6; }
+    .employee-action-icon.edit { background: #edf4ff; color: #2f5bd0; }
     .employee-action-icon.share { background: #f4f3ff; color: #5a43b0; }
     .employee-action-icon.delete { background: #fff0f0; color: #b43a3a; }
     
@@ -388,6 +393,7 @@
         }
 
         const printLink = document.getElementById("employeeActionPrint");
+        const editLink = document.getElementById("employeeActionEdit");
         const pdfLink = document.getElementById("employeeActionPdf");
         const pngLink = document.getElementById("employeeActionPng");
         const shareButton = document.getElementById("employeeActionShare");
@@ -402,7 +408,10 @@
             shareLabel.textContent = window.traeI18n?.translateText("Envoyer email") || "Envoyer email";
         };
 
-        [printLink, pdfLink, pngLink, deleteButton].forEach((element) => {
+        [editLink, printLink, pdfLink, pngLink, deleteButton].forEach((element) => {
+            if (!element) {
+                return;
+            }
             element.addEventListener("click", () => {
                 actionModalInstance.hide();
             });
@@ -426,6 +435,11 @@
                 return;
             }
 
+            const editUrl = trigger.dataset.editUrl || "";
+            if (editLink) {
+                editLink.href = editUrl || "#";
+                editLink.hidden = !editUrl;
+            }
             printLink.href = trigger.dataset.printUrl || "#";
             pdfLink.href = trigger.dataset.pdfUrl || "#";
             pngLink.href = trigger.dataset.pngUrl || "#";

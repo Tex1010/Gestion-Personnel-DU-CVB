@@ -8,6 +8,7 @@ urlpatterns = [
     path("absence/nouvelle/", views.absence_request_view, name="absence_create"),
     path("conge/nouveau/", views.leave_request_view, name="leave_create"),
     path("recuperation/nouvelle/", views.recovery_request_view, name="recovery_create"),
+    path("historique/<int:request_id>/modifier/", views.edit_request_view, name="edit"),
     path("historique/<int:request_id>/imprimer/", views.print_request_view, name="print"),
     path("historique/<int:request_id>/supprimer/", views.delete_request_view, name="delete"),
 ]

@@ -18,6 +18,7 @@
                 aria-label="Actions"
                 data-bs-toggle="modal"
                 data-bs-target="#employeeActionModal"
+                data-edit-url="{% if item.employee_can_edit %}{% url 'requests_management:edit' item.id %}{% endif %}"
                 data-print-url="{% url 'requests_management:print' item.id %}"
                 data-pdf-url="{% url 'requests_management:print' item.id %}?download=1"
                 data-png-url="{% url 'requests_management:print' item.id %}?download=png"

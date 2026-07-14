@@ -13,6 +13,9 @@
                 <div class="request-card-meta">
                     <span class="meta-pill"><i class="bi bi-calendar3"></i> {% if item.start_date %}{{ item.start_date|date:"d/m/Y" }}{% else %}-{% endif %}</span>
                     <span class="meta-pill"><i class="bi bi-clock-history"></i> {{ item.total_days }} j</span>
+                    {% if item.employee_can_edit %}
+                        <span class="meta-pill editable"><i class="bi bi-pencil-square"></i> Modifiable</span>
+                    {% endif %}
                 </div>
             {% elif request_label == "Recuperation" %}
                 <div>
@@ -26,6 +29,9 @@
                 <div class="request-card-meta">
                     <span class="meta-pill"><i class="bi bi-folder2-open"></i> {{ item.project_name|default:"Sans projet" }}</span>
                     <span class="meta-pill"><i class="bi bi-hourglass-split"></i> {{ item.total_days }} j</span>
+                    {% if item.employee_can_edit %}
+                        <span class="meta-pill editable"><i class="bi bi-pencil-square"></i> Modifiable</span>
+                    {% endif %}
                 </div>
             {% else %}
                 <div>
@@ -39,6 +45,9 @@
                 <div class="request-card-meta">
                     <span class="meta-pill"><i class="bi bi-calendar2-week"></i> {{ item.total_days }} j</span>
                     <span class="meta-pill {{ item.employee_simple_status_badge_class }}"><i class="bi bi-flag"></i> {{ item.employee_simple_status_label }}</span>
+                    {% if item.employee_can_edit %}
+                        <span class="meta-pill editable"><i class="bi bi-pencil-square"></i> Modifiable</span>
+                    {% endif %}
                 </div>
             {% endif %}
         </div>
@@ -50,6 +59,7 @@
                 aria-label="Actions"
                 data-bs-toggle="modal"
                 data-bs-target="#employeeActionModal"
+                data-edit-url="{% if item.employee_can_edit %}{% url 'requests_management:edit' item.id %}{% endif %}"
                 data-print-url="{% url 'requests_management:print' item.id %}"
                 data-pdf-url="{% url 'requests_management:print' item.id %}?download=1"
                 data-png-url="{% url 'requests_management:print' item.id %}?download=png"
