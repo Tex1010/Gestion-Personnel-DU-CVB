@@ -1083,13 +1083,13 @@ th {
 }
 
 .badge.approved-administration {
-    background: rgba(37, 92, 58, 0.541);
-    color: white;
+    background: rgba(55, 255, 132, 0.774);
+    color: var(--black);
 }
 
 .badge.approved {
-    background: rgba(37, 92, 58, 0.603);
-    color: white;
+    background: rgba(55, 255, 132, 0.774);
+    color: var(--black);
 }
 
 .badge.rejected {
@@ -1098,7 +1098,7 @@ th {
 }
 
 .badge.cancelled {
-    background:rgba(255, 0, 0, 0.726);
+    background:rgb(128, 128, 128);
     color: #ffffff;
 }
 
