@@ -1010,6 +1010,15 @@ textarea:focus {
     hyphens: none;
 }
 
+:root:not([data-theme="dark"]) #requests-history-table td,
+:root:not([data-theme="dark"]) #requests-history-table .helper {
+    color: var(--text);
+}
+
+:root:not([data-theme="dark"]) #requests-history-table .helper {
+    color: var(--muted);
+}
+
 .table-shell-dashboard .sticky-table {
     max-height: 460px;
 }
@@ -1059,37 +1068,37 @@ th {
 }
 
 .badge.submitted {
-    background: rgba(156, 107, 28, 0.12);
+    background: rgba(156, 107, 28, 0.5);
     color: var(--amber);
 }
 
 .badge.pending-hierarchy {
-    background: rgba(156, 107, 28, 0.12);
+    background: rgba(156, 107, 28, 0.829);
     color: var(--amber);
 }
 
 .badge.approved-hierarchy {
-    background: rgba(61, 77, 95, 0.14);
+    background: rgba(61, 77, 95, 0.664);
     color: var(--slate);
 }
 
 .badge.approved-administration {
-    background: rgba(37, 92, 58, 0.18);
+    background: rgba(37, 92, 58, 0.541);
     color: var(--green);
 }
 
 .badge.approved {
-    background: rgba(37, 92, 58, 0.12);
+    background: rgba(37, 92, 58, 0.603);
     color: var(--green);
 }l
 
 .badge.rejected {
-    background: rgba(155, 54, 54, 0.12);
-    color: #8c2f2f;
+    background: rgb(255, 255, 255);
+    color: #0004ff;
 }
 
 .badge.cancelled {
-    background:rgba(255, 0, 0, 0.795);
+    background:rgba(255, 0, 0, 0.726);
     color: #ffffff;
 }
 
@@ -1104,8 +1113,8 @@ th {
 }
 
 .badge.stage-rejected {
-    background: rgba(155, 54, 54, 0.12);
-    color: #8c2f2f;
+    background: rgb(155, 54, 54);
+    color: #fffb00;
 }
 
 .badge.stage-pending {

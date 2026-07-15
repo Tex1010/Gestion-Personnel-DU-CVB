@@ -327,6 +327,14 @@ def _build_history_requests(current_profile):
     ]
 
 
+def _can_cancel_history_requests(profile):
+    return bool(profile and profile.can_manage_settings)
+
+
+def _can_delete_history_requests(profile):
+    return bool(profile and profile.can_manage_settings)
+
+
 def _stage_status_label(stage_status):
     username = stage_status.get("username") or "-"
     status = stage_status.get("status") or "-"
@@ -639,6 +647,8 @@ def _build_requests_overview_context(current_profile, show_history):
     return {
         "requests": submitted_requests,
         "history_requests": _build_history_requests(current_profile) if show_history else [],
+        "can_cancel_history_requests": _can_cancel_history_requests(current_profile),
+        "can_delete_history_requests": _can_delete_history_requests(current_profile),
         "pending_count": submitted_requests.count(),
         "show_history": show_history,
     }
@@ -1130,8 +1140,8 @@ def request_action_view(request, request_id, action):
     is_admin = bool(current_profile and (current_profile.can_manage_settings or current_profile.can_validate_administration))
 
     if action == "cancel":
-        if not (is_admin or is_direction):
-            messages.error(request, "Impossible : seules la Ressource Humain (RH) ou la direction peuvent annuler cette demande.")
+        if not is_admin:
+            messages.error(request, "Impossible : seule la Ressource Humain (RH) peut annuler cette demande.")
             return redirect(_requests_redirect(show_history=True))
         if request_item.status != StaffRequest.STATUS_APPROVED:
             messages.error(request, "Cette demande n'est pas approuvee et ne peut pas etre annulee.")

@@ -1471,28 +1471,30 @@
                 submitElement.textContent = resolveTranslation("confirm");
             };
 
-            document.querySelectorAll("[data-confirm-action]").forEach((button) => {
-                button.addEventListener("click", (event) => {
-                    const form = button.form;
-                    if (!form || !confirmationModal) {
-                        return;
-                    }
-                    if (button.dataset.confirmed === "1" || isConfirmingAction) {
-                        button.dataset.confirmed = "0";
-                        return;
-                    }
-                    event.preventDefault();
-                    pendingForm = form;
-                    pendingSubmitter = button;
-                    titleElement.textContent = button.dataset.confirmTitle || resolveTranslation("confirmAction");
-                    messageElement.textContent = button.dataset.confirmMessage || resolveTranslation("pleaseConfirmAction");
-                    resetConfirmButton();
-                    if (button.dataset.confirmClass) {
-                        submitElement.className = button.dataset.confirmClass;
-                    }
-                    submitElement.textContent = button.dataset.confirmLabel || resolveTranslation("confirm");
-                    confirmationModal.show();
-                });
+            document.addEventListener("click", (event) => {
+                const button = event.target.closest("[data-confirm-action]");
+                if (!button) {
+                    return;
+                }
+                const form = button.form;
+                if (!form || !confirmationModal) {
+                    return;
+                }
+                if (button.dataset.confirmed === "1" || isConfirmingAction) {
+                    button.dataset.confirmed = "0";
+                    return;
+                }
+                event.preventDefault();
+                pendingForm = form;
+                pendingSubmitter = button;
+                titleElement.textContent = button.dataset.confirmTitle || resolveTranslation("confirmAction");
+                messageElement.textContent = button.dataset.confirmMessage || resolveTranslation("pleaseConfirmAction");
+                resetConfirmButton();
+                if (button.dataset.confirmClass) {
+                    submitElement.className = button.dataset.confirmClass;
+                }
+                submitElement.textContent = button.dataset.confirmLabel || resolveTranslation("confirm");
+                confirmationModal.show();
             });
 
             if (submitElement) {

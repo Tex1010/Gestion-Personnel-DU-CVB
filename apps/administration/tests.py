@@ -8,6 +8,7 @@ from django.test import TestCase
 from django.urls import reverse
 from openpyxl import load_workbook
 
+from apps.accounts.utils import get_role_by_code
 from apps.administration.models import AccountActionHistory, LoginBranding, RequestActionHistory
 from apps.personnel.models import Department, EmployeeProfile
 from apps.requests_management.models import StaffRequest
@@ -15,10 +16,14 @@ from apps.requests_management.models import StaffRequest
 
 class AdministrationViewsTests(TestCase):
     def setUp(self):
+        admin_role = get_role_by_code(EmployeeProfile.ROLE_ADMIN)
+        direction_role = get_role_by_code(EmployeeProfile.ROLE_DIRECTION)
+        user_role = get_role_by_code(EmployeeProfile.ROLE_USER)
+
         self.admin = User.objects.create_user(username="admin", password="TestPass123!")
         self.admin.is_staff = True
         self.admin.save()
-        self.admin.profile.role = EmployeeProfile.ROLE_ADMIN
+        self.admin.profile.role = admin_role
         self.admin.profile.recovery_balance = Decimal("5.0")
         self.admin.profile.save()
         self.client.login(username="admin", password="TestPass123!")
@@ -29,7 +34,7 @@ class AdministrationViewsTests(TestCase):
             first_name="Mamy",
             last_name="Agent",
         )
-        self.employee.profile.role = EmployeeProfile.ROLE_USER
+        self.employee.profile.role = user_role
         self.employee.profile.position = "Technicien"
         self.employee.profile.leave_balance = Decimal("10.0")
         self.employee.profile.recovery_balance = Decimal("6.0")
@@ -39,18 +44,26 @@ class AdministrationViewsTests(TestCase):
             username="agent_delete",
             password="TestPass123!",
         )
-        self.employee_to_delete.profile.role = EmployeeProfile.ROLE_USER
+        self.employee_to_delete.profile.role = user_role
         self.employee_to_delete.profile.leave_balance = Decimal("4.0")
         self.employee_to_delete.profile.recovery_balance = Decimal("4.0")
         self.employee_to_delete.profile.save()
+
+        self.direction = User.objects.create_user(
+            username="direction",
+            password="TestPass123!",
+        )
+        self.direction.profile.role = direction_role
+        self.direction.profile.save()
 
     def _read_workbook_rows(self, response):
         workbook = load_workbook(filename=BytesIO(response.content))
         return list(workbook.active.iter_rows(values_only=True))
 
     def test_admin_dashboard_requires_admin_role(self):
+        user_role = get_role_by_code(EmployeeProfile.ROLE_USER)
         user = User.objects.create_user(username="simple", password="TestPass123!")
-        user.profile.role = EmployeeProfile.ROLE_USER
+        user.profile.role = user_role
         user.profile.save()
         self.client.login(username="simple", password="TestPass123!")
 
@@ -60,13 +73,14 @@ class AdministrationViewsTests(TestCase):
         self.assertContains(response, "acces a cette page")
 
     def test_admin_dashboard_exposes_low_balance_metrics_and_distributions(self):
+        user_role = get_role_by_code(EmployeeProfile.ROLE_USER)
         low_balance_user = User.objects.create_user(
             username="agent_low",
             password="TestPass123!",
             first_name="Bodo",
             last_name="Petit",
         )
-        low_balance_user.profile.role = EmployeeProfile.ROLE_USER
+        low_balance_user.profile.role = user_role
         low_balance_user.profile.leave_balance = Decimal("1.5")
         low_balance_user.profile.recovery_balance = Decimal("1.0")
         low_balance_user.profile.save()
@@ -90,13 +104,14 @@ class AdministrationViewsTests(TestCase):
         self.assertIn("1 unite(s)", json.loads(response.context["recovery_chart_labels"]))
 
     def test_admin_dashboard_hides_cvbadmin_from_stats_and_tables(self):
+        admin_role = get_role_by_code(EmployeeProfile.ROLE_ADMIN)
         hidden_admin = User.objects.create_user(
             username="cvbadmin",
             password="TestPass123!",
             first_name="Compte",
             last_name="Cache",
         )
-        hidden_admin.profile.role = EmployeeProfile.ROLE_ADMIN
+        hidden_admin.profile.role = admin_role
         hidden_admin.profile.leave_balance = Decimal("0.0")
         hidden_admin.profile.recovery_balance = Decimal("0.0")
         hidden_admin.profile.save()
@@ -210,6 +225,105 @@ class AdministrationViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(staff_request.status, StaffRequest.STATUS_CANCELLED)
         self.assertEqual(self.employee.profile.leave_balance, Decimal("10.0"))
+
+    def test_requests_history_shows_cancel_action_for_admin_in_page_and_ajax_rows(self):
+        staff_request = StaffRequest.objects.create(
+            employee=self.employee.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_APPROVED,
+            approval_stage=StaffRequest.APPROVAL_COMPLETED,
+            total_days=Decimal("2.0"),
+            reason="Conge annuel",
+        )
+        RequestActionHistory.objects.create(
+            request=staff_request,
+            actor=self.admin,
+            action=RequestActionHistory.ACTION_APPROVED,
+            previous_status=StaffRequest.STATUS_SUBMITTED,
+            new_status=StaffRequest.STATUS_APPROVED,
+            comment="Validation finale.",
+        )
+
+        overview_response = self.client.get(
+            f"{reverse('administration:requests')}?show_history=1"
+        )
+        ajax_response = self.client.get(
+            f"{reverse('administration:requests_overview_data')}?show_history=1",
+            HTTP_X_REQUESTED_WITH="fetch",
+        )
+
+        cancel_url = reverse("administration:request_action", args=[staff_request.id, "cancel"])
+
+        self.assertEqual(overview_response.status_code, 200)
+        self.assertContains(overview_response, "Annuler")
+        self.assertContains(overview_response, cancel_url)
+        self.assertEqual(ajax_response.status_code, 200)
+        self.assertIn(cancel_url, ajax_response.json()["requests_history_html"])
+
+    def test_requests_history_hides_cancel_action_for_direction(self):
+        staff_request = StaffRequest.objects.create(
+            employee=self.employee.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_APPROVED,
+            approval_stage=StaffRequest.APPROVAL_COMPLETED,
+            total_days=Decimal("2.0"),
+            reason="Conge annuel",
+            direction_signature="direction",
+        )
+        RequestActionHistory.objects.create(
+            request=staff_request,
+            actor=self.admin,
+            action=RequestActionHistory.ACTION_APPROVED,
+            previous_status=StaffRequest.STATUS_SUBMITTED,
+            new_status=StaffRequest.STATUS_APPROVED,
+            comment="Validation finale.",
+        )
+
+        self.client.logout()
+        self.client.login(username="direction", password="TestPass123!")
+
+        overview_response = self.client.get(
+            f"{reverse('administration:requests')}?show_history=1"
+        )
+        ajax_response = self.client.get(
+            f"{reverse('administration:requests_overview_data')}?show_history=1",
+            HTTP_X_REQUESTED_WITH="fetch",
+        )
+
+        cancel_url = reverse("administration:request_action", args=[staff_request.id, "cancel"])
+
+        self.assertEqual(overview_response.status_code, 200)
+        self.assertNotContains(overview_response, "<th>Annuler</th>", html=True)
+        self.assertNotContains(overview_response, cancel_url)
+        self.assertEqual(ajax_response.status_code, 200)
+        self.assertNotIn(cancel_url, ajax_response.json()["requests_history_html"])
+
+    def test_direction_cannot_cancel_approved_request(self):
+        staff_request = StaffRequest.objects.create(
+            employee=self.employee.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_APPROVED,
+            approval_stage=StaffRequest.APPROVAL_COMPLETED,
+            total_days=Decimal("2.0"),
+            reason="Conge annuel",
+        )
+        starting_balance = self.employee.profile.leave_balance
+
+        self.client.logout()
+        self.client.login(username="direction", password="TestPass123!")
+
+        response = self.client.post(
+            reverse("administration:request_action", args=[staff_request.id, "cancel"]),
+            follow=True,
+        )
+
+        staff_request.refresh_from_db()
+        self.employee.profile.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(staff_request.status, StaffRequest.STATUS_APPROVED)
+        self.assertEqual(self.employee.profile.leave_balance, starting_balance)
+        self.assertContains(response, "seule la Ressource Humain (RH) peut annuler cette demande")
 
     def test_request_history_groups_multiple_actions_on_single_row(self):
         staff_request = StaffRequest.objects.create(
@@ -398,13 +512,14 @@ class AdministrationViewsTests(TestCase):
         self.assertTrue(response.content.startswith(b"PK"))
 
     def test_export_table_accounts_applies_search_from_visible_table(self):
+        user_role = get_role_by_code(EmployeeProfile.ROLE_USER)
         searched_user = User.objects.create_user(
             username="tendry",
             password="TestPass123!",
             first_name="Tendry",
             last_name="Rakoto",
         )
-        searched_user.profile.role = EmployeeProfile.ROLE_USER
+        searched_user.profile.role = user_role
         searched_user.profile.position = "Analyste"
         searched_user.profile.leave_balance = Decimal("8.0")
         searched_user.profile.recovery_balance = Decimal("2.0")
