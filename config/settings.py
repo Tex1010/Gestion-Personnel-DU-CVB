@@ -41,6 +41,7 @@ INSTALLED_APPS = [
     'apps.personnel',
     'apps.requests_management',
     'apps.administration',
+    'apps.hr_events',
     'apps.mobile_api',
 ]
 

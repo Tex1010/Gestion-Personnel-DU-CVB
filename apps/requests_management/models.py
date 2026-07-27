@@ -64,6 +64,12 @@ class StaffRequest(models.Model):
     remaining_days_for_reason = models.DecimalField(
         "Jours restants pour le motif", max_digits=6, decimal_places=1, default=0
     )
+    leave_consumption = models.JSONField(
+        default=dict,
+        blank=True,
+        verbose_name="Repartition conge par annee",
+        help_text="Exemple: {\"2024\": 5, \"2025\": 3} - utilise pour le restaur",
+    )
     reason = models.TextField("Motif", blank=True)
     admin_comment = models.TextField("Commentaire admin", blank=True)
     hierarchical_signature = models.CharField(max_length=120, blank=True)

@@ -1,0 +1,20 @@
+with open('templates/base.html', 'r', encoding='utf-8') as f:
+    lines = f.readlines()
+
+menu = chr(10) + '                                <a href="{% url \'hr_events:list\' %}" class="{% if request.resolver_match.app_name == \'hr_events\' %}is-active{% endif %}"><i class="bi bi-heart-pulse"></i><span>Evenements RH</span></a>'
+
+new_lines = []
+added = 0
+for i, line in enumerate(lines):
+    new_lines.append(line)
+    if 'presence_overview' in line and 'calendar3' in line and 'absences' in line:
+        if i + 1 < len(lines):
+            nxt = lines[i + 1]
+            if 'can_manage_settings' in nxt or 'administration:settings' in nxt:
+                new_lines.append(menu + chr(10))
+                added += 1
+
+with open('templates/base.html', 'w', encoding='utf-8') as f:
+    f.writelines(new_lines)
+
+print('Menu items added:', added)

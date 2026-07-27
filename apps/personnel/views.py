@@ -8,6 +8,7 @@ from django.template.loader import render_to_string
 
 from apps.accounts.utils import get_user_profile, normalize_portal_role
 from apps.administration.models import LoginBranding
+from apps.hr_events.hr_events_service import get_hr_events_dashboard_data
 from apps.personnel.models import Role
 from apps.requests_management.models import StaffRequest
 
@@ -72,6 +73,8 @@ def dashboard_view(request):
         "rejected_count": payload["rejected_count"],
         "chart_labels": json.dumps(payload["chart_labels"]),
         "chart_values": json.dumps(payload["chart_values"]),
+        "leave_window_data": profile.leave_window_data,
+        "hr_events_data": get_hr_events_dashboard_data(profile),
     }
     return render(request, "personnel/dashboard.html", context)
 
@@ -100,6 +103,9 @@ def dashboard_data_view(request):
         {
             "leave_balance": f"{format_decimal(profile.leave_balance)} jours",
             "recovery_balance": f"{format_decimal(profile.recovery_balance)} jours",
+            "family_event_remaining": format_decimal(profile.family_event_remaining),
+            "medical_leave_total": format_decimal(profile.medical_leave_total),
+            "sick_absence_total": format_decimal(profile.sick_absence_total),
             "recent_count": len(payload["recent_requests"]),
             "submitted_count": payload["submitted_count"],
             "approved_count": payload["approved_count"],

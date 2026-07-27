@@ -75,6 +75,23 @@ def _serialize_branding(request):
     }
 
 
+def _serialize_leave_window(leave_window_data):
+    """Serialize leave window data for JSON, converting Decimal to float."""
+    if not leave_window_data:
+        return []
+    return [
+        {
+            "year": item["year"],
+            "quota": _format_decimal(item["quota"]),
+            "consumed": _format_decimal(item["consumed"]),
+            "remaining": _format_decimal(item["remaining"]),
+            "is_blocked": item["is_blocked"],
+            "is_available": item["is_available"],
+        }
+        for item in leave_window_data
+    ]
+
+
 def _serialize_profile(request, profile):
     if not profile:
         return {}
@@ -93,6 +110,7 @@ def _serialize_profile(request, profile):
         "role_portal": profile.role_portal,
         "leave_balance": _format_decimal(profile.leave_balance),
         "recovery_balance": _format_decimal(profile.recovery_balance),
+        "leave_window": _serialize_leave_window(profile.leave_window_data),
         "photo_url": _absolute_media_url(request, profile.photo),
         "permissions": {
             "can_manage_settings": profile.can_manage_settings,

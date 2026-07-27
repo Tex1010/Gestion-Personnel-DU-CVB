@@ -22,6 +22,24 @@ class LoginBranding(models.Model):
         default=True,
         help_text="Active l'envoi d'un email a l'adresse de la Ressource Humain (RH) a chaque nouvelle demande.",
     )
+    annual_leave_quota = models.DecimalField(
+        "Quota annuel de conge",
+        max_digits=6,
+        decimal_places=1,
+        default=30,
+        help_text="Nombre de jours de conge acquis chaque annee civile. Les droits de l'annee en cours sont bloques jusqu'a l'annee suivante.",
+    )
+    leave_window_size = models.PositiveIntegerField(
+        "Taille de la fenetre de conges",
+        default=3,
+        help_text="Nombre d'annees conservees dans la fenetre glissante (ex: 3 = N-2, N-1, N).",
+    )
+    leave_rules = models.TextField(
+        "Regles generales de conges",
+        blank=True,
+        default="Les droits de l'annee en cours (N) sont bloques jusqu'a l'annee suivante. La consommation s'effectue oldest-first (N-2 avant N-1).",
+        help_text="Regles generales affichees dans l'interface de gestion des conges.",
+    )
     logo_image = models.FileField(upload_to="branding/logos/", blank=True, null=True)
     hero_image = models.FileField(upload_to="branding/", blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)

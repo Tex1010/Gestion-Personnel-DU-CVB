@@ -38,7 +38,7 @@
                         </div>
                     {% endif %}
                 {% endif %}
-                {% if branding.announcement %}
+                {% if branding and branding.announcement %}
                     <div class="announcement">{{ branding.announcement }}</div>
                 {% endif %}
             </div>

@@ -74,6 +74,8 @@
                                 <a href="{% url 'administration:dashboard' %}" class="{% if request.resolver_match.url_name == 'dashboard' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-speedometer2"></i><span data-i18n="adminDashboard">Tableau de bord admin</span></a>
                                 <a href="{% url 'administration:requests' %}" class="{% if request.resolver_match.url_name == 'requests' or request.resolver_match.url_name == 'request_action' %}is-active{% endif %}"><i class="bi bi-ui-checks-grid"></i><span data-i18n="requests">Demandes</span></a>
                                 <a href="{% url 'administration:presence_overview' %}" class="{% if request.resolver_match.url_name == 'presence_overview' and request.resolver_match.app_name == 'administration' %}is-active{% endif %}"><i class="bi bi-calendar3"></i><span>Conges &amp; absences</span></a>
+
+                                <a href="{% url 'hr_events:list' %}" class="{% if request.resolver_match.app_name == 'hr_events' %}is-active{% endif %}"><i class="bi bi-heart-pulse"></i><span>Evenements RH</span></a>
                                 <a href="{% url 'administration:settings' %}" class="{% if request.resolver_match.url_name == 'settings' %}is-active{% endif %}"><i class="bi bi-sliders"></i><span data-i18n="settings">Parametres</span></a>
                             {% endif %}
                         {% endwith %}
@@ -298,6 +300,7 @@
                     newRequestToProcess: "Nouvelle demande a traiter",
                     openRequests: "Ouvrir les demandes",
                     requestFromEmployee: "{name} a envoye une demande de {type}.",
+                    hrEvents: "Evenements RH",
                 },
                 en: {
                     personnelManagement: "Personnel management",
@@ -366,6 +369,7 @@
                     newRequestToProcess: "New request to process",
                     openRequests: "Open requests",
                     requestFromEmployee: "{name} submitted a {type} request.",
+                    hrEvents: "HR Events",
                 },
                 mg: {
                     personnelManagement: "Fitantanana ny mpiasa",
@@ -434,6 +438,7 @@
                     newRequestToProcess: "Misy fangatahana vaovao",
                     openRequests: "Hanokatra fangatahana",
                     requestFromEmployee: "{name} nandefa fangatahana {type}.",
+                    hrEvents: "Hetsika Ressource Humain (RH)",
                 },
             };
             const literalTranslations = {
@@ -813,6 +818,7 @@
                     "Sélectionner": "Select",
                     "Texte libre modifiable par l'admin pour annoncer un evenement.": "Editable text that administrators can use to announce an event.",
                     "Active l'envoi d'un email a l'adresse d'administration a chaque nouvelle demande.": "Enable sending an email to the administration address for each new request.",
+                    "Evenements RH": "HR Events",
                 },
                 mg: {
                     "Connexion | Gestion du personnel": "Fidirana | Fitantanana ny mpiasa",
@@ -1143,6 +1149,7 @@
                     "Sélectionner": "Safidio",
                     "Texte libre modifiable par l'admin pour annoncer un evenement.": "Lahatsoratra malalaka azon'ny admin ovaina hanaovana fanambarana hetsika.",
                     "Active l'envoi d'un email a l'adresse d'administration a chaque nouvelle demande.": "Alefa ny mailaka any amin'ny adiresin'ny administrasiona isaky ny misy fangatahana vaovao.",
+                    "Evenements RH": "Hetsika Ressource Humain (RH)",
                 },
             };
             const patternTranslations = {

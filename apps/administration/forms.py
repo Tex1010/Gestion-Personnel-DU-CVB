@@ -20,7 +20,6 @@ class EmployeeAccountForm(forms.Form):
         required=False,
         empty_label="Selectionner",
     )
-    leave_balance = forms.DecimalField(label="Conge restant", initial=30)
     recovery_balance = forms.DecimalField(label="Recuperation restante", initial=0)
     role = forms.ModelChoiceField(
         label="Role",
@@ -47,7 +46,6 @@ class EmployeeAccountForm(forms.Form):
             "employee_number": "Optionnel. Renseignez le matricule interne si disponible.",
             "position": "Fonction ou poste affiche dans les tableaux et suivis.",
             "contract_type": "Choisissez un type de contrat actif parmi ceux definis dans les parametres.",
-            "leave_balance": "Solde initial de conge attribue a ce compte.",
             "recovery_balance": "Solde initial de recuperation attribue a ce compte.",
             "role": "Determine l'espace d'acces et les permissions de l'employe.",
             "department": "Optionnel. Permet de rattacher l'employe a une structure existante.",
@@ -61,7 +59,6 @@ class EmployeeAccountForm(forms.Form):
             "email": "Ex: tendry.it@valb.io",
             "employee_number": "Ex: CVB-001",
             "position": "Ex: Assistant administratif",
-            "leave_balance": " 0",
             "recovery_balance": "0",
         }
 
@@ -78,6 +75,35 @@ class EmployeeAccountForm(forms.Form):
         )
         self.fields["role"].queryset = Role.objects.filter(is_active=True).order_by("order", "label_fr")
         self.fields["department"].queryset = Department.objects.filter(is_active=True).order_by("name")
+
+        # --- Dynamic leave year fields (sliding window) ---
+        from apps.personnel.leave_service import (
+            get_annual_quota,
+            get_leave_window_years,
+        )
+
+        self.leave_window_years = get_leave_window_years()
+        self.annual_quota = get_annual_quota()
+
+        for year in self.leave_window_years:
+            field_name = f"leave_year_{year}"
+            is_current = year == self.leave_window_years[-1]
+            label = f"Congé {year}"
+            if is_current:
+                label += " (Bloqué jusqu'en %d)" % (year + 1)
+            self.fields[field_name] = forms.DecimalField(
+                label=label,
+                max_digits=6,
+                decimal_places=1,
+                required=True,
+                initial=self.annual_quota,
+            )
+            self.fields[field_name].help_text = (
+                "Quota de congés pour cette année." if not is_current
+                else "Droits de l'année en cours, non consommables avant l'année suivante."
+            )
+            self.fields[field_name].widget.attrs["placeholder"] = str(self.annual_quota)
+
         if self.profile:
             self.fields["password"].required = False
             self.fields["password"].widget = forms.PasswordInput(render_value=True)
@@ -96,12 +122,21 @@ class EmployeeAccountForm(forms.Form):
                         "employee_number": self.profile.employee_number,
                         "position": self.profile.position,
                         "contract_type": self.profile.contract_type,
-                        "leave_balance": self.profile.leave_balance,
                         "recovery_balance": self.profile.recovery_balance,
                         "role": self.profile.role,
                         "department": self.profile.department,
                     }
                 )
+                # Populate leave year fields with existing data
+                from apps.personnel.models import AnnualLeave
+
+                existing_leaves = {
+                    al.year: al.quota for al in AnnualLeave.objects.filter(employee=self.profile)
+                }
+                for year in self.leave_window_years:
+                    field_name = f"leave_year_{year}"
+                    if year in existing_leaves:
+                        self.initial[field_name] = existing_leaves[year]
 
     def clean_password(self):
         password = self.cleaned_data["password"]
@@ -143,7 +178,6 @@ class EmployeeAccountForm(forms.Form):
         profile.employee_number = self.cleaned_data["employee_number"]
         profile.position = self.cleaned_data["position"]
         profile.contract_type = self.cleaned_data["contract_type"]
-        profile.leave_balance = self.cleaned_data["leave_balance"]
         profile.recovery_balance = self.cleaned_data["recovery_balance"]
         profile.role = selected_role
         profile.department = self.cleaned_data["department"]
@@ -151,6 +185,17 @@ class EmployeeAccountForm(forms.Form):
             profile.photo = self.cleaned_data["photo"]
         profile.save()
         sync_profile_role(user, profile)
+
+        # --- Save leave year balances ---
+        from apps.personnel.leave_service import save_leave_balances_from_form
+
+        year_balances = {}
+        for year in self.leave_window_years:
+            field_name = f"leave_year_{year}"
+            year_balances[year] = self.cleaned_data.get(field_name, self.annual_quota)
+
+        save_leave_balances_from_form(profile, year_balances)
+
         return user
 
 
@@ -165,12 +210,24 @@ class LoginBrandingForm(forms.ModelForm):
             "website": "Site web",
             "announcement": "Annonce",
             "request_submission_email_enabled": "Alertes email a la soumission",
+            "annual_leave_quota": "Quota annuel de conge",
+            "leave_window_size": "Taille de la fenetre de conges",
+            "leave_rules": "Regles generales de conges",
             "logo_image": "Logo",
             "hero_image": "Illustration d'accueil",
+        }
+        help_texts = {
+            "annual_leave_quota": "Nombre de jours de conge acquis chaque annee civile. Les droits de l'annee en cours sont bloques jusqu'a l'annee suivante.",
+            "leave_window_size": "Nombre d'annees conservees dans la fenetre glissante (ex: 3 = N-2, N-1, N).",
+            "leave_rules": "Regles generales affichees dans l'interface de gestion des conges.",
         }
         for field_name, label in labels.items():
             if field_name in self.fields:
                 self.fields[field_name].label = label
+        for field_name, help_text in help_texts.items():
+            if field_name in self.fields:
+                self.fields[field_name].help_text = help_text
+
     class Meta:
         model = LoginBranding
         fields = [
@@ -181,9 +238,13 @@ class LoginBrandingForm(forms.ModelForm):
             "website",
             "announcement",
             "request_submission_email_enabled",
+            "annual_leave_quota",
+            "leave_window_size",
+            "leave_rules",
             "logo_image",
             "hero_image",
         ]
+
 
 class DepartmentForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):

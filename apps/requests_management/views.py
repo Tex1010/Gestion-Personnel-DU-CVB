@@ -178,6 +178,8 @@ def _build_basic_pdf_bytes(request_item, stage_statuses):
 
 
 def _restore_request_balance(request_item):
+    from apps.personnel.leave_service import restore_leave
+
     if request_item.status != StaffRequest.STATUS_APPROVED:
         return True, ""
 
@@ -185,8 +187,7 @@ def _restore_request_balance(request_item):
     amount = request_item.total_days or Decimal("0.0")
 
     if request_item.request_type == StaffRequest.TYPE_LEAVE:
-        profile.leave_balance += amount
-        profile.save(update_fields=["leave_balance", "updated_at"])
+        restore_leave(profile, request_item.leave_consumption or {})
         return True, "Le solde de conge a ete restaure."
 
     if request_item.request_type == StaffRequest.TYPE_ABSENCE:

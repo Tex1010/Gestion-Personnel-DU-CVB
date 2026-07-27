@@ -51,6 +51,17 @@ def _build_balance_distribution(queryset, field_name, unit):
     return json.dumps(labels), json.dumps(values)
 
 
+def _build_balance_distribution_from_values(values_list, unit):
+    """Build a balance distribution chart from a list of computed values (for properties)."""
+    from collections import Counter
+
+    rounded = [int(v) if v == int(v) else round(v, 1) for v in values_list]
+    counts = Counter(rounded)
+    labels = [_format_balance_label(k, unit) for k in sorted(counts.keys())]
+    values = [counts[k] for k in sorted(counts.keys())]
+    return json.dumps(labels), json.dumps(values)
+
+
 def _settings_redirect(
     panel="create",
     show_history=False,
@@ -612,16 +623,27 @@ def _build_excel_response(filename, sheet_title, headers, rows):
 
 
 def _build_admin_dashboard_payload(current_profile):
+    from apps.personnel.leave_service import get_leave_balance
+
     employees = _visible_employee_queryset(current_profile)
     actionable_requests = _scoped_request_queryset(
         StaffRequest.objects.all(),
         current_profile,
         actionable_only=True,
     )
-    leave_chart_labels, leave_chart_values = _build_balance_distribution(
-        employees,
-        "leave_balance",
-        "jour(s)",
+
+    # leave_balance est maintenant une propriété calculée (pas un champ DB).
+    # On calcule la distribution et le comptage en Python.
+    leave_values = []
+    low_leave_count = 0
+    for emp in employees:
+        balance = get_leave_balance(emp)
+        leave_values.append(balance)
+        if balance < Decimal("2.0"):
+            low_leave_count += 1
+
+    leave_chart_labels, leave_chart_values = _build_balance_distribution_from_values(
+        leave_values, "jour(s)"
     )
     recovery_chart_labels, recovery_chart_values = _build_balance_distribution(
         employees,
@@ -632,7 +654,7 @@ def _build_admin_dashboard_payload(current_profile):
         "employees": employees,
         "employee_count": employees.count(),
         "pending_count": actionable_requests.count(),
-        "low_leave_count": employees.filter(leave_balance__lt=Decimal("2.0")).count(),
+        "low_leave_count": low_leave_count,
         "low_recovery_count": employees.filter(recovery_balance__lt=Decimal("2.0")).count(),
         "leave_chart_labels": leave_chart_labels,
         "leave_chart_values": leave_chart_values,
@@ -775,6 +797,7 @@ def _build_admin_table_export_response(current_profile, table_key, search_term="
     return HttpResponse("Export introuvable.", status=404)
 
 
+
 def _send_request_email_alert(request_item, branding=None):
     if not branding:
         branding = LoginBranding.objects.first()
@@ -895,17 +918,25 @@ def _record_account_history(actor, user, action, details=""):
 
 
 def _apply_request_balance(request_item):
+    from apps.personnel.leave_service import consume_leave, get_leave_balance
+
     profile = request_item.employee
     amount = request_item.total_days or Decimal("0.0")
 
     if request_item.request_type == StaffRequest.TYPE_LEAVE:
-        if profile.leave_balance < amount:
+        if get_leave_balance(profile) < amount:
             return (
                 False,
                 "Solde de conge insuffisant pour approuver cette demande.",
             )
-        profile.leave_balance -= amount
-        profile.save(update_fields=["leave_balance", "updated_at"])
+        breakdown = consume_leave(profile, amount)
+        if breakdown is None:
+            return (
+                False,
+                "Solde de conge insuffisant pour approuver cette demande.",
+            )
+        request_item.leave_consumption = breakdown
+        request_item.save(update_fields=["leave_consumption", "updated_at"])
         return True, "Le solde de conge a ete mis a jour."
 
     if request_item.request_type == StaffRequest.TYPE_ABSENCE:
@@ -927,12 +958,13 @@ def _apply_request_balance(request_item):
 
 
 def _restore_request_balance_for_cancellation(request_item):
+    from apps.personnel.leave_service import restore_leave
+
     profile = request_item.employee
     amount = request_item.total_days or Decimal("0.0")
 
     if request_item.request_type == StaffRequest.TYPE_LEAVE:
-        profile.leave_balance += amount
-        profile.save(update_fields=["leave_balance", "updated_at"])
+        restore_leave(profile, request_item.leave_consumption or {})
         return True, "Le solde de conge a ete restaure."
 
     if request_item.request_type == StaffRequest.TYPE_ABSENCE:
@@ -1190,7 +1222,7 @@ def request_action_view(request, request_id, action):
     elif action == "approve":
         if not (is_hierarchical or is_admin or is_direction):
             messages.error(request, "Impossible : seuls les validateurs autorises peuvent traiter cette demande.")
-            return redirect("administration:requests")
+            return redirect(_requests_redirect(show_history=True))
 
         if is_hierarchical:
             if request_item.approval_stage != StaffRequest.APPROVAL_HIERARCHY:
@@ -1248,7 +1280,7 @@ def request_action_view(request, request_id, action):
             success, balance_message = _apply_request_balance(request_item)
             if not success:
                 messages.error(request, balance_message)
-                return redirect("administration:requests")
+                return redirect(_requests_redirect(show_history=True))
             request_item.status = StaffRequest.STATUS_APPROVED
             request_item.approval_stage = StaffRequest.APPROVAL_COMPLETED
             request_item.direction_signature = request.user.get_username()
@@ -1422,9 +1454,21 @@ def settings_view(request):
                 messages.success(request, "L'identite visuelle et les preferences d'alerte email ont ete mises a jour.")
                 return redirect(_settings_redirect(panel="branding"))
 
+        elif "save-hr-params" in request.POST:
+            branding_form = LoginBrandingForm(
+                request.POST,
+                request.FILES,
+                instance=branding,
+            )
+            if branding_form.is_valid():
+                branding_form.save()
+                messages.success(request, "Les parametres globaux des conges ont ete mis a jour.")
+                return redirect(_settings_redirect(panel="human_resources"))
+
         elif "save-department" in request.POST:
             department_form = DepartmentForm(request.POST)
             if department_form.is_valid():
+
                 department_form.save()
                 messages.success(request, "Le departement a ete enregistre.")
                 return redirect(_settings_redirect(panel="departments"))
@@ -1575,3 +1619,5 @@ def settings_view(request):
             "edit_profile": edit_profile,
         },
     )
+
+

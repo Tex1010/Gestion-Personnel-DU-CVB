@@ -10,6 +10,7 @@ urlpatterns = [
     path("", include("apps.personnel.urls")),
     path("demandes/", include("apps.requests_management.urls")),
     path("admin-metier/", include("apps.administration.urls")),
+    path("admin-metier/", include("apps.hr_events.urls")),
 ]
 
 if settings.DEBUG:

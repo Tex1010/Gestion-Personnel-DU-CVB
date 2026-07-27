@@ -1,0 +1,90 @@
+{% extends "base.html" %}
+
+{% block title %}Evenements RH{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Evenements RH</span>
+            <h1>Gestion des evenements RH</h1>
+            <p>Suivi et gestion des evenements familiaux, repos medicaux et absences maladie.</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'hr_events:create' %}" class="btn-primary">Nouveau</a>
+        </div>
+    </div>
+
+    <article class="card">
+        <div class="card-head">
+            <div>
+                <h2>Historique des evenements</h2>
+                <p class="helper">Tous les evenements RH enregistres, avec filtres et recherche.</p>
+            </div>
+        </div>
+
+        <div class="table-toolbar">
+            <label class="table-search-field">
+                <i class="bi bi-search"></i>
+                <input type="search" placeholder="Rechercher un evenement, un employe ou un motif" data-table-search="hr-events-table">
+            </label>
+        </div>
+
+        <div class="table-shell">
+            <div class="table-wrap sticky-table">
+                <table id="hr-events-table">
+                    <thead>
+                        <tr>
+                            <th>Employe</th>
+                            <th>Type</th>
+                            <th>Statut</th>
+                            <th>Periode</th>
+                            <th>Nombre de jours</th>
+                            <th>Motif</th>
+                            <th>Cree le</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if events %}
+                            {% for event in events %}
+                                <tr>
+                                    <td>{{ event.employee.display_name }}</td>
+                                    <td>{{ event.get_event_type_display }}</td>
+                                    <td>
+                                        {% if event.status == event.STATUS_ACTIVE %}
+                                            <span class="badge submitted">Actif</span>
+                                        {% else %}
+                                            <span class="badge rejected">Annule</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ event.period_label }}</td>
+                                    <td>{{ event.display_days }}</td>
+                                    <td>{{ event.reason|default:"-"|truncatechars:50 }}</td>
+                                    <td>{{ event.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td>
+                                        {% if event.can_cancel %}
+                                            <form method="post" action="{% url 'hr_events:cancel' event.id %}" class="inline-action-form">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn-secondary btn-sm" data-confirm-action="1" data-confirm-title="Annuler cet evenement" data-confirm-message="Cet evenement sera annule. Le solde sera restaure si applicable." data-confirm-label="Oui, annuler" data-confirm-class="btn-danger">
+                                                    Annuler
+                                                </button>
+                                            </form>
+                                        {% else %}
+                                            <span class="helper">Non annulable</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="8" class="empty-state">Aucun evenement enregistre pour le moment.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </article>
+</section>
+{% endblock %}

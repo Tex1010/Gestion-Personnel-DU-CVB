@@ -1,6 +1,8 @@
 {% extends "base.html" %}
+{% load custom_filters %}
 
 {% block title %}Parametres admin{% endblock %}
+
 
 {% block content %}
 <section class="page-section">
@@ -20,6 +22,7 @@
         <a href="{% url 'administration:settings' %}?panel=contract_types" class="switch-pill {% if panel == 'contract_types' %}is-active{% endif %}"><i class="bi bi-file-earmark-text"></i>Types de contrat</a>
         <a href="{% url 'administration:settings' %}?panel=projects" class="switch-pill {% if panel == 'projects' %}is-active{% endif %}"><i class="bi bi-folder2-open"></i>Projets</a>
         <a href="{% url 'administration:settings' %}?panel=branding" class="switch-pill {% if panel == 'branding' %}is-active{% endif %}"><i class="bi bi-palette"></i>Logo et identite</a>
+        <a href="{% url 'administration:settings' %}?panel=human_resources" class="switch-pill {% if panel == 'human_resources' %}is-active{% endif %}"><i class="bi bi-heart-pulse"></i>Ressources Humaines</a>
     </div>
 
     {% if panel == "create" %}
@@ -135,12 +138,6 @@
                             {% for error in account_form.role.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
                         <div>
-                            {{ account_form.leave_balance.label_tag }}
-                            {{ account_form.leave_balance }}
-                            {% if account_form.leave_balance.help_text %}<small class="helper">{{ account_form.leave_balance.help_text }}</small>{% endif %}
-                            {% for error in account_form.leave_balance.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
-                        </div>
-                        <div>
                             {{ account_form.recovery_balance.label_tag }}
                             {{ account_form.recovery_balance }}
                             {% if account_form.recovery_balance.help_text %}<small class="helper">{{ account_form.recovery_balance.help_text }}</small>{% endif %}
@@ -148,11 +145,32 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Soldes de conges par annee</h3>
+                        <p class="helper">Quotas de conges pour chaque annee de la fenetre glissante. L'annee en cours est bloquee jusqu'a l'annee suivante.</p>
+                    </div>
+                    <div class="form-grid two">
+                        {% for field in account_form %}
+                            {% if field.name|startswith:"leave_year_" %}
+                                <div>
+                                    {{ field.label_tag }}
+                                    {{ field }}
+                                    {% if field.help_text %}<small class="helper">{{ field.help_text }}</small>{% endif %}
+                                    {% for error in field.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                                </div>
+                            {% endif %}
+                        {% endfor %}
+                    </div>
+                </div>
                 <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Creer ce compte employe" data-confirm-message="Le nouveau compte sera enregistre et apparaitra dans les comptes existants." data-confirm-label="Oui, creer" data-confirm-class="btn-primary"><i class="bi bi-person-check"></i>Creer le compte</button>
+
             </form>
         </article>
     {% elif panel == "accounts" %}
         <article class="card">
+
             <div class="card-head">
                 <div>
                     <h2>Comptes existants</h2>
@@ -985,6 +1003,51 @@
                 </div>
             </div>
         </article>
+    {% elif panel == "human_resources" %}
+        <article class="card">
+            <div class="card-head">
+                <div>
+                    <h2>Ressources Humaines</h2>
+                    <p class="helper">Definissez les parametres globaux des conges. Les soldes individuels de chaque employe sont geres depuis sa fiche (creation ou modification).</p>
+                </div>
+            </div>
+            <div class="helper" style="margin-bottom: 18px;">
+                Ces parametres s'appliquent a tous les employes. Le quota annuel est utilise comme valeur par defaut lors de la creation d'un compte. La fenetre glissante determine le nombre d'annees de soldes affichees. Les regles generales sont visibles dans l'interface de gestion des conges.
+            </div>
+            <form method="post" enctype="multipart/form-data" class="stack-form">
+                {% csrf_token %}
+                <input type="hidden" name="panel" value="human_resources">
+                <input type="hidden" name="save-hr-params" value="1">
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Parametres globaux des conges</h3>
+                        <p class="helper">Ces reglages servent de reference a tous les employes. Chaque fiche d'employe possede ses propres soldes.</p>
+                    </div>
+                    <div class="form-grid two">
+                        <div>
+                            {{ branding_form.annual_leave_quota.label_tag }}
+                            {{ branding_form.annual_leave_quota }}
+                            {% if branding_form.annual_leave_quota.help_text %}<small class="helper">{{ branding_form.annual_leave_quota.help_text }}</small>{% endif %}
+                            {% for error in branding_form.annual_leave_quota.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ branding_form.leave_window_size.label_tag }}
+                            {{ branding_form.leave_window_size }}
+                            {% if branding_form.leave_window_size.help_text %}<small class="helper">{{ branding_form.leave_window_size.help_text }}</small>{% endif %}
+                            {% for error in branding_form.leave_window_size.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div style="grid-column: 1 / -1;">
+                            {{ branding_form.leave_rules.label_tag }}
+                            {{ branding_form.leave_rules }}
+                            {% if branding_form.leave_rules.help_text %}<small class="helper">{{ branding_form.leave_rules.help_text }}</small>{% endif %}
+                            {% for error in branding_form.leave_rules.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Enregistrer les parametres RH" data-confirm-message="Les parametres globaux des conges seront mis a jour pour tous les employes." data-confirm-label="Oui, enregistrer" data-confirm-class="btn-primary"><i class="bi bi-save2"></i>Enregistrer les parametres</button>
+            </form>
+        </article>
+
     {% else %}
         <article class="card">
             <div class="card-head">

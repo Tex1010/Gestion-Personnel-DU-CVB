@@ -144,9 +144,6 @@ class EmployeeProfile(models.Model):
         null=True,
         related_name="profiles",
     )
-    leave_balance = models.DecimalField(
-        "Solde de conge", max_digits=6, decimal_places=1, default=30
-    )
     recovery_balance = models.DecimalField(
         "Solde de recuperation", max_digits=6, decimal_places=1, default=0
     )
@@ -224,3 +221,84 @@ class EmployeeProfile(models.Model):
             "en": self.contract_type.label_en or self.contract_type.label_fr,
             "mg": self.contract_type.label_mg or self.contract_type.label_fr,
         }
+
+    @property
+    def leave_balance(self):
+        """
+        Solde de conge consommable total (calculé à partir des AnnualLeave
+        non bloqués). Remplace l'ancien champ unique.
+        """
+        from apps.personnel.leave_service import get_leave_balance
+
+        return get_leave_balance(self)
+
+    @property
+    def leave_window_data(self):
+        """Données des 3 années de la fenêtre glissante pour le tableau de bord."""
+        from apps.personnel.leave_service import get_leave_dashboard_data
+
+        return get_leave_dashboard_data(self)
+
+    @property
+    def family_event_remaining(self):
+        """Jours restants d'événements familiaux (10 par an, réinitialisé annuellement)."""
+        from apps.hr_events.hr_events_service import get_family_event_remaining
+
+        return get_family_event_remaining(self)
+
+    @property
+    def medical_leave_total(self):
+        """Total de repos médical accumulé (indépendant des autres soldes)."""
+        from apps.hr_events.hr_events_service import get_medical_leave_total
+
+        return get_medical_leave_total(self)
+
+    @property
+    def sick_absence_total(self):
+        """Total d'absence maladie accumulé (indépendant des autres soldes)."""
+        from apps.hr_events.hr_events_service import get_sick_absence_total
+
+        return get_sick_absence_total(self)
+
+
+class AnnualLeave(models.Model):
+    """
+    Gestion des droits de congé par année civile (fenêtre glissante de 3 ans).
+
+    Chaque employé possède un enregistrement par année.
+    - is_blocked = True : l'année courante, non consommable avant l'année suivante.
+    - is_blocked = False : années précédentes, consommables (oldest-first).
+    """
+
+    employee = models.ForeignKey(
+        EmployeeProfile,
+        on_delete=models.CASCADE,
+        related_name="annual_leaves",
+        verbose_name="Employe",
+    )
+    year = models.IntegerField("Annee")
+    quota = models.DecimalField(
+        "Quota", max_digits=6, decimal_places=1, default=30
+    )
+    consumed = models.DecimalField(
+        "Consomme", max_digits=6, decimal_places=1, default=0
+    )
+    is_blocked = models.BooleanField(
+        "Bloque",
+        default=False,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["year"]
+        verbose_name = "Conge annuel"
+        verbose_name_plural = "Conges annuels"
+        unique_together = ("employee", "year")
+
+    def __str__(self):
+        return f"{self.employee.display_name} - {self.year} ({self.quota - self.consumed} restant)"
+
+    @property
+    def remaining(self):
+        return self.quota - self.consumed

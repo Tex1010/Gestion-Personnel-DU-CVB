@@ -38,10 +38,53 @@
             <strong id="employee-leave-balance">{{ profile.leave_balance }} jours</strong>
             <small>Solde disponible aujourd'hui</small>
         </article>
+        <article class="card stat-card accent-blue">
+            <span>Fenetre de 3 ans</span>
+            <div class="leave-window-list">
+                {% for item in leave_window_data %}
+                    <div class="leave-year-card {% if item.is_blocked %}blocked{% endif %}">
+                        <div class="leave-year-header">
+                            <span class="leave-year">{{ item.year }}</span>
+                            {% if item.is_blocked %}
+                                <span class="leave-status-badge blocked">Bloqué</span>
+                            {% else %}
+                                <span class="leave-status-badge available">Disponible</span>
+                            {% endif %}
+                        </div>
+                        <div class="leave-year-details">
+                            <div class="leave-detail"><span>Quota</span><strong>{{ item.quota }}</strong></div>
+                            <div class="leave-detail"><span>Consommé</span><strong>{{ item.consumed }}</strong></div>
+                            <div class="leave-detail"><span>Restant</span><strong>{{ item.remaining }}</strong></div>
+                        </div>
+                        {% if item.is_blocked %}
+                            <div class="leave-status-text">Non consommable avant {{ item.year|add:1 }}</div>
+                        {% else %}
+                            <div class="leave-status-text">Disponible aujourd'hui</div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </article>
+
         <article class="card stat-card accent-amber">
             <span>Recuperation disponible</span>
             <strong id="employee-recovery-balance">{{ profile.recovery_balance }} jours</strong>
             <small>Disponible pour vos prochaines demandes</small>
+        </article>
+        <article class="card stat-card accent-rose">
+            <span>Evenement familial</span>
+            <strong id="employee-family-event-remaining">{{ profile.family_event_remaining }} jours</strong>
+            <small>Jours restants (10 par an, reinitialise annuellement)</small>
+        </article>
+        <article class="card stat-card accent-teal">
+            <span>Repos medical</span>
+            <strong id="employee-medical-leave-total">{{ profile.medical_leave_total }} jours</strong>
+            <small>Total de repos medical accumule</small>
+        </article>
+        <article class="card stat-card accent-indigo">
+            <span>Absence maladie</span>
+            <strong id="employee-sick-absence-total">{{ profile.sick_absence_total }} jours</strong>
+            <small>Total d'absence maladie accumule</small>
         </article>
         <article class="card stat-card accent-slate">
             <span>Demandes recentes</span>
@@ -335,6 +378,12 @@
 
             if (leaveBalance) leaveBalance.innerText = translateEmployeeText(data.leave_balance);
             if (recoveryBalance) recoveryBalance.innerText = translateEmployeeText(data.recovery_balance);
+            const familyEventRemaining = document.getElementById("employee-family-event-remaining");
+            const medicalLeaveTotal = document.getElementById("employee-medical-leave-total");
+            const sickAbsenceTotal = document.getElementById("employee-sick-absence-total");
+            if (familyEventRemaining) familyEventRemaining.innerText = data.family_event_remaining + " jours";
+            if (medicalLeaveTotal) medicalLeaveTotal.innerText = data.medical_leave_total + " jours";
+            if (sickAbsenceTotal) sickAbsenceTotal.innerText = data.sick_absence_total + " jours";
             if (recentCount) recentCount.innerText = data.recent_count;
             if (submittedCount) submittedCount.innerText = data.submitted_count;
             if (approvedCount) approvedCount.innerText = data.approved_count;
