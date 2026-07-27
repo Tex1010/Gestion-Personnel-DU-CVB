@@ -43,6 +43,7 @@ def _employee_dashboard_payload(profile):
         "submitted_count": stats_by_status.get(StaffRequest.STATUS_SUBMITTED, 0),
         "approved_count": stats_by_status.get(StaffRequest.STATUS_APPROVED, 0),
         "rejected_count": stats_by_status.get(StaffRequest.STATUS_REJECTED, 0),
+        "cancelled_count": stats_by_status.get(StaffRequest.STATUS_CANCELLED, 0),
         "chart_labels": ["Conge", "Absence", "Recuperation"],
         "chart_values": [
             stats_by_type.get(StaffRequest.TYPE_LEAVE, 0),
@@ -71,6 +72,7 @@ def dashboard_view(request):
         "submitted_count": payload["submitted_count"],
         "approved_count": payload["approved_count"],
         "rejected_count": payload["rejected_count"],
+        "cancelled_count": payload["cancelled_count"],
         "chart_labels": json.dumps(payload["chart_labels"]),
         "chart_values": json.dumps(payload["chart_values"]),
         "leave_window_data": profile.leave_window_data,
@@ -110,6 +112,7 @@ def dashboard_data_view(request):
             "submitted_count": payload["submitted_count"],
             "approved_count": payload["approved_count"],
             "rejected_count": payload["rejected_count"],
+            "cancelled_count": payload["cancelled_count"],
             "chart_labels": payload["chart_labels"],
             "chart_values": payload["chart_values"],
             "recent_requests_html": render_to_string(

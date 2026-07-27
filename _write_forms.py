@@ -1,4 +1,4 @@
-from decimal import Decimal
+form_content = r'''from decimal import Decimal
 
 from django import forms
 
@@ -161,3 +161,9 @@ class HREventForm(forms.ModelForm):
         days = Decimal(str(total_minutes)) / Decimal(str(FULL_DAY_MINUTES))
         days = days.quantize(Decimal("0.001"))
         return days
+'''
+
+with open('apps/hr_events/forms.py', 'w', encoding='utf-8') as f:
+    f.write(form_content)
+
+print("forms.py written successfully")

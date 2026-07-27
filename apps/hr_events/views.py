@@ -134,6 +134,8 @@ def hr_event_create_view(request):
         days = form.cleaned_data["days"]
         start_date = form.cleaned_data.get("start_date")
         end_date = form.cleaned_data.get("end_date")
+        start_time = form.cleaned_data.get("start_time")
+        end_time = form.cleaned_data.get("end_time")
         reason = form.cleaned_data.get("reason", "")
 
         success, result = create_hr_event(
@@ -142,6 +144,8 @@ def hr_event_create_view(request):
             days=days,
             start_date=start_date,
             end_date=end_date,
+            start_time=start_time,
+            end_time=end_time,
             reason=reason,
             created_by=request.user,
         )

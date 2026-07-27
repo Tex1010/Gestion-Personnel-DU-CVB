@@ -17,80 +17,103 @@
         </div>
     </div>
 
-    <div class="stats-grid employee-stats-grid">
-        <article class="card profile-card">
-            <div class="avatar-block">
-                {% if profile.photo %}
-                    <img src="{{ profile.photo.url }}" alt="Photo de profil" class="avatar-image">
-                {% else %}
-                    <div class="avatar-fallback">{{ profile.user.first_name|first|default:"E" }}{{ profile.user.last_name|first|default:"P" }}</div>
-                {% endif %}
-                <div>
-                    <h3>{{ profile.display_name }}</h3>
-                    <p>{{ profile.position|default:"Poste non renseigne" }}</p>
-                    <small>Matricule: {{ profile.employee_number|default:"-" }}</small>
-                    <br><small>Type de contrat: {{ profile.contract_type_label }}</small>
+    <div class="employee-hero-grid">
+        <div class="employee-hero-row">
+            <article class="card employee-identity-card">
+                <div class="avatar-block employee-identity-head">
+                    {% if profile.photo %}
+                        <img src="{{ profile.photo.url }}" alt="Photo de profil" class="avatar-image">
+                    {% else %}
+                        <div class="avatar-fallback">{{ profile.user.first_name|first|default:"E" }}{{ profile.user.last_name|first|default:"P" }}</div>
+                    {% endif %}
+                    <div class="employee-identity-copy">
+                        <span class="eyebrow">Profil</span>
+                        <h3>{{ profile.display_name }}</h3>
+                        <p>{{ profile.position|default:"Poste non renseigne" }}</p>
+                    </div>
                 </div>
-            </div>
-        </article>
-        <article class="card stat-card accent-green">
-            <span>Conge restant</span>
-            <strong id="employee-leave-balance">{{ profile.leave_balance }} jours</strong>
-            <small>Solde disponible aujourd'hui</small>
-        </article>
-        <article class="card stat-card accent-blue">
-            <span>Fenetre de 3 ans</span>
-            <div class="leave-window-list">
-                {% for item in leave_window_data %}
-                    <div class="leave-year-card {% if item.is_blocked %}blocked{% endif %}">
-                        <div class="leave-year-header">
-                            <span class="leave-year">{{ item.year }}</span>
+                <div class="employee-identity-meta">
+                    <div class="employee-meta-pill">
+                        <span>Matricule</span>
+                        <strong>{{ profile.employee_number|default:"-" }}</strong>
+                    </div>
+                    <div class="employee-meta-pill">
+                        <span>Contrat</span>
+                        <strong>{{ profile.contract_type_label }}</strong>
+                    </div>
+                </div>
+            </article>
+
+            <article class="card employee-balance-card">
+                <div class="employee-balance-copy">
+                    <span class="employee-balance-label">Conge restant</span>
+                    <strong id="employee-leave-balance">{{ profile.leave_balance }} jours</strong>
+                    <small>Solde disponible aujourd'hui pour vos prochaines demandes.</small>
+                </div>
+            </article>
+
+            <article class="card employee-window-card">
+                <div class="card-head">
+                    <div>
+                        <h2>Fenetre de 3 ans</h2>
+                        <p class="helper">Lecture rapide de vos quotas disponibles et bloques.</p>
+                    </div>
+                </div>
+                <div class="leave-window-list">
+                    {% for item in leave_window_data %}
+                        <div class="leave-year-card {% if item.is_blocked %}blocked{% endif %}">
+                            <div class="leave-year-header">
+                                <span class="leave-year">{{ item.year }}</span>
+                                {% if item.is_blocked %}
+                                    <span class="leave-status-badge blocked">Bloqué</span>
+                                {% else %}
+                                    <span class="leave-status-badge available">Disponible</span>
+                                {% endif %}
+                            </div>
+                            <div class="leave-year-details">
+                                <div class="leave-detail"><span>Quota</span><strong>{{ item.quota }}</strong></div>
+                                <div class="leave-detail"><span>Consommé</span><strong>{{ item.consumed }}</strong></div>
+                                <div class="leave-detail"><span>Restant</span><strong>{{ item.remaining }}</strong></div>
+                            </div>
                             {% if item.is_blocked %}
-                                <span class="leave-status-badge blocked">Bloqué</span>
+                                <div class="leave-status-text">Non consommable avant {{ item.year|add:1 }}</div>
                             {% else %}
-                                <span class="leave-status-badge available">Disponible</span>
+                                <div class="leave-status-text">Disponible aujourd'hui</div>
                             {% endif %}
                         </div>
-                        <div class="leave-year-details">
-                            <div class="leave-detail"><span>Quota</span><strong>{{ item.quota }}</strong></div>
-                            <div class="leave-detail"><span>Consommé</span><strong>{{ item.consumed }}</strong></div>
-                            <div class="leave-detail"><span>Restant</span><strong>{{ item.remaining }}</strong></div>
-                        </div>
-                        {% if item.is_blocked %}
-                            <div class="leave-status-text">Non consommable avant {{ item.year|add:1 }}</div>
-                        {% else %}
-                            <div class="leave-status-text">Disponible aujourd'hui</div>
-                        {% endif %}
-                    </div>
-                {% endfor %}
-            </div>
-        </article>
+                    {% endfor %}
+                </div>
+            </article>
 
-        <article class="card stat-card accent-amber">
-            <span>Recuperation disponible</span>
-            <strong id="employee-recovery-balance">{{ profile.recovery_balance }} jours</strong>
-            <small>Disponible pour vos prochaines demandes</small>
-        </article>
-        <article class="card stat-card accent-rose">
-            <span>Evenement familial</span>
-            <strong id="employee-family-event-remaining">{{ profile.family_event_remaining }} jours</strong>
-            <small>Jours restants (10 par an, reinitialise annuellement)</small>
-        </article>
-        <article class="card stat-card accent-teal">
-            <span>Repos medical</span>
-            <strong id="employee-medical-leave-total">{{ profile.medical_leave_total }} jours</strong>
-            <small>Total de repos medical accumule</small>
-        </article>
-        <article class="card stat-card accent-indigo">
-            <span>Absence maladie</span>
-            <strong id="employee-sick-absence-total">{{ profile.sick_absence_total }} jours</strong>
-            <small>Total d'absence maladie accumule</small>
-        </article>
-        <article class="card stat-card accent-slate">
-            <span>Demandes recentes</span>
-            <strong id="employee-recent-count">{{ recent_requests|length }}</strong>
-            <small>12 dernieres demandes affichees</small>
-        </article>
+            <article class="card employee-stat-card employee-stat-card-amber">
+                <span>Recuperation disponible</span>
+                <strong id="employee-recovery-balance">{{ profile.recovery_balance }} jours</strong>
+                <small>Disponible pour vos prochaines demandes</small>
+            </article>
+        </div>
+
+        <div class="employee-hero-row">
+            <article class="card employee-stat-card employee-stat-card-rose">
+                <span>Evenement familial</span>
+                <strong id="employee-family-event-remaining">{{ profile.family_event_remaining }} jours</strong>
+                <small>Jours restants sur l'annee</small>
+            </article>
+            <article class="card employee-stat-card employee-stat-card-teal">
+                <span>Repos medical</span>
+                <strong id="employee-medical-leave-total">{{ profile.medical_leave_total }} jours</strong>
+                <small>Total accumule</small>
+            </article>
+            <article class="card employee-stat-card employee-stat-card-indigo">
+                <span>Absence maladie</span>
+                <strong id="employee-sick-absence-total">{{ profile.sick_absence_total }} jours</strong>
+                <small>Total accumule</small>
+            </article>
+            <article class="card employee-stat-card employee-stat-card-slate">
+                <span>Demandes recentes</span>
+                <strong id="employee-recent-count">{{ recent_requests|length }}</strong>
+                <small>12 dernieres demandes affichees</small>
+            </article>
+        </div>
     </div>
 
     <div class="content-grid employee-dashboard-grid">
@@ -127,6 +150,11 @@
                     <span class="badge rejected">Rejetees</span>
                     <strong id="employee-rejected-count">{{ rejected_count }}</strong>
                     <small>Demande(s) refusee(s)</small>
+                </div>
+                <div class="status-chip-card">
+                    <span class="badge cancelled">Annulees</span>
+                    <strong id="employee-cancelled-count">{{ cancelled_count }}</strong>
+                    <small>Demande(s) annulee(s)</small>
                 </div>
             </div>
         </article>
@@ -283,34 +311,6 @@
     .employee-action-icon.share { background: #f4f3ff; color: #5a43b0; }
     .employee-action-icon.delete { background: #fff0f0; color: #b43a3a; }
     
-    /* Center stat cards content */
-    .stats-grid.employee-stats-grid {
-        align-items: stretch;
-    }
-    .stat-card {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-        text-align: center;
-        width: 100%;
-        min-height: 140px;
-        padding: 1.25rem;
-        box-sizing: border-box;
-    }
-    .stat-card > * {
-        width: 100%;
-        text-align: center;
-    }
-    .stat-card strong,
-    .stat-card small,
-    .stat-card span {
-        display: block;
-        margin-left: auto;
-        margin-right: auto;
-    }
-    .stat-card strong { font-size: 1.6rem; line-height: 1.2; }
-    .stat-card small { max-width: 220px; }
 </style>
 
 <script>
@@ -375,6 +375,7 @@
             const submittedCount = document.getElementById("employee-submitted-count");
             const approvedCount = document.getElementById("employee-approved-count");
             const rejectedCount = document.getElementById("employee-rejected-count");
+            const cancelledCount = document.getElementById("employee-cancelled-count");
 
             if (leaveBalance) leaveBalance.innerText = translateEmployeeText(data.leave_balance);
             if (recoveryBalance) recoveryBalance.innerText = translateEmployeeText(data.recovery_balance);
@@ -388,6 +389,7 @@
             if (submittedCount) submittedCount.innerText = data.submitted_count;
             if (approvedCount) approvedCount.innerText = data.approved_count;
             if (rejectedCount) rejectedCount.innerText = data.rejected_count;
+            if (cancelledCount) cancelledCount.innerText = data.cancelled_count;
 
             const recentRequestsTbody = document.getElementById("employee-recent-requests-tbody");
             const absenceTable = document.getElementById("employee-absence-table");

@@ -1,4 +1,4 @@
-from uuid import uuid4
+content = '''from uuid import uuid4
 from decimal import Decimal
 
 from django.db import models
@@ -150,3 +150,9 @@ class HREvent(models.Model):
         if self.start_date:
             return start_label
         return "-"
+'''
+
+with open('apps/hr_events/models.py', 'w', encoding='utf-8') as f:
+    f.write(content)
+
+print("models.py written successfully")

@@ -96,6 +96,41 @@
                     {% endif %}
                 </div>
 
+                <div class="form-group" id="duration-type-section" style="display: none;">
+                    <label>Type de duree</label>
+                    <div class="radio-group">
+                        <label class="radio-option">
+                            <input type="radio" name="duration_type" value="full_day" class="duration-type-radio" checked>
+                            <span class="radio-label">Journee complete</span>
+                        </label>
+                        <label class="radio-option">
+                            <input type="radio" name="duration_type" value="by_hours" class="duration-type-radio">
+                            <span class="radio-label">Par heures</span>
+                        </label>
+                    </div>
+                    <small class="helper">Choisissez le type de duree pour un evenement d'une seule journee.</small>
+                </div>
+
+                <div class="form-group" id="time-fields-section" style="display: none;">
+                    <div class="form-grid" style="grid-template-columns: 1fr 1fr; gap: 1rem;">
+                        <div>
+                            <label for="{{ form.start_time.id_for_label }}">Heure debut</label>
+                            {{ form.start_time }}
+                            {% if form.start_time.help_text %}
+                                <small class="helper">{{ form.start_time.help_text }}</small>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <label for="{{ form.end_time.id_for_label }}">Heure fin</label>
+                            {{ form.end_time }}
+                            {% if form.end_time.help_text %}
+                                <small class="helper">{{ form.end_time.help_text }}</small>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <small class="helper">Horaires de travail : 08h00-12h00 et 13h00-17h00 (pause 12h00-13h00 non comptabilisee).</small>
+                </div>
+
                 <div class="form-group">
                     <label for="{{ form.days.id_for_label }}">Nombre de jours</label>
                     {{ form.days }}
@@ -134,4 +169,153 @@
         </form>
     </article>
 </section>
+
+<script>
+(function() {
+    "use strict";
+
+    // Work schedule constants (in minutes from midnight)
+    var WORK_START_MORNING = 8 * 60;    // 08:00
+    var WORK_END_MORNING = 12 * 60;     // 12:00
+    var WORK_START_AFTERNOON = 13 * 60;  // 13:00
+    var WORK_END_AFTERNOON = 17 * 60;    // 17:00
+    var FULL_DAY_MINUTES = 8 * 60;       // 8 hours = 480 minutes
+
+    function toMinutes(timeStr) {
+        var parts = timeStr.split(":");
+        return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+    }
+
+    function calculatePartialDay(startTime, endTime) {
+        var startMin = toMinutes(startTime);
+        var endMin = toMinutes(endTime);
+
+        if (endMin <= startMin) {
+            return 0;
+        }
+
+        var totalMinutes = 0;
+
+        // Morning overlap (08:00-12:00)
+        var morningStart = Math.max(startMin, WORK_START_MORNING);
+        var morningEnd = Math.min(endMin, WORK_END_MORNING);
+        if (morningEnd > morningStart) {
+            totalMinutes += morningEnd - morningStart;
+        }
+
+        // Afternoon overlap (13:00-17:00)
+        var afternoonStart = Math.max(startMin, WORK_START_AFTERNOON);
+        var afternoonEnd = Math.min(endMin, WORK_END_AFTERNOON);
+        if (afternoonEnd > afternoonStart) {
+            totalMinutes += afternoonEnd - afternoonStart;
+        }
+
+        return totalMinutes / FULL_DAY_MINUTES;
+    }
+
+    function calculateDays() {
+        var startDate = document.getElementById("id_start_date").value;
+        var endDate = document.getElementById("id_end_date").value;
+        var daysField = document.getElementById("id_days");
+
+        if (!startDate || !endDate || startDate !== endDate) {
+            return;
+        }
+
+        var durationType = document.querySelector('input[name="duration_type"]:checked');
+        var durationTypeValue = durationType ? durationType.value : "full_day";
+        var startTime = document.getElementById("id_start_time").value;
+        var endTime = document.getElementById("id_end_time").value;
+
+        var days = 0;
+
+        if (durationTypeValue === "full_day") {
+            days = 1;
+        } else if (durationTypeValue === "by_hours" && startTime && endTime) {
+            days = calculatePartialDay(startTime, endTime);
+        }
+
+        daysField.value = days.toFixed(3);
+    }
+
+    function updateFormState() {
+        var startDate = document.getElementById("id_start_date").value;
+        var endDate = document.getElementById("id_end_date").value;
+        var daysField = document.getElementById("id_days");
+        var durationTypeSection = document.getElementById("duration-type-section");
+        var timeFieldsSection = document.getElementById("time-fields-section");
+
+        if (startDate && endDate && startDate === endDate) {
+            // Single-day event: show duration type and time fields, make days readonly
+            durationTypeSection.style.display = "block";
+            timeFieldsSection.style.display = "block";
+            daysField.readOnly = true;
+            calculateDays();
+        } else {
+            // Multi-day event: hide duration type and time fields, make days editable
+            durationTypeSection.style.display = "none";
+            timeFieldsSection.style.display = "none";
+            daysField.readOnly = false;
+        }
+    }
+
+    function initFormState() {
+        var startDate = document.getElementById("id_start_date").value;
+        var endDate = document.getElementById("id_end_date").value;
+        var timeFieldsSection = document.getElementById("time-fields-section");
+
+        if (startDate && endDate && startDate === endDate) {
+            durationTypeSection.style.display = "block";
+
+            // Check if time fields should be shown based on duration type
+            var durationType = document.querySelector('input[name="duration_type"]:checked');
+            if (durationType && durationType.value === "by_hours") {
+                timeFieldsSection.style.display = "block";
+            }
+        }
+
+        updateFormState();
+    }
+
+    document.addEventListener("DOMContentLoaded", function() {
+        var startDate = document.getElementById("id_start_date");
+        var endDate = document.getElementById("id_end_date");
+        var durationTypeRadios = document.querySelectorAll('input[name="duration_type"]');
+        var startTime = document.getElementById("id_start_time");
+        var endTime = document.getElementById("id_end_time");
+
+        // Initialize form state
+        initFormState();
+
+        // Event listeners for date changes
+        if (startDate) {
+            startDate.addEventListener("change", updateFormState);
+        }
+        if (endDate) {
+            endDate.addEventListener("change", updateFormState);
+        }
+
+        // Event listeners for duration type changes
+        durationTypeRadios.forEach(function(radio) {
+            radio.addEventListener("change", function() {
+                var timeFieldsSection = document.getElementById("time-fields-section");
+                if (this.value === "by_hours") {
+                    timeFieldsSection.style.display = "block";
+                } else {
+                    timeFieldsSection.style.display = "none";
+                }
+                calculateDays();
+            });
+        });
+
+        // Event listeners for time changes
+        if (startTime) {
+            startTime.addEventListener("change", calculateDays);
+        }
+        if (endTime) {
+            endTime.addEventListener("change", calculateDays);
+        }
+    });
+})();
+</script>
 {% endblock %}

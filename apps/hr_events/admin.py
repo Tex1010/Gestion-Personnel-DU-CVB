@@ -12,6 +12,8 @@ class HREventAdmin(admin.ModelAdmin):
         "days",
         "start_date",
         "end_date",
+        "start_time",
+        "end_time",
         "created_at",
         "created_by",
     )
@@ -25,3 +27,28 @@ class HREventAdmin(admin.ModelAdmin):
     list_select_related = ("employee", "employee__user", "created_by")
     readonly_fields = ("created_at", "updated_at", "created_by")
     date_hierarchy = "created_at"
+    fieldsets = (
+        (None, {
+            "fields": (
+                "employee",
+                "event_type",
+                "status",
+            )
+        }),
+        ("Periode", {
+            "fields": (
+                "start_date",
+                "end_date",
+                "start_time",
+                "end_time",
+                "days",
+            )
+        }),
+        ("Details", {
+            "fields": ("reason",)
+        }),
+        ("Systeme", {
+            "fields": ("created_at", "updated_at", "created_by"),
+            "classes": ("collapse",),
+        }),
+    )

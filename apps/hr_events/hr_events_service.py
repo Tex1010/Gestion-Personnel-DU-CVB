@@ -94,7 +94,8 @@ def get_hr_events_dashboard_data(profile):
     }
 
 
-def create_hr_event(profile, event_type, days, start_date=None, end_date=None, reason="", created_by=None):
+def create_hr_event(profile, event_type, days, start_date=None, end_date=None,
+                    start_time=None, end_time=None, reason="", created_by=None):
     """
     Cree un nouvel evenement RH pour un employe.
 
@@ -117,6 +118,8 @@ def create_hr_event(profile, event_type, days, start_date=None, end_date=None, r
             days=days,
             start_date=start_date,
             end_date=end_date,
+            start_time=start_time,
+            end_time=end_time,
             reason=reason,
             created_by=created_by,
             status=HREvent.STATUS_ACTIVE,

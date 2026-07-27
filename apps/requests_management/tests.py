@@ -388,3 +388,23 @@ class RequestsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertIn('data-email="direction@example.com"', response.json()["recovery_requests_html"])
+
+    def test_employee_dashboard_displays_cancelled_request_count(self):
+        StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_LEAVE,
+            status=StaffRequest.STATUS_CANCELLED,
+            approval_stage=StaffRequest.APPROVAL_COMPLETED,
+            total_days=1,
+            remaining_days_for_reason=9,
+            reason="Conge annule",
+        )
+
+        response = self.client.get(reverse("personnel:dashboard"))
+        refresh_response = self.client.get(reverse("personnel:dashboard_data"))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Annulees")
+        self.assertContains(response, 'id="employee-cancelled-count">1</strong>', html=False)
+        self.assertEqual(refresh_response.status_code, 200)
+        self.assertEqual(refresh_response.json()["cancelled_count"], 1)
