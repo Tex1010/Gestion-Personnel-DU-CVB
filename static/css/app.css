@@ -3781,6 +3781,23 @@ th {
 
 
 
+/* === Employee hero row stats (4 cards responsive) === */
+.employee-hero-row-stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 820px) {
+    .employee-hero-row-stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    .employee-hero-row-stats {
+        grid-template-columns: 1fr;
+    }
+}
+
 /* === Leave window rolling 3-year cards === */
 .leave-window-list {
     display: flex;
