@@ -502,7 +502,7 @@ h3 {
 
 .employee-hero-row {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(3, minmax(0, 1fr));
     gap: 18px;
     align-items: stretch;
 }
@@ -3878,4 +3878,113 @@ th {
 
 .leave-year-card.blocked .leave-status-text {
     color: #c0392b;
+}
+
+/* === Floating window overlay for 3-year leave window === */
+.floating-window-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    background: rgba(0, 0, 0, 0.48);
+    backdrop-filter: blur(4px);
+}
+
+.floating-window-panel {
+    width: min(100%, 520px);
+    max-height: min(100vh - 40px, 720px);
+    display: flex;
+    flex-direction: column;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow);
+    overflow: hidden;
+    animation: riseUp 0.3s ease;
+}
+
+.floating-window-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.floating-window-header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.floating-window-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: none;
+    border-radius: 12px;
+    background: rgba(37, 92, 58, 0.08);
+    color: var(--muted);
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+}
+
+.floating-window-close:hover {
+    background: rgba(37, 92, 58, 0.14);
+    color: var(--ink);
+    transform: translateY(-1px);
+}
+
+.floating-window-body {
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+}
+
+.floating-window-body .leave-window-list {
+    display: grid;
+    gap: 12px;
+}
+
+@media (max-width: 640px) {
+    .floating-window-panel {
+        width: 100%;
+        max-height: calc(100vh - 20px);
+        max-width: calc(100vw - 20px);
+    }
+
+    .floating-window-header,
+    .floating-window-body {
+        padding-left: 18px;
+        padding-right: 18px;
+    }
+}
+
+[data-theme="dark"] .floating-window-overlay {
+    background: rgba(0, 0, 0, 0.6);
+}
+
+[data-theme="dark"] .floating-window-panel {
+    background: rgba(18, 25, 21, 0.92);
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .floating-window-header {
+    border-color: var(--border);
+}
+
+[data-theme="dark"] .floating-window-close {
+    background: rgba(158, 215, 175, 0.12);
+    color: var(--muted);
+}
+
+[data-theme="dark"] .floating-window-close:hover {
+    background: rgba(158, 215, 175, 0.18);
+    color: var(--text);
 }

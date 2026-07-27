@@ -14,6 +14,10 @@
             <a href="{% url 'requests_management:absence_create' %}" class="btn-secondary">Nouvelle absence</a>
             <a href="{% url 'requests_management:leave_create' %}" class="btn-secondary">Nouveau conge</a>
             <a href="{% url 'requests_management:recovery_create' %}" class="btn-primary">Nouvelle recuperation</a>
+            <button type="button" class="btn-secondary" id="leaveWindowButton">
+                <i class="bi bi-calendar3"></i>
+                Fenetre de 3 ans
+            </button>
         </div>
     </div>
 
@@ -52,39 +56,6 @@
                 </div>
             </article>
 
-            <article class="card employee-window-card">
-                <div class="card-head">
-                    <div>
-                        <h2>Fenetre de 3 ans</h2>
-                        <p class="helper">Lecture rapide de vos quotas disponibles et bloques.</p>
-                    </div>
-                </div>
-                <div class="leave-window-list">
-                    {% for item in leave_window_data %}
-                        <div class="leave-year-card {% if item.is_blocked %}blocked{% endif %}">
-                            <div class="leave-year-header">
-                                <span class="leave-year">{{ item.year }}</span>
-                                {% if item.is_blocked %}
-                                    <span class="leave-status-badge blocked">Bloqué</span>
-                                {% else %}
-                                    <span class="leave-status-badge available">Disponible</span>
-                                {% endif %}
-                            </div>
-                            <div class="leave-year-details">
-                                <div class="leave-detail"><span>Quota</span><strong>{{ item.quota }}</strong></div>
-                                <div class="leave-detail"><span>Consommé</span><strong>{{ item.consumed }}</strong></div>
-                                <div class="leave-detail"><span>Restant</span><strong>{{ item.remaining }}</strong></div>
-                            </div>
-                            {% if item.is_blocked %}
-                                <div class="leave-status-text">Non consommable avant {{ item.year|add:1 }}</div>
-                            {% else %}
-                                <div class="leave-status-text">Disponible aujourd'hui</div>
-                            {% endif %}
-                        </div>
-                    {% endfor %}
-                </div>
-            </article>
-
             <article class="card employee-stat-card employee-stat-card-amber">
                 <span>Recuperation disponible</span>
                 <strong id="employee-recovery-balance">{{ profile.recovery_balance }} jours</strong>
@@ -113,6 +84,46 @@
                 <strong id="employee-recent-count">{{ recent_requests|length }}</strong>
                 <small>12 dernieres demandes affichees</small>
             </article>
+        </div>
+    </div>
+
+    <div class="floating-window-overlay" id="leaveWindowOverlay" hidden>
+        <div class="floating-window-panel">
+            <div class="floating-window-header">
+                <div>
+                    <h2>Fenetre de 3 ans</h2>
+                    <p class="helper">Lecture rapide de vos quotas disponibles et bloques.</p>
+                </div>
+                <button type="button" class="floating-window-close" id="leaveWindowClose" aria-label="Fermer">
+                    <i class="bi bi-x-lg"></i>
+                </button>
+            </div>
+            <div class="floating-window-body">
+                <div class="leave-window-list">
+                    {% for item in leave_window_data %}
+                        <div class="leave-year-card {% if item.is_blocked %}blocked{% endif %}">
+                            <div class="leave-year-header">
+                                <span class="leave-year">{{ item.year }}</span>
+                                {% if item.is_blocked %}
+                                    <span class="leave-status-badge blocked">Bloqué</span>
+                                {% else %}
+                                    <span class="leave-status-badge available">Disponible</span>
+                                {% endif %}
+                            </div>
+                            <div class="leave-year-details">
+                                <div class="leave-detail"><span>Quota</span><strong>{{ item.quota }}</strong></div>
+                                <div class="leave-detail"><span>Consommé</span><strong>{{ item.consumed }}</strong></div>
+                                <div class="leave-detail"><span>Restant</span><strong>{{ item.remaining }}</strong></div>
+                            </div>
+                            {% if item.is_blocked %}
+                                <div class="leave-status-text">Non consommable avant {{ item.year|add:1 }}</div>
+                            {% else %}
+                                <div class="leave-status-text">Disponible aujourd'hui</div>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
         </div>
     </div>
 
@@ -502,5 +513,44 @@
             window.traeI18n?.apply?.();
         });
     });
+</script>
+<script>
+    (function() {
+        "use strict";
+        var openBtn = document.getElementById("leaveWindowButton");
+        var overlay = document.getElementById("leaveWindowOverlay");
+        var closeBtn = document.getElementById("leaveWindowClose");
+
+        if (!openBtn || !overlay) {
+            return;
+        }
+
+        var toggleWindow = function(show) {
+            overlay.hidden = !show;
+            document.body.style.overflow = show ? "hidden" : "";
+        };
+
+        openBtn.addEventListener("click", function() {
+            toggleWindow(true);
+        });
+
+        if (closeBtn) {
+            closeBtn.addEventListener("click", function() {
+                toggleWindow(false);
+            });
+        }
+
+        overlay.addEventListener("click", function(e) {
+            if (e.target === overlay) {
+                toggleWindow(false);
+            }
+        });
+
+        document.addEventListener("keydown", function(e) {
+            if (e.key === "Escape" && !overlay.hidden) {
+                toggleWindow(false);
+            }
+        });
+    })();
 </script>
 {% endblock %}
