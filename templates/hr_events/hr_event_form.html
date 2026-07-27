@@ -1,6 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Nouveau evenement RH{% endblock %}
+{% block title %}Nouvel evenement RH{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.min.css" rel="stylesheet">
+{% endblock %}
 
 {% block content %}
 <section class="page-section narrow">
@@ -35,9 +39,10 @@
             {% endif %}
 
             <div class="form-grid two">
-                <div>
+                <div class="employee-select-wrapper">
                     {{ form.employee.label_tag }}
                     {{ form.employee }}
+                    <small class="helper">Commencez a taper un nom, un prenom ou un matricule pour rechercher.</small>
                     {% for error in form.employee.errors %}
                         <small class="error-text">{{ error }}</small>
                     {% endfor %}
@@ -51,7 +56,7 @@
                 </div>
             </div>
 
-            <div class="form-grid two">
+            <div class="form-grid two datepicker-grid">
                 <div>
                     {{ form.start_date.label_tag }}
                     {{ form.start_date }}
@@ -116,19 +121,13 @@
                 <div class="card accent-amber stat-card">
                     <span>Nombre de jours</span>
                     <strong id="daysDisplay">0</strong>
-                    <small>Calcule automatiquement pour un evenement d'une seule journee.</small>
+                    <small>Calcule automatiquement en fonction des dates, heures et type de duree. Les samedis et dimanches sont exclus.</small>
                 </div>
             </div>
 
-            <div>
-                {{ form.days.label_tag }}
+            {# Hidden days field - keeps value for form submission #}
+            <div style="display: none;">
                 {{ form.days }}
-                {% if form.days.help_text %}
-                    <small class="helper">{{ form.days.help_text }}</small>
-                {% endif %}
-                {% for error in form.days.errors %}
-                    <small class="error-text">{{ error }}</small>
-                {% endfor %}
             </div>
 
             <div>
@@ -156,6 +155,8 @@
         </form>
     </article>
 </section>
+
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
 
 <script>
 (function() {
@@ -200,13 +201,38 @@
         return totalMinutes / FULL_DAY_MINUTES;
     }
 
+    function isWeekend(dateStr) {
+        var d = new Date(dateStr + "T12:00:00");
+        var day = d.getDay();
+        return day === 6 || day === 0; // Saturday=6, Sunday=0
+    }
+
+    function addDays(dateStr, days) {
+        var d = new Date(dateStr + "T12:00:00");
+        d.setDate(d.getDate() + days);
+        return d.toISOString().slice(0, 10);
+    }
+
     function calculateDays() {
         var startDate = document.getElementById("id_start_date").value;
         var endDate = document.getElementById("id_end_date").value;
         var daysField = document.getElementById("id_days");
         var daysDisplay = document.getElementById("daysDisplay");
 
-        if (!startDate || !endDate || startDate !== endDate) {
+        if (!startDate || !endDate) {
+            daysField.value = "0.000";
+            if (daysDisplay) {
+                daysDisplay.textContent = "0";
+            }
+            return;
+        }
+
+        // Make sure startDate <= endDate for calculation
+        if (endDate < startDate) {
+            daysField.value = "0.000";
+            if (daysDisplay) {
+                daysDisplay.textContent = "0";
+            }
             return;
         }
 
@@ -217,11 +243,63 @@
 
         var days = 0;
 
-        if (durationTypeValue === "full_day") {
-            days = 1;
-        } else if (durationTypeValue === "by_hours" && startTime && endTime) {
-            days = calculatePartialDay(startTime, endTime);
+        if (startDate === endDate) {
+            // Single day event
+            if (isWeekend(startDate)) {
+                days = 0;
+            } else if (durationTypeValue === "full_day") {
+                days = 1;
+            } else if (durationTypeValue === "by_hours" && startTime && endTime) {
+                days = calculatePartialDay(startTime, endTime);
+            }
+        } else {
+            // Multi-day event: count weekdays, skip weekends
+            if (durationTypeValue === "full_day") {
+                // Count weekdays only
+                var current = startDate;
+                while (current <= endDate) {
+                    if (!isWeekend(current)) {
+                        days += 1;
+                    }
+                    current = addDays(current, 1);
+                }
+            } else if (durationTypeValue === "by_hours" && startTime && endTime) {
+                // Partial first day, partial last day, full days in between
+                var current = startDate;
+                var dayIndex = 0;
+                while (current <= endDate) {
+                    if (isWeekend(current)) {
+                        current = addDays(current, 1);
+                        dayIndex++;
+                        continue;
+                    }
+                    if (dayIndex === 0 && startTime) {
+                        // First day: from start_time to end of work day (17:00)
+                        days += calculatePartialDay(startTime, "17:00");
+                    } else if (current === endDate && endTime) {
+                        // Last day: from start of work day (08:00) to end_time
+                        days += calculatePartialDay("08:00", endTime);
+                    } else {
+                        // Full day
+                        days += 1;
+                    }
+                    current = addDays(current, 1);
+                    dayIndex++;
+                }
+            } else {
+                // by_hours but missing times: count full weekdays
+                var current = startDate;
+                while (current <= endDate) {
+                    if (!isWeekend(current)) {
+                        days += 1;
+                    }
+                    current = addDays(current, 1);
+                }
+            }
         }
+
+        // Round to 3 decimal places
+        days = Math.round(days * 1000) / 1000;
 
         daysField.value = days.toFixed(3);
         if (daysDisplay) {
@@ -238,65 +316,96 @@
         var timeFieldsSection = document.getElementById("time-fields-section");
 
         if (startDate && endDate && startDate === endDate) {
-            // Single-day event: show duration type and time fields, make days readonly
+            // Single-day event: show duration type
             durationTypeSection.style.display = "block";
-            timeFieldsSection.style.display = "block";
-            daysField.readOnly = true;
-            calculateDays();
+            // Show or hide time fields based on duration type selection
+            var durationType = document.querySelector('input[name="duration_type"]:checked');
+            if (durationType && durationType.value === "by_hours") {
+                timeFieldsSection.style.display = "block";
+            } else {
+                timeFieldsSection.style.display = "none";
+            }
         } else {
-            // Multi-day event: hide duration type and time fields, make days editable
+            // Multi-day or no date: hide single-day controls
             durationTypeSection.style.display = "none";
             timeFieldsSection.style.display = "none";
-            daysField.readOnly = false;
         }
+        calculateDays();
     }
 
     function initFormState() {
         var startDate = document.getElementById("id_start_date").value;
         var endDate = document.getElementById("id_end_date").value;
+        var durationTypeSection = document.getElementById("duration-type-section");
         var timeFieldsSection = document.getElementById("time-fields-section");
         var daysDisplay = document.getElementById("daysDisplay");
         var daysField = document.getElementById("id_days");
 
         if (startDate && endDate && startDate === endDate) {
             durationTypeSection.style.display = "block";
-
-            // Check if time fields should be shown based on duration type
             var durationType = document.querySelector('input[name="duration_type"]:checked');
             if (durationType && durationType.value === "by_hours") {
                 timeFieldsSection.style.display = "block";
             }
         }
 
-        updateFormState();
-
-        // Sync days display with current field value
-        if (daysDisplay && daysField) {
-            daysDisplay.textContent = daysField.value || "0";
-        }
+        // Always run calculateDays to ensure the display is correct
+        calculateDays();
     }
 
     document.addEventListener("DOMContentLoaded", function() {
-        var startDate = document.getElementById("id_start_date");
-        var endDate = document.getElementById("id_end_date");
+        // --- Initialize Tom Select for employee search ---
+        var employeeSelect = document.getElementById("id_employee");
+        if (employeeSelect) {
+            new TomSelect(employeeSelect, {
+                maxOptions: 300,
+                sortField: [
+                    { field: "$order" },
+                    { field: "$score" }
+                ],
+                searchField: ["text"],
+                placeholder: "Rechercher un employe...",
+                allowEmptyOption: false,
+                render: {
+                    option: function(data, escape) {
+                        var text = data.text;
+                        var parts = text.split(" | ");
+                        if (parts.length >= 2) {
+                            var name = parts[0];
+                            var extra = parts.slice(1).join(" | ");
+                            return '<div class="ts-option-custom">' +
+                                '<span class="ts-option-name">' + escape(name) + '</span>' +
+                                '<span class="ts-option-extra">' + escape(extra) + '</span>' +
+                                '</div>';
+                        }
+                        return '<div>' + escape(text) + '</div>';
+                    }
+                }
+            });
+        }
+
+        // --- Date change handlers (native input type="date") ---
+        var startDateInput = document.getElementById("id_start_date");
+        var endDateInput = document.getElementById("id_end_date");
+
+        var dateChangeHandler = function() {
+            updateFormState();
+        };
+
+        if (startDateInput) {
+            startDateInput.addEventListener("change", dateChangeHandler);
+            startDateInput.addEventListener("input", dateChangeHandler);
+        }
+        if (endDateInput) {
+            endDateInput.addEventListener("change", dateChangeHandler);
+            endDateInput.addEventListener("input", dateChangeHandler);
+        }
+
+        // --- Duration type radio handlers ---
         var durationTypeRadios = document.querySelectorAll('input[name="duration_type"]');
         var startTime = document.getElementById("id_start_time");
         var endTime = document.getElementById("id_end_time");
-        var daysField = document.getElementById("id_days");
-        var daysDisplay = document.getElementById("daysDisplay");
 
-        // Initialize form state
-        initFormState();
-
-        // Event listeners for date changes
-        if (startDate) {
-            startDate.addEventListener("change", updateFormState);
-        }
-        if (endDate) {
-            endDate.addEventListener("change", updateFormState);
-        }
-
-        // Event listeners for duration type changes
         durationTypeRadios.forEach(function(radio) {
             radio.addEventListener("change", function() {
                 var timeFieldsSection = document.getElementById("time-fields-section");
@@ -309,20 +418,18 @@
             });
         });
 
-        // Event listeners for time changes
+        // Time change listeners
         if (startTime) {
             startTime.addEventListener("change", calculateDays);
+            startTime.addEventListener("input", calculateDays);
         }
         if (endTime) {
             endTime.addEventListener("change", calculateDays);
+            endTime.addEventListener("input", calculateDays);
         }
 
-        // Sync days display when days field is manually edited (multi-day events)
-        if (daysField && daysDisplay) {
-            daysField.addEventListener("input", function() {
-                daysDisplay.textContent = this.value || "0";
-            });
-        }
+        // Initialize form state after all components are ready
+        initFormState();
     });
 })();
 </script>

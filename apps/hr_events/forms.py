@@ -3,6 +3,7 @@ from decimal import Decimal
 from django import forms
 
 from apps.hr_events.models import HREvent
+from apps.personnel.models import EmployeeProfile
 
 
 class HREventForm(forms.ModelForm):
@@ -33,18 +34,19 @@ class HREventForm(forms.ModelForm):
             "reason",
         ]
         widgets = {
-            "employee": forms.Select(attrs={"class": "form-control"}),
+            "employee": forms.Select(attrs={"class": "form-control tom-select-employee"}),
             "event_type": forms.Select(attrs={"class": "form-control"}),
-            "start_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
-            "end_date": forms.DateInput(attrs={"type": "date", "class": "form-control"}),
+            "start_date": forms.DateInput(attrs={"type": "date", "class": "form-control datepicker-input"}),
+            "end_date": forms.DateInput(attrs={"type": "date", "class": "form-control datepicker-input"}),
             "start_time": forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
             "end_time": forms.TimeInput(attrs={"type": "time", "class": "form-control"}),
             "days": forms.NumberInput(
                 attrs={
-                    "class": "form-control",
+                    "class": "form-control days-hidden-input",
                     "step": "0.001",
                     "min": "0",
                     "inputmode": "decimal",
+                    "readonly": "readonly",
                 }
             ),
             "reason": forms.Textarea(
@@ -55,19 +57,23 @@ class HREventForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["employee"].label = "Employe"
+        self.fields["employee"].queryset = EmployeeProfile.objects.select_related("user").exclude(
+            user__username="cvbadmin"
+        ).order_by("user__last_name", "user__first_name")
         self.fields["event_type"].label = "Type d'evenement"
         self.fields["start_date"].label = "Date debut"
         self.fields["end_date"].label = "Date fin"
         self.fields["start_time"].label = "Heure debut"
         self.fields["end_time"].label = "Heure fin"
         self.fields["days"].label = "Nombre de jours"
+        self.fields["days"].disabled = True  # Always auto-calculated
         self.fields["reason"].label = "Motif / Observations"
 
         self.fields["start_date"].help_text = "Date de debut de l'evenement."
         self.fields["end_date"].help_text = "Date de fin de l'evenement (optionnel)."
         self.fields["start_time"].help_text = "Heure de debut (pour un evenement d'une seule journee)."
         self.fields["end_time"].help_text = "Heure de fin (pour un evenement d'une seule journee)."
-        self.fields["days"].help_text = "Nombre de jours (calcule automatiquement pour un evenement d'une seule journee)."
+        self.fields["days"].help_text = "Nombre de jours (calcule automatiquement)."
         self.fields["reason"].help_text = "Motif de l'evenement ou observations du RH."
 
         # If editing an existing event, set duration_type based on start_time/end_time
@@ -84,7 +90,8 @@ class HREventForm(forms.ModelForm):
         duration_type = cleaned_data.get("duration_type")
         start_time = cleaned_data.get("start_time")
         end_time = cleaned_data.get("end_time")
-        days = cleaned_data.get("days")
+        # Always recalculate, ignore submitted value
+        days = None
         event_type = cleaned_data.get("event_type")
 
         if start_date and end_date and end_date < start_date:
@@ -98,10 +105,21 @@ class HREventForm(forms.ModelForm):
                 days = self._calculate_partial_day_days(start_time, end_time)
             else:
                 days = Decimal("0.0")
+        elif start_date and end_date and end_date > start_date:
+            # Multi-day event: count only weekdays, with partial first/last day if times provided
+            days = self._calculate_multi_day_days(
+                start_date, end_date,
+                start_time if duration_type == self.DURATION_BY_HOURS else None,
+                end_time if duration_type == self.DURATION_BY_HOURS else None,
+                duration_type == self.DURATION_FULL_DAY,
+            )
+
+        if days is not None:
             cleaned_data["days"] = days
 
         if days is not None and days <= 0:
             self.add_error("days", "Le nombre de jours doit etre superieur a zero.")
+            return cleaned_data
 
         if event_type == HREvent.TYPE_FAMILY_EVENT:
             employee = cleaned_data.get("employee")
@@ -161,3 +179,45 @@ class HREventForm(forms.ModelForm):
         days = Decimal(str(total_minutes)) / Decimal(str(FULL_DAY_MINUTES))
         days = days.quantize(Decimal("0.001"))
         return days
+
+    @staticmethod
+    def _calculate_multi_day_days(start_date, end_date, start_time, end_time, is_full_day):
+        """Calculate days for a multi-day period excluding weekends (Sat/Sun).
+
+        If is_full_day is True, each weekday counts as 1.0 day.
+        If start_time/end_time are provided (by_hours mode):
+          - First day uses start_time as partial day
+          - Last day uses end_time as partial day
+          - Middle days count as full days (1.0 each)
+        """
+        from datetime import timedelta
+
+        total_days = Decimal("0.0")
+        current = start_date
+        day_index = 0  # 0 = first day
+
+        while current <= end_date:
+            # Skip weekends (Monday=0, Sunday=6)
+            if current.weekday() >= 5:  # Saturday=5, Sunday=6
+                current += timedelta(days=1)
+                day_index += 1
+                continue
+
+            if is_full_day:
+                total_days += Decimal("1.0")
+            else:
+                is_first = (day_index == 0)
+                is_last = (current == end_date)
+                if is_first and start_time:
+                    total_days += HREventForm._calculate_partial_day_days(start_time, "17:00")
+                elif is_last and end_time:
+                    total_days += HREventForm._calculate_partial_day_days("08:00", end_time)
+                elif is_first and is_last and start_time and end_time:
+                    total_days += HREventForm._calculate_partial_day_days(start_time, end_time)
+                else:
+                    total_days += Decimal("1.0")
+
+            current += timedelta(days=1)
+            day_index += 1
+
+        return total_days

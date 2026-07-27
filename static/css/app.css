@@ -527,13 +527,15 @@ h3 {
     display: grid;
     gap: 22px;
     min-height: 100%;
+    text-align: center;
     background:
         radial-gradient(circle at top left, rgba(37, 92, 58, 0.12), transparent 34%),
         linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(245, 248, 245, 0.92));
 }
 
 .employee-identity-head {
-    align-items: flex-start;
+    align-items: center;
+    justify-content: center;
 }
 
 .employee-identity-copy {
@@ -632,7 +634,8 @@ h3 {
     display: grid;
     gap: 12px;
     min-height: 136px;
-    align-content: start;
+    align-content: center;
+    text-align: center;
     position: relative;
     overflow: hidden;
     color: #ffffff;
@@ -3519,7 +3522,7 @@ th {
 
 @media (max-width: 820px) {
     .employee-hero-row {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: 1fr;
     }
 
     .content {
@@ -4003,5 +4006,310 @@ th {
 
 [data-theme="dark"] .floating-window-close:hover {
     background: rgba(158, 215, 175, 0.18);
+    color: var(--text);
+}
+
+/* =============================================
+   Tom Select — Custom styling for employee search
+   ============================================= */
+.employee-select-wrapper .ts-wrapper {
+    width: 100%;
+}
+
+.employee-select-wrapper .ts-control {
+    padding: 12px 14px;
+    border-radius: 14px;
+    border: 1px solid rgba(37, 92, 58, 0.18);
+    background: rgba(255, 255, 255, 0.9);
+    color: var(--text);
+    font: inherit;
+    min-height: 48px;
+    display: flex;
+    align-items: center;
+    box-shadow: none;
+    cursor: pointer;
+}
+
+.employee-select-wrapper .ts-control input {
+    width: auto !important;
+    font: inherit;
+    color: var(--text);
+    margin: 0;
+}
+
+.employee-select-wrapper .ts-wrapper.focus .ts-control {
+    border-color: rgba(37, 92, 58, 0.36);
+    box-shadow: 0 0 0 4px rgba(37, 92, 58, 0.08);
+}
+
+.employee-select-wrapper .ts-dropdown {
+    border: 1px solid rgba(37, 92, 58, 0.14);
+    border-radius: 14px;
+    margin-top: 4px;
+    background: #fffdf8;
+    box-shadow: 0 24px 60px rgba(24, 40, 28, 0.16);
+    color: var(--text);
+    overflow: hidden;
+}
+
+.employee-select-wrapper .ts-dropdown .option {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(37, 92, 58, 0.06);
+    cursor: pointer;
+}
+
+.employee-select-wrapper .ts-dropdown .option.active {
+    background: rgba(37, 92, 58, 0.1);
+    color: var(--green);
+}
+
+.employee-select-wrapper .ts-dropdown .option:hover {
+    background: rgba(37, 92, 58, 0.06);
+}
+
+.employee-select-wrapper .ts-dropdown .optgroup-header {
+    padding: 10px 14px;
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+    background: rgba(37, 92, 58, 0.04);
+    border-bottom: 1px solid rgba(37, 92, 58, 0.08);
+}
+
+.employee-select-wrapper .ts-wrapper .ts-control .item {
+    color: var(--text);
+    background: rgba(37, 92, 58, 0.08);
+    border: 1px solid rgba(37, 92, 58, 0.12);
+    border-radius: 8px;
+    padding: 2px 10px;
+}
+
+.employee-select-wrapper .ts-wrapper .ts-control .item.active {
+    background: rgba(37, 92, 58, 0.12);
+}
+
+.employee-select-wrapper .ts-wrapper.single .ts-control .item {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--text);
+}
+
+.employee-select-wrapper .ts-wrapper .ts-dropdown .no-results {
+    padding: 14px;
+    color: var(--muted);
+    text-align: center;
+}
+
+.ts-option-custom {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.ts-option-name {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+.ts-option-extra {
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+
+/* Dark mode for Tom Select */
+:root[data-theme="dark"] .employee-select-wrapper .ts-control {
+    background: rgba(18, 25, 21, 0.9);
+    border-color: rgba(158, 215, 175, 0.14);
+    color: var(--text);
+}
+
+:root[data-theme="dark"] .employee-select-wrapper .ts-dropdown {
+    background: #121915;
+    border-color: rgba(158, 215, 175, 0.14);
+}
+
+:root[data-theme="dark"] .employee-select-wrapper .ts-dropdown .option {
+    border-color: rgba(158, 215, 175, 0.06);
+}
+
+:root[data-theme="dark"] .employee-select-wrapper .ts-dropdown .option.active {
+    background: rgba(158, 215, 175, 0.12);
+}
+
+:root[data-theme="dark"] .employee-select-wrapper .ts-dropdown .option:hover {
+    background: rgba(158, 215, 175, 0.06);
+}
+
+:root[data-theme="dark"] .employee-select-wrapper .ts-dropdown .optgroup-header {
+    background: rgba(158, 215, 175, 0.06);
+}
+
+/* =============================================
+   Flatpickr — Custom styling for date picker
+   ============================================= */
+.datepicker-grid .flatpickr-input,
+.datepicker-grid input.form-control.datepicker-input {
+    min-height: 48px;
+}
+
+.flatpickr-calendar {
+    border-radius: 18px !important;
+    border: 1px solid rgba(37, 92, 58, 0.14) !important;
+    box-shadow: 0 24px 60px rgba(24, 40, 28, 0.16) !important;
+    margin-top: 4px;
+    overflow: hidden;
+    background: #fffdf8;
+}
+
+.flatpickr-calendar .flatpickr-months {
+    background: var(--green);
+    border-radius: 18px 18px 0 0;
+    padding: 8px 0;
+}
+
+.flatpickr-calendar .flatpickr-months .flatpickr-month {
+    color: #fff;
+}
+
+.flatpickr-calendar .flatpickr-current-month .flatpickr-monthDropdown-months {
+    color: #fff;
+    font-weight: 700;
+}
+
+.flatpickr-calendar .flatpickr-current-month input.cur-year {
+    color: #fff;
+    font-weight: 700;
+}
+
+.flatpickr-calendar .flatpickr-months .flatpickr-prev-month,
+.flatpickr-calendar .flatpickr-months .flatpickr-next-month {
+    fill: rgba(255, 255, 255, 0.8);
+}
+
+.flatpickr-calendar .flatpickr-months .flatpickr-prev-month:hover,
+.flatpickr-calendar .flatpickr-months .flatpickr-next-month:hover {
+    fill: #fff;
+}
+
+.flatpickr-calendar .flatpickr-weekdays {
+    background: rgba(37, 92, 58, 0.06);
+}
+
+.flatpickr-calendar span.flatpickr-weekday {
+    color: var(--muted);
+    font-weight: 700;
+    font-size: 0.75rem;
+}
+
+.flatpickr-calendar .flatpickr-day {
+    border-radius: 10px !important;
+    margin: 2px;
+    color: var(--text);
+    font-weight: 500;
+}
+
+.flatpickr-calendar .flatpickr-day:hover {
+    background: rgba(37, 92, 58, 0.1);
+    border-color: transparent;
+}
+
+.flatpickr-calendar .flatpickr-day.today {
+    border-color: var(--green);
+    background: rgba(37, 92, 58, 0.06);
+}
+
+.flatpickr-calendar .flatpickr-day.selected,
+.flatpickr-calendar .flatpickr-day.startRange,
+.flatpickr-calendar .flatpickr-day.endRange,
+.flatpickr-calendar .flatpickr-day.selected.inRange,
+.flatpickr-calendar .flatpickr-day.startRange.inRange,
+.flatpickr-calendar .flatpickr-day.endRange.inRange {
+    background: var(--green) !important;
+    border-color: var(--green) !important;
+    color: #fff !important;
+    box-shadow: none;
+}
+
+.flatpickr-calendar .flatpickr-day.inRange {
+    background: rgba(37, 92, 58, 0.1);
+    border-color: transparent;
+    box-shadow: none;
+}
+
+.flatpickr-calendar .flatpickr-day.selected:hover,
+.flatpickr-calendar .flatpickr-day.startRange:hover,
+.flatpickr-calendar .flatpickr-day.endRange:hover {
+    background: var(--green) !important;
+}
+
+.flatpickr-calendar .flatpickr-day.flatpickr-disabled,
+.flatpickr-calendar .flatpickr-day.flatpickr-disabled:hover {
+    color: rgba(108, 115, 111, 0.4);
+}
+
+.flatpickr-calendar .flatpickr-day.nextMonthDay,
+.flatpickr-calendar .flatpickr-day.prevMonthDay {
+    color: rgba(108, 115, 111, 0.4);
+}
+
+.flatpickr-calendar .flatpickr-time {
+    border-top: 1px solid rgba(37, 92, 58, 0.1);
+}
+
+.flatpickr-calendar .flatpickr-time input {
+    color: var(--text);
+}
+
+.flatpickr-calendar .flatpickr-time .flatpickr-am-pm {
+    color: var(--text);
+}
+
+.flatpickr-calendar .flatpickr-time .flatpickr-am-pm:hover {
+    background: rgba(37, 92, 58, 0.08);
+}
+
+.flatpickr-calendar .numInputWrapper span {
+    border-color: rgba(37, 92, 58, 0.1);
+}
+
+.flatpickr-calendar .numInputWrapper span:hover {
+    background: rgba(37, 92, 58, 0.06);
+}
+
+/* Dark mode for Flatpickr */
+:root[data-theme="dark"] .flatpickr-calendar {
+    background: #121915;
+    border-color: rgba(158, 215, 175, 0.14) !important;
+}
+
+:root[data-theme="dark"] .flatpickr-calendar .flatpickr-weekdays {
+    background: rgba(158, 215, 175, 0.06);
+}
+
+:root[data-theme="dark"] .flatpickr-calendar .flatpickr-day {
+    color: var(--text);
+}
+
+:root[data-theme="dark"] .flatpickr-calendar .flatpickr-day:hover {
+    background: rgba(158, 215, 175, 0.1);
+}
+
+:root[data-theme="dark"] .flatpickr-calendar .flatpickr-day.today {
+    border-color: var(--green);
+    background: rgba(158, 215, 175, 0.06);
+}
+
+:root[data-theme="dark"] .flatpickr-calendar .flatpickr-day.inRange {
+    background: rgba(158, 215, 175, 0.08);
+}
+
+:root[data-theme="dark"] .flatpickr-calendar .flatpickr-time {
+    border-color: rgba(158, 215, 175, 0.1);
+}
+
+:root[data-theme="dark"] .flatpickr-calendar .flatpickr-time input {
     color: var(--text);
 }

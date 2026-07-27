@@ -36,6 +36,7 @@
     <link rel="stylesheet" href="{% static 'css/app.css' %}">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
+    {% block extra_head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}{% if request.user.is_authenticated %}{% with portal_role=request.session.portal_role|default:request.user.profile.role_portal %} role-{{ request.user.profile.role_code }} portal-{{ portal_role }}{% endwith %}{% endif %}">
     {% if request.user.is_authenticated %}
