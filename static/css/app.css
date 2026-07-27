@@ -1014,6 +1014,61 @@ label {
     font-weight: 600;
 }
 
+.form-label {
+    display: block;
+    margin-bottom: 6px;
+    font-size: 0.82rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+}
+
+.choice-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-radius: 14px;
+    border: 1px solid rgba(37, 92, 58, 0.12);
+    background: rgba(255, 255, 255, 0.86);
+    color: var(--ink);
+    font-weight: 600;
+    cursor: pointer;
+    margin-right: 8px;
+    margin-bottom: 8px;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease, background 0.2s ease, color 0.2s ease;
+}
+
+.choice-chip input[type="radio"] {
+    width: 18px;
+    height: 18px;
+    margin: 0;
+    accent-color: var(--green);
+    flex-shrink: 0;
+}
+
+.choice-chip:hover {
+    transform: translateY(-1px);
+    border-color: rgba(37, 92, 58, 0.24);
+}
+
+.choice-chip input[type="radio"]:checked + span {
+    color: var(--green);
+}
+
+.choice-chip input[type="radio"]:checked {
+    box-shadow: 0 0 0 4px rgba(37, 92, 58, 0.12);
+}
+
+.form-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-top: 8px;
+}
+
 input,
 select,
 textarea {
@@ -2996,7 +3051,8 @@ th {
 [data-theme="dark"] .password-match-banner,
 [data-theme="dark"] .password-error-banner,
 [data-theme="dark"] .password-live-rule,
-[data-theme="dark"] .table-search-field {
+[data-theme="dark"] .table-search-field,
+[data-theme="dark"] .choice-chip {
     background: rgba(15, 21, 18, 0.92);
     color: var(--text);
     border-color: var(--border);
