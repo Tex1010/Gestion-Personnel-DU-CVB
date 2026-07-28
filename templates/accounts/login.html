@@ -14,7 +14,7 @@
                 {% endif %}
                 <h1>{{ branding.site_name|default:"Centre ValBio" }}</h1>
                 <p>{{ branding.subtitle|default:"Centre International pour la Valorisation de la Biodiversite" }}</p>
-                {% if branding %}
+                <!-- {% if branding %}
                     {% if branding.address or branding.email or branding.website %}
                         <div class="login-brand-details">
                             {% if branding.email %}
@@ -37,7 +37,7 @@
                             {% endif %}
                         </div>
                     {% endif %}
-                {% endif %}
+                {% endif %} -->
                 {% if branding and branding.announcement %}
                     <div class="announcement">{{ branding.announcement }}</div>
                 {% endif %}
