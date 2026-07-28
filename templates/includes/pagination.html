@@ -1,0 +1,61 @@
+{% load i18n %}
+{% if is_paginated %}
+<nav class="pagination-wrapper" role="navigation" aria-label="{% trans 'Pagination' %}">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+            {% if page_obj.number > 2 %}
+                <li class="page-item">
+                    <a class="page-link" href="?page=1" aria-label="{% trans 'First' %}">
+                        &laquo;&laquo;
+                    </a>
+                </li>
+            {% endif %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="{% trans 'Previous' %}">
+                    &laquo;
+                </a>
+            </li>
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link" aria-hidden="true">&laquo;</span>
+            </li>
+        {% endif %}
+
+        {% for num in paginator.page_range %}
+            {% if page_obj.number == num %}
+                <li class="page-item active" aria-current="page">
+                    <span class="page-link">{{ num }}</span>
+                </li>
+            {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                </li>
+            {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="{% trans 'Next' %}">
+                    &raquo;
+                </a>
+            </li>
+            {% if page_obj.number < paginator.num_pages|add:'-1' %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ paginator.num_pages }}" aria-label="{% trans 'Last' %}">
+                        &raquo;&raquo;
+                    </a>
+                </li>
+            {% endif %}
+        {% else %}
+            <li class="page-item disabled">
+                <span class="page-link" aria-hidden="true">&raquo;</span>
+            </li>
+        {% endif %}
+    </ul>
+    <div class="pagination-info">
+        {% blocktrans with start=page_obj.start_index end=page_obj.end_index total=paginator.count %}
+            Showing {{ start }} to {{ end }} of {{ total }} entries
+        {% endblocktrans %}
+    </div>
+</nav>
+{% endif %}

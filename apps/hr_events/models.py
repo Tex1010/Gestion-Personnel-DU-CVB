@@ -81,7 +81,7 @@ class HREvent(models.Model):
     days = models.DecimalField(
         "Nombre de jours",
         max_digits=6,
-        decimal_places=1,
+        decimal_places=3,
         default=Decimal("0.0"),
     )
     reason = models.TextField("Motif / Observations", blank=True)

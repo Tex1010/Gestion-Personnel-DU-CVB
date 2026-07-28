@@ -15,3 +15,9 @@ urlpatterns = [
 
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+
+# Custom error handlers - professional error pages
+handler400 = "config.errors.bad_request_view"
+handler403 = "config.errors.permission_denied_view"
+handler404 = "config.errors.page_not_found_view"
+handler500 = "config.errors.server_error_view"

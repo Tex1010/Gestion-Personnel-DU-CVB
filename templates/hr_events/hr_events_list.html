@@ -28,6 +28,17 @@
                 <i class="bi bi-search"></i>
                 <input type="search" placeholder="Rechercher un evenement, un employe ou un motif" data-table-search="hr-events-table">
             </label>
+            <a href="{% url 'hr_events:export' %}?search={{ search_term|urlencode }}&event_type={{ event_type_filter }}&status={{ status_filter }}&employee={{ employee_filter }}" class="btn-secondary">
+                <i class="bi bi-file-earmark-excel"></i>Exporter Excel
+            </a>
+            {% if is_cvbadmin %}
+                <form method="post" action="{% url 'hr_events:delete_all' %}" class="inline-action-form">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="Supprimer tout l'historique" data-confirm-message="Etes-vous sur de vouloir supprimer definitivement tout l'historique des evenements RH ? Cette operation est irreversible." data-confirm-label="Oui, tout supprimer" data-confirm-class="btn-danger">
+                        <i class="bi bi-trash3"></i>Supprimer tout l'historique
+                    </button>
+                </form>
+            {% endif %}
         </div>
 
         <div class="table-shell">
@@ -42,6 +53,7 @@
                             <th>Nombre de jours</th>
                             <th>Motif</th>
                             <th>Cree le</th>
+                            <th>Cree par</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -62,6 +74,7 @@
                                     <td>{{ event.display_days }}</td>
                                     <td>{{ event.reason|default:"-"|truncatechars:50 }}</td>
                                     <td>{{ event.created_at|date:"d/m/Y H:i" }}</td>
+                                    <td>{{ event.created_by.username|default:"-" }}</td>
                                     <td>
                                         {% if event.can_cancel %}
                                             <form method="post" action="{% url 'hr_events:cancel' event.id %}" class="inline-action-form">
@@ -70,15 +83,24 @@
                                                     Annuler
                                                 </button>
                                             </form>
-                                        {% else %}
-                                            <span class="helper">Non annulable</span>
+                                        {% endif %}
+                                        {% if is_cvbadmin %}
+                                            <form method="post" action="{% url 'hr_events:delete' event.id %}" class="inline-action-form">
+                                                {% csrf_token %}
+                                                <button type="submit" class="btn-danger btn-sm" data-confirm-action="1" data-confirm-title="Supprimer cet evenement" data-confirm-message="Cet evenement sera supprime definitivement. Cette action est irreversible." data-confirm-label="Oui, supprimer" data-confirm-class="btn-danger" title="Supprimer">
+                                                    <i class="bi bi-trash3"></i>
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        {% if not event.can_cancel and not is_cvbadmin %}
+                                            <span class="helper">-</span>
                                         {% endif %}
                                     </td>
                                 </tr>
                             {% endfor %}
                         {% else %}
                             <tr>
-                                <td colspan="8" class="empty-state">Aucun evenement enregistre pour le moment.</td>
+                                <td colspan="9" class="empty-state">Aucun evenement enregistre pour le moment.</td>
                             </tr>
                         {% endif %}
                     </tbody>

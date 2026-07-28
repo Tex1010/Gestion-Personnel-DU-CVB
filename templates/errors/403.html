@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% load static %}
+
+{% block title %}Accès refusé - {{ block.super }}{% endblock %}
+
+{% block body_class %}error-page{% endblock %}
+
+{% block public_content %}
+<div class="error-page-layout">
+    <div class="error-page-card">
+        <div class="error-page-illustration">
+            <i class="bi bi-lock"></i>
+        </div>
+        <div class="error-page-code">403</div>
+        <h1 class="error-page-title">Accès refusé</h1>
+        <p class="error-page-text">
+            Vous n'avez pas les autorisations nécessaires pour accéder à cette page.
+            Si vous pensez que c'est une erreur, veuillez contacter l'administrateur.
+        </p>
+        <div class="error-page-actions">
+            <a href="{% url 'personnel:dashboard' %}" class="btn-primary">
+                <i class="bi bi-house-door"></i>Retour au tableau de bord
+            </a>
+            <button type="button" class="btn-secondary" onclick="history.back()">
+                <i class="bi bi-arrow-left"></i>Page précédente
+            </button>
+        </div>
+    </div>
+</div>
+{% endblock %}

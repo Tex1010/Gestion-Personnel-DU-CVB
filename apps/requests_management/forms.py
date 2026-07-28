@@ -4,6 +4,7 @@ from decimal import Decimal
 from django import forms
 from django.forms import inlineformset_factory
 
+from apps.common.business_validators import detect_staff_request_overlap
 from apps.personnel.models import Project
 from apps.requests_management.models import RecoveryLine, StaffRequest
 
@@ -198,6 +199,29 @@ class AbsenceRequestForm(forms.ModelForm):
                         "start_date",
                         "La periode selectionnee ne contient aucun jour ouvrable.",
                     )
+
+        # Overlap detection: prevent conflicting leave/absence requests
+        if (
+            start_date
+            and end_date
+            and not self.has_error("start_date")
+            and not self.has_error("end_date")
+            and self.profile
+        ):
+            exclude_request_id = self.instance.pk if self.instance and self.instance.pk else None
+            has_overlap, conflicting = detect_staff_request_overlap(
+                self.profile,
+                start_date,
+                end_date,
+                exclude_weekends=exclude_weekends,
+                request_type=self.request_type,
+                exclude_request_id=exclude_request_id,
+            )
+            if has_overlap:
+                self.add_error(
+                    "start_date",
+                    "Une demande de conge ou d'absence existe deja pour cette periode.",
+                )
 
         total_days = cleaned_data.get("total_days")
 

@@ -29,7 +29,7 @@
                 <span>Type de contrat: {{ profile.contract_type_label }}</span>
             </div>
         </div>
-        <form method="post" class="stack-form">
+        <form method="post" data-date-range-validate data-time-range-validate class="stack-form">
             {% csrf_token %}
             {% if is_edit_mode %}
                 <div class="message info" role="status">

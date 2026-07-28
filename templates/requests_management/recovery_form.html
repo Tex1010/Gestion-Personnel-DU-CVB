@@ -29,7 +29,7 @@
                 <span>Matricule: {{ profile.employee_number|default:"-" }}</span>
             </div>
         </div>
-        <form method="post" class="stack-form">
+        <form method="post" data-recovery-line-validate class="stack-form">
             {% csrf_token %}
             {{ formset.management_form }}
             {% if is_edit_mode %}
