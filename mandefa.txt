@@ -5,7 +5,7 @@ git push -u origin main
 
 
 git add .
-git commit -m "Ok"
+git commit -m "Mes modifications locales"
 git push
 
 git pull
