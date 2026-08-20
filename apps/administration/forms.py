@@ -196,6 +196,11 @@ class EmployeeAccountForm(forms.Form):
 
         save_leave_balances_from_form(profile, year_balances)
 
+        # --- Migrate recovery balance to AnnualRecovery ---
+        from apps.personnel.recovery_service import migrate_recovery_balance
+
+        migrate_recovery_balance(profile, self.cleaned_data["recovery_balance"])
+
         return user
 
 
@@ -213,6 +218,9 @@ class LoginBrandingForm(forms.ModelForm):
             "annual_leave_quota": "Quota annuel de conge",
             "leave_window_size": "Taille de la fenetre de conges",
             "leave_rules": "Regles generales de conges",
+            "recovery_limit_enabled": "Activer la limite annuelle des recuperations",
+            "recovery_annual_limit": "Limite annuelle de recuperation",
+            "profile_photo_editing_enabled": "Modification de la photo de profil par l'employe",
             "logo_image": "Logo",
             "hero_image": "Illustration d'accueil",
         }
@@ -220,6 +228,9 @@ class LoginBrandingForm(forms.ModelForm):
             "annual_leave_quota": "Nombre de jours de conge acquis chaque annee civile. Les droits de l'annee en cours sont bloques jusqu'a l'annee suivante.",
             "leave_window_size": "Nombre d'annees conservees dans la fenetre glissante (ex: 3 = N-2, N-1, N).",
             "leave_rules": "Regles generales affichees dans l'interface de gestion des conges.",
+            "recovery_limit_enabled": "Active ou desactive la limite annuelle de recuperation pour tous les employes.",
+            "recovery_annual_limit": "Nombre maximum de jours de recuperation qu'un employe peut accumuler par annee.",
+            "profile_photo_editing_enabled": "Active ou desactive la possibilite pour les employes de modifier leur photo de profil depuis leur interface.",
         }
         for field_name, label in labels.items():
             if field_name in self.fields:
@@ -241,6 +252,9 @@ class LoginBrandingForm(forms.ModelForm):
             "annual_leave_quota",
             "leave_window_size",
             "leave_rules",
+            "recovery_limit_enabled",
+            "recovery_annual_limit",
+            "profile_photo_editing_enabled",
             "logo_image",
             "hero_image",
         ]

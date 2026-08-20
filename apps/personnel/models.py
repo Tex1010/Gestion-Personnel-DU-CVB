@@ -260,6 +260,59 @@ class EmployeeProfile(models.Model):
 
         return get_sick_absence_total(self)
 
+    @property
+    def recovery_window_data(self):
+        """Données des récupérations par année pour la fenêtre glissante."""
+        from apps.personnel.recovery_service import get_recovery_dashboard_data
+
+        return get_recovery_dashboard_data(self)
+
+    @property
+    def recovery_total_balance(self):
+        """Solde de récupération consommable total (calculé par année)."""
+        from apps.personnel.recovery_service import get_recovery_balance
+
+        return get_recovery_balance(self)
+
+
+class AnnualRecovery(models.Model):
+    """
+    Gestion des récupérations par année civile (fenêtre glissante de 3 ans).
+
+    Chaque employé possède un enregistrement par année.
+    - balance : jours de récupération gagnés pour cette année.
+    - consumed : jours consommés (via une absence) pour cette année.
+    """
+
+    employee = models.ForeignKey(
+        EmployeeProfile,
+        on_delete=models.CASCADE,
+        related_name="annual_recoveries",
+        verbose_name="Employe",
+    )
+    year = models.IntegerField("Annee")
+    balance = models.DecimalField(
+        "Solde", max_digits=6, decimal_places=1, default=0
+    )
+    consumed = models.DecimalField(
+        "Consomme", max_digits=6, decimal_places=1, default=0
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["year"]
+        verbose_name = "Recuperation annuelle"
+        verbose_name_plural = "Recuperations annuelles"
+        unique_together = ("employee", "year")
+
+    def __str__(self):
+        return f"{self.employee.display_name} - {self.year} ({self.balance - self.consumed} restant)"
+
+    @property
+    def remaining(self):
+        return self.balance - self.consumed
+
 
 class AnnualLeave(models.Model):
     """

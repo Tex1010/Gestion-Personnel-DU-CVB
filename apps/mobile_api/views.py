@@ -11,7 +11,7 @@ from apps.accounts.utils import (
     get_user_profile,
     normalize_portal_role,
 )
-from apps.administration.models import LoginBranding
+from apps.administration.models import LoginBranding, Notification
 from apps.administration.views import (
     _build_admin_dashboard_payload,
     _build_requests_overview_context,
@@ -92,6 +92,21 @@ def _serialize_leave_window(leave_window_data):
     ]
 
 
+def _serialize_recovery_window(recovery_window_data):
+    """Serialize recovery window data for JSON, converting Decimal to float."""
+    if not recovery_window_data:
+        return []
+    return [
+        {
+            "year": item["year"],
+            "balance": _format_decimal(item["balance"]),
+            "consumed": _format_decimal(item["consumed"]),
+            "remaining": _format_decimal(item["remaining"]),
+        }
+        for item in recovery_window_data
+    ]
+
+
 def _serialize_profile(request, profile):
     if not profile:
         return {}
@@ -111,6 +126,7 @@ def _serialize_profile(request, profile):
         "leave_balance": _format_decimal(profile.leave_balance),
         "recovery_balance": _format_decimal(profile.recovery_balance),
         "leave_window": _serialize_leave_window(profile.leave_window_data),
+        "recovery_window": _serialize_recovery_window(profile.recovery_window_data),
         "photo_url": _absolute_media_url(request, profile.photo),
         "permissions": {
             "can_manage_settings": profile.can_manage_settings,
@@ -346,6 +362,45 @@ def dashboard_view(request):
                 "recovery_labels": json.loads(admin_payload["recovery_chart_labels"]),
                 "recovery_values": json.loads(admin_payload["recovery_chart_values"]),
             },
+        }
+    )
+
+
+@require_GET
+def notifications_view(request):
+    """API mobile : liste des notifications de l'utilisateur."""
+    _token, profile, error_response = _authenticate_mobile_request(request)
+    if error_response:
+        return error_response
+
+    filter_type = request.GET.get("filter", "all")
+    queryset = Notification.objects.filter(recipient=profile.user)
+
+    if filter_type == "unread":
+        queryset = queryset.filter(is_read=False)
+    elif filter_type == "read":
+        queryset = queryset.filter(is_read=True)
+
+    notifications = queryset[:50]
+    unread_count = Notification.objects.filter(recipient=profile.user, is_read=False).count()
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "unread_count": unread_count,
+            "items": [
+                {
+                    "id": n.id,
+                    "title": n.title,
+                    "message": n.message,
+                    "priority": n.priority,
+                    "notification_type": n.notification_type,
+                    "is_read": n.is_read,
+                    "link_url": n.link_url,
+                    "created_at": n.created_at.isoformat() if n.created_at else "",
+                }
+                for n in notifications
+            ],
         }
     )
 

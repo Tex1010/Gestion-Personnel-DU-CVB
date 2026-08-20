@@ -8,6 +8,7 @@ git add .
 git commit -m "Mes modifications locales"
 git push
 
+git reset --hard HEAD
 git pull
 
 git clone https://github.com/Tex1010/Gestion-Personnel-DU-CVB.git
@@ -24,7 +25,7 @@ python manage.py migrate
 python manage.py createsuperuser
 python manage.py runserver
 
-python manage.py runserver 10.0.2.76:8000
+python manage.py runserver 0.0.0.0:8000
 
 start nginx
 

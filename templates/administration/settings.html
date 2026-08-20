@@ -252,7 +252,7 @@
                                     <td data-label="Departement">{{ employee.department_name }}</td>
                                     <td data-label="Role">{{ employee.dashboard_role_label }}</td>
                                     <td data-label="Conge">{{ employee.leave_balance }}</td>
-                                    <td data-label="Recuperation">{{ employee.recovery_balance }}</td>
+                                    <td data-label="Recuperation">{{ employee.recovery_total_balance }}</td>
                                     <td data-label="Actions">
                                         {% if employee.user == request.user %}
                                             <span class="helper">Protection active</span>
@@ -1044,7 +1044,49 @@
                         </div>
                     </div>
                 </div>
-                <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Enregistrer les parametres RH" data-confirm-message="Les parametres globaux des conges seront mis a jour pour tous les employes." data-confirm-label="Oui, enregistrer" data-confirm-class="btn-primary"><i class="bi bi-save2"></i>Enregistrer les parametres</button>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Parametres des recuperations</h3>
+                        <p class="helper">Definissez la limite annuelle de recuperation et activez ou desactivez cette regle pour tous les employes.</p>
+                    </div>
+                    <div class="form-grid two">
+                        <div class="toggle-setting-card">
+                            <label class="toggle-setting-label" for="{{ branding_form.recovery_limit_enabled.id_for_label }}">
+                                <span>
+                                    <strong>{{ branding_form.recovery_limit_enabled.label }}</strong>
+                                    <small class="helper">{{ branding_form.recovery_limit_enabled.help_text }}</small>
+                                </span>
+                                {{ branding_form.recovery_limit_enabled }}
+                            </label>
+                            {% for error in branding_form.recovery_limit_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ branding_form.recovery_annual_limit.label_tag }}
+                            {{ branding_form.recovery_annual_limit }}
+                            {% if branding_form.recovery_annual_limit.help_text %}<small class="helper">{{ branding_form.recovery_annual_limit.help_text }}</small>{% endif %}
+                            {% for error in branding_form.recovery_annual_limit.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Photo de profil employe</h3>
+                        <p class="helper">Controlez la possibilite pour les employes de modifier leur photo de profil depuis leur interface.</p>
+                    </div>
+                    <div class="form-grid two">
+                        <div class="toggle-setting-card">
+                            <label class="toggle-setting-label" for="{{ branding_form.profile_photo_editing_enabled.id_for_label }}">
+                                <span>
+                                    <strong>{{ branding_form.profile_photo_editing_enabled.label }}</strong>
+                                    <small class="helper">{{ branding_form.profile_photo_editing_enabled.help_text }}</small>
+                                </span>
+                                {{ branding_form.profile_photo_editing_enabled }}
+                            </label>
+                            {% for error in branding_form.profile_photo_editing_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Enregistrer les parametres RH" data-confirm-message="Les parametres globaux des conges et des recuperations seront mis a jour pour tous les employes." data-confirm-label="Oui, enregistrer" data-confirm-class="btn-primary"><i class="bi bi-save2"></i>Enregistrer les parametres</button>
             </form>
         </article>
 

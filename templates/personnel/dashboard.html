@@ -26,14 +26,20 @@
             <article class="card employee-identity-card">
                 <div class="avatar-block employee-identity-head">
                     {% if profile.photo %}
-                        <img src="{{ profile.photo.url }}" alt="Photo de profil" class="avatar-image">
+                        <img src="{{ profile.photo.url }}" alt="Photo de profil" class="avatar-image" id="profilePhotoImage">
                     {% else %}
-                        <div class="avatar-fallback">{{ profile.user.first_name|first|default:"E" }}{{ profile.user.last_name|first|default:"P" }}</div>
+                        <div class="avatar-fallback" id="profilePhotoFallback">{{ profile.user.first_name|first|default:"E" }}{{ profile.user.last_name|first|default:"P" }}</div>
                     {% endif %}
                     <div class="employee-identity-copy">
                         <span class="eyebrow">Profil</span>
                         <h3>{{ profile.display_name }}</h3>
                         <p>{{ profile.position|default:"Poste non renseigne" }}</p>
+                        {% if profile_photo_editing_enabled %}
+                            <button type="button" class="btn-secondary btn-sm" id="changePhotoBtn">
+                                <i class="bi bi-camera"></i>
+                                Modifier ma photo
+                            </button>
+                        {% endif %}
                     </div>
                 </div>
                 <div class="employee-identity-meta">
@@ -58,7 +64,7 @@
 
             <article class="card employee-stat-card employee-stat-card-amber">
                 <span>Recuperation disponible</span>
-                <strong id="employee-recovery-balance">{{ profile.recovery_balance }} jours</strong>
+                <strong id="employee-recovery-balance">{{ profile.recovery_total_balance }} jours</strong>
                 <small>Disponible pour vos prochaines demandes</small>
             </article>
         </div>
@@ -123,9 +129,57 @@
                         </div>
                     {% endfor %}
                 </div>
+                <div class="leave-window-divider"></div>
+                <div class="leave-window-list">
+                    {% for item in recovery_window_data %}
+                        <div class="leave-year-card recovery-card">
+                            <div class="leave-year-header">
+                                <span class="leave-year">Récupération {{ item.year }}</span>
+                                <span class="leave-status-badge available">Récupération</span>
+                            </div>
+                            <div class="leave-year-details">
+                                <div class="leave-detail"><span>Solde</span><strong>{{ item.balance }}</strong></div>
+                                <div class="leave-detail"><span>Consommé</span><strong>{{ item.consumed }}</strong></div>
+                                <div class="leave-detail"><span>Restant</span><strong>{{ item.remaining }}</strong></div>
+                            </div>
+                            <div class="leave-status-text">Récupération disponible</div>
+                        </div>
+                    {% endfor %}
+                </div>
             </div>
         </div>
     </div>
+
+    <article class="card">
+        <div class="card-head">
+            <div>
+                <h2>Mes demandes d'absence acceptées</h2>
+                <p class="helper">Liste des absences déjà validées et approuvées.</p>
+            </div>
+        </div>
+        <div class="approved-absences-list">
+            {% for absence in approved_absences %}
+                <div class="approved-absence-item">
+                    <div class="approved-absence-date">
+                        <strong>{{ absence.start_date|date:"d/m/Y" }}</strong>
+                        {% if absence.end_date and absence.end_date != absence.start_date %}
+                            <span>→ {{ absence.end_date|date:"d/m/Y" }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="approved-absence-days">
+                        <span>{{ absence.total_days }} jour{% if absence.total_days > 1 %}s{% endif %}</span>
+                    </div>
+                    <div class="approved-absence-status">
+                        <span class="badge approved">Acceptée</span>
+                    </div>
+                </div>
+            {% empty %}
+                <div class="empty-state">
+                    <p>Aucune demande d'absence acceptée pour le moment.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </article>
 
     <div class="content-grid employee-dashboard-grid">
         <article class="card">
@@ -218,7 +272,7 @@
             <div class="table-toolbar">
                 <label class="table-search-field">
                     <i class="bi bi-search"></i>
-                    <input type="search" placeholder="Rechercher une absence" data-table-search="employee-absence-table">
+                    <input type="search" placeholder="  Rechercher une absence" data-table-search="employee-absence-table">
                 </label>
             </div>
             <div class="request-card-list" id="employee-absence-table">
@@ -235,7 +289,7 @@
             <div class="table-toolbar">
                 <label class="table-search-field">
                     <i class="bi bi-search"></i>
-                    <input type="search" placeholder="Rechercher une recuperation" data-table-search="employee-recovery-table">
+                    <input type="search" placeholder="  Rechercher une recuperation" data-table-search="employee-recovery-table">
                 </label>
             </div>
             <div class="request-card-list" id="employee-recovery-table">
@@ -252,7 +306,7 @@
             <div class="table-toolbar">
                 <label class="table-search-field">
                     <i class="bi bi-search"></i>
-                    <input type="search" placeholder="Rechercher un conge" data-table-search="employee-leave-table">
+                    <input type="search" placeholder="  Rechercher un conge" data-table-search="employee-leave-table">
                 </label>
             </div>
             <div class="request-card-list" id="employee-leave-table">
@@ -261,6 +315,45 @@
         </article>
     </div>
 </section>
+
+<div class="modal fade" id="changePhotoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <span class="eyebrow">Photo de profil</span>
+                    <h5 class="modal-title mt-2">Modifier ma photo</h5>
+                    <p class="helper mb-0">Choisissez une nouvelle image (JPG, PNG, WEBP - max 5 MB).</p>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body">
+                <div class="photo-preview-container">
+                    {% if profile.photo %}
+                        <img src="{{ profile.photo.url }}" alt="Aperçu" class="photo-preview" id="photoPreview">
+                    {% else %}
+                        <div class="avatar-fallback photo-preview-fallback" id="photoPreviewFallback">{{ profile.user.first_name|first|default:"E" }}{{ profile.user.last_name|first|default:"P" }}</div>
+                    {% endif %}
+                </div>
+                <div class="photo-upload-controls">
+                    <input type="file" id="photoFileInput" accept=".jpg,.jpeg,.png,.webp" hidden>
+                    <button type="button" class="btn-secondary" id="selectPhotoBtn">
+                        <i class="bi bi-image"></i>
+                        Choisir une image
+                    </button>
+                    <div class="photo-error" id="photoError" hidden></div>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn-secondary" data-bs-dismiss="modal">Annuler</button>
+                <button type="button" class="btn-primary" id="savePhotoBtn" disabled>
+                    <i class="bi bi-check2"></i>
+                    Enregistrer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <div class="modal fade employee-actions-modal" id="employeeActionModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
@@ -307,6 +400,11 @@
 </div>
 
 <style>
+    .photo-preview-container { display: flex; justify-content: center; align-items: center; padding: 16px; }
+    .photo-preview { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #e8f0e8; }
+    .photo-preview-fallback { width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
+    .photo-upload-controls { display: flex; flex-direction: column; align-items: center; gap: 12px; padding: 8px 0; }
+    .photo-error { color: #c0392b; font-size: 0.85rem; text-align: center; padding: 8px; background: #fff0f0; border-radius: 8px; width: 100%; }
     .action-toggle { cursor: pointer; }
     .action-toggle i { font-size: 1.1rem; }
     .employee-actions-dialog { border: 0; border-radius: 18px; box-shadow: 0 24px 70px rgba(18, 30, 22, 0.18); }
@@ -511,6 +609,116 @@
             deleteButton.dataset.confirmTitle = trigger.dataset.deleteTitle || "Supprimer cette demande";
             deleteButton.dataset.confirmMessage = trigger.dataset.deleteMessage || "Cette demande sera retiree de votre historique.";
             window.traeI18n?.apply?.();
+        });
+    });
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const changePhotoBtn = document.getElementById("changePhotoBtn");
+        const changePhotoModal = document.getElementById("changePhotoModal");
+        const selectPhotoBtn = document.getElementById("selectPhotoBtn");
+        const photoFileInput = document.getElementById("photoFileInput");
+        const photoPreview = document.getElementById("photoPreview");
+        const photoPreviewFallback = document.getElementById("photoPreviewFallback");
+        const savePhotoBtn = document.getElementById("savePhotoBtn");
+        const photoError = document.getElementById("photoError");
+        const profilePhotoImage = document.getElementById("profilePhotoImage");
+        const profilePhotoFallback = document.getElementById("profilePhotoFallback");
+
+        if (!changePhotoBtn || !changePhotoModal) {
+            return;
+        }
+
+        const modalInstance = bootstrap.Modal.getOrCreateInstance(changePhotoModal);
+        let selectedFile = null;
+
+        changePhotoBtn.addEventListener("click", () => {
+            selectedFile = null;
+            savePhotoBtn.disabled = true;
+            photoError.hidden = true;
+            modalInstance.show();
+        });
+
+        selectPhotoBtn.addEventListener("click", () => {
+            photoFileInput.click();
+        });
+
+        photoFileInput.addEventListener("change", () => {
+            const file = photoFileInput.files[0];
+            if (!file) {
+                return;
+            }
+
+            const allowedExtensions = [".jpg", ".jpeg", ".png", ".webp"];
+            const ext = file.name.split(".").pop().toLowerCase();
+            if (!allowedExtensions.includes("." + ext)) {
+                photoError.textContent = "Format non autorisé. Utilisez JPG, PNG ou WEBP.";
+                photoError.hidden = false;
+                savePhotoBtn.disabled = true;
+                return;
+            }
+
+            if (file.size > 5 * 1024 * 1024) {
+                photoError.textContent = "Image trop volumineuse. Taille maximale : 5 MB.";
+                photoError.hidden = false;
+                savePhotoBtn.disabled = true;
+                return;
+            }
+
+            photoError.hidden = true;
+            selectedFile = file;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                if (photoPreview) {
+                    photoPreview.src = event.target.result;
+                    photoPreview.hidden = false;
+                }
+                if (photoPreviewFallback) {
+                    photoPreviewFallback.hidden = true;
+                }
+            };
+            reader.readAsDataURL(file);
+            savePhotoBtn.disabled = false;
+        });
+
+        savePhotoBtn.addEventListener("click", async () => {
+            if (!selectedFile) {
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append("photo", selectedFile);
+
+            try {
+                const response = await fetch("{% url 'personnel:update_profile_photo' %}", {
+                    method: "POST",
+                    body: formData,
+                    headers: {
+                        "X-Requested-With": "fetch",
+                        "X-CSRFToken": document.querySelector('[name="csrfmiddlewaretoken"]')?.value || ""
+                    }
+                });
+                const data = await response.json();
+
+                if (data.ok) {
+                    if (profilePhotoImage) {
+                        profilePhotoImage.src = data.photo_url;
+                        profilePhotoImage.hidden = false;
+                    }
+                    if (profilePhotoFallback) {
+                        profilePhotoFallback.hidden = true;
+                    }
+                    modalInstance.hide();
+                    window.location.reload();
+                } else {
+                    photoError.textContent = data.message || "Erreur lors de l'enregistrement.";
+                    photoError.hidden = false;
+                }
+            } catch (error) {
+                photoError.textContent = "Erreur lors de l'envoi de la photo.";
+                photoError.hidden = false;
+            }
         });
     });
 </script>

@@ -40,6 +40,23 @@ class LoginBranding(models.Model):
         default="Les droits de l'annee en cours (N) sont bloques jusqu'a l'annee suivante. La consommation s'effectue oldest-first (N-2 avant N-1).",
         help_text="Regles generales affichees dans l'interface de gestion des conges.",
     )
+    recovery_limit_enabled = models.BooleanField(
+        "Activer la limite annuelle des recuperations",
+        default=True,
+        help_text="Active ou desactive la limite annuelle de recuperation pour tous les employes.",
+    )
+    recovery_annual_limit = models.DecimalField(
+        "Limite annuelle de recuperation",
+        max_digits=6,
+        decimal_places=1,
+        default=15,
+        help_text="Nombre maximum de jours de recuperation qu'un employe peut accumuler par annee.",
+    )
+    profile_photo_editing_enabled = models.BooleanField(
+        "Modification de la photo de profil par l'employe",
+        default=True,
+        help_text="Active ou desactive la possibilite pour les employes de modifier leur photo de profil depuis leur interface.",
+    )
     logo_image = models.FileField(upload_to="branding/logos/", blank=True, null=True)
     hero_image = models.FileField(upload_to="branding/", blank=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -84,6 +101,62 @@ class RequestActionHistory(models.Model):
 
     def __str__(self):
         return f"{self.request} - {self.get_action_display()}"
+
+
+class Notification(models.Model):
+    PRIORITY_INFO = "info"
+    PRIORITY_WARNING = "warning"
+    PRIORITY_IMPORTANT = "important"
+
+    PRIORITY_CHOICES = [
+        (PRIORITY_INFO, "Information"),
+        (PRIORITY_WARNING, "Attention"),
+        (PRIORITY_IMPORTANT, "Important"),
+    ]
+
+    TYPE_REQUEST_CREATED = "request_created"
+    TYPE_REQUEST_APPROVED = "request_approved"
+    TYPE_REQUEST_REJECTED = "request_rejected"
+    TYPE_REQUEST_CANCELLED = "request_cancelled"
+    TYPE_REQUEST_STAGE_ADVANCED = "request_stage_advanced"
+    TYPE_RECOVERY_LIMIT_REACHED = "recovery_limit_reached"
+    TYPE_RECOVERY_LIMIT_NEAR = "recovery_limit_near"
+
+    recipient = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+        verbose_name="Destinataire",
+    )
+    title = models.CharField("Titre", max_length=200)
+    message = models.TextField("Message")
+    priority = models.CharField(
+        "Priorite", max_length=20, choices=PRIORITY_CHOICES, default=PRIORITY_INFO
+    )
+    notification_type = models.CharField("Type", max_length=50, default=TYPE_REQUEST_CREATED)
+    is_read = models.BooleanField("Lue", default=False)
+    link_url = models.CharField("Lien", max_length=500, blank=True)
+    request = models.ForeignKey(
+        StaffRequest,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name="notifications",
+    )
+    event_key = models.CharField("Cle evenement", max_length=200, unique=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Notification"
+        verbose_name_plural = "Notifications"
+        indexes = [
+            models.Index(fields=["recipient", "is_read"]),
+            models.Index(fields=["recipient", "-created_at"]),
+        ]
+
+    def __str__(self):
+        return f"{self.recipient.username} - {self.title}"
 
 
 class AccountActionHistory(models.Model):

@@ -54,6 +54,93 @@ def _employee_dashboard_payload(profile):
 
 
 @login_required
+def update_profile_photo_view(request):
+    """Permet à l'employé connecté de modifier sa propre photo de profil."""
+    from django.contrib import messages as django_messages
+    from django.http import JsonResponse
+    from django.views.decorators.http import require_POST
+    from django.core.files.storage import default_storage
+    import os
+
+    profile = get_user_profile(request.user)
+
+    if request.method != "POST":
+        return JsonResponse({"ok": False, "message": "Méthode non autorisée."}, status=405)
+
+    # Vérifier que la modification de photo est activée côté backend
+    from apps.administration.models import LoginBranding
+
+    branding = LoginBranding.objects.first()
+    if branding and not branding.profile_photo_editing_enabled:
+        return JsonResponse(
+            {"ok": False, "message": "La modification de la photo de profil est désactivée par l'administration."},
+            status=403,
+        )
+
+    photo_file = request.FILES.get("photo")
+    if not photo_file:
+        return JsonResponse({"ok": False, "message": "Aucun fichier reçu."}, status=400)
+
+    # Vérifier le format
+    allowed_extensions = [".jpg", ".jpeg", ".png", ".webp"]
+    ext = os.path.splitext(photo_file.name)[1].lower()
+    if ext not in allowed_extensions:
+        return JsonResponse(
+            {"ok": False, "message": "Format non autorisé. Utilisez JPG, PNG ou WEBP."},
+            status=400,
+        )
+
+    # Vérifier la taille (5 MB max)
+    if photo_file.size > 5 * 1024 * 1024:
+        return JsonResponse(
+            {"ok": False, "message": "Image trop volumineuse. Taille maximale : 5 MB."},
+            status=400,
+        )
+
+    # Conserver l'ancienne référence pour suppression après succès
+    old_photo = profile.photo
+    old_photo_path = None
+    if old_photo and old_photo.name:
+        old_photo_path = old_photo.name
+
+    # Enregistrer la nouvelle photo
+    profile.photo = photo_file
+    profile.save(update_fields=["photo", "updated_at"])
+
+    # Supprimer l'ancienne photo physique (si elle existe et n'est pas partagée)
+    if old_photo_path and old_photo_path != profile.photo.name:
+        try:
+            if default_storage.exists(old_photo_path):
+                default_storage.delete(old_photo_path)
+        except Exception:
+            pass
+
+    # Audit log
+    try:
+        from apps.administration.models import AccountActionHistory
+
+        AccountActionHistory.objects.create(
+            actor=request.user,
+            target_user=request.user,
+            target_username=request.user.username,
+            target_display_name=profile.display_name,
+            target_role=profile.dashboard_role_label,
+            action=AccountActionHistory.ACTION_UPDATED,
+            details="Modification de la photo de profil.",
+        )
+    except Exception:
+        pass
+
+    return JsonResponse(
+        {
+            "ok": True,
+            "message": "Photo de profil mise à jour.",
+            "photo_url": profile.photo.url if profile.photo else "",
+        }
+    )
+
+
+@login_required
 def dashboard_view(request):
     profile = get_user_profile(request.user)
     portal_role = normalize_portal_role(request.session.get("portal_role") or profile.role_portal)
@@ -62,8 +149,14 @@ def dashboard_view(request):
 
     payload = _employee_dashboard_payload(profile)
 
+    branding = LoginBranding.objects.first()
+    profile_photo_editing_enabled = bool(
+        branding and branding.profile_photo_editing_enabled
+    )
+
     context = {
         "profile": profile,
+        "profile_photo_editing_enabled": profile_photo_editing_enabled,
         "recent_requests": payload["recent_requests"],
         "absence_requests": payload["absence_requests"],
         "recovery_requests": payload["recovery_requests"],
@@ -76,6 +169,11 @@ def dashboard_view(request):
         "chart_labels": json.dumps(payload["chart_labels"]),
         "chart_values": json.dumps(payload["chart_values"]),
         "leave_window_data": profile.leave_window_data,
+        "recovery_window_data": profile.recovery_window_data,
+        "approved_absences": profile.requests.filter(
+            request_type=StaffRequest.TYPE_ABSENCE,
+            status=StaffRequest.STATUS_APPROVED,
+        ).order_by("-start_date"),
         "hr_events_data": get_hr_events_dashboard_data(profile),
     }
     return render(request, "personnel/dashboard.html", context)
@@ -104,7 +202,7 @@ def dashboard_data_view(request):
     return JsonResponse(
         {
             "leave_balance": f"{format_decimal(profile.leave_balance)} jours",
-            "recovery_balance": f"{format_decimal(profile.recovery_balance)} jours",
+            "recovery_balance": f"{format_decimal(profile.recovery_total_balance)} jours",
             "family_event_remaining": format_decimal(profile.family_event_remaining),
             "medical_leave_total": format_decimal(profile.medical_leave_total),
             "sick_absence_total": format_decimal(profile.sick_absence_total),

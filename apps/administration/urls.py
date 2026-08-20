@@ -29,6 +29,10 @@ urlpatterns = [
         views.request_history_delete_view,
         name="request_history_delete",
     ),
+    path("notifications/", views.notifications_view, name="notifications"),
+    path("notifications/donnees/", views.notifications_data_view, name="notifications_data"),
+    path("notifications/<int:notification_id>/lue/", views.notification_mark_read_view, name="notification_mark_read"),
+    path("notifications/toutes-lues/", views.notification_mark_all_read_view, name="notification_mark_all_read"),
     path("parametres/", views.settings_view, name="settings"),
     path(
         "parametres/historique-comptes/<int:entry_id>/supprimer/",

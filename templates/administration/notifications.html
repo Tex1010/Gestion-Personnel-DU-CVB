@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Notifications{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">Notifications</span>
+            <h1>Centre de notifications</h1>
+            <p>Consultez toutes les notifications qui vous concernent.</p>
+        </div>
+        <div class="header-actions">
+            <button type="button" class="btn-secondary" id="markAllReadBtn">
+                <i class="bi bi-check2-all"></i>
+                Marquer toutes comme lues
+            </button>
+        </div>
+    </div>
+
+    <div class="panel-switcher">
+        <a href="{% url 'administration:notifications' %}?filter=all" class="switch-pill {% if filter_type == 'all' %}is-active{% endif %}"><i class="bi bi-bell"></i>Toutes</a>
+        <a href="{% url 'administration:notifications' %}?filter=unread" class="switch-pill {% if filter_type == 'unread' %}is-active{% endif %}"><i class="bi bi-bell-fill"></i>Non lues ({{ unread_count }})</a>
+        <a href="{% url 'administration:notifications' %}?filter=read" class="switch-pill {% if filter_type == 'read' %}is-active{% endif %}"><i class="bi bi-check-circle"></i>Lues</a>
+    </div>
+
+    <article class="card">
+        <div class="card-head">
+            <div>
+                <h2>Historique des notifications</h2>
+                <p class="helper">Les notifications sont conservées pour votre suivi.</p>
+            </div>
+        </div>
+        <div class="notifications-list">
+            {% for notification in notifications %}
+                <div class="notification-item {% if not notification.is_read %}unread{% endif %} {% if notification.priority == 'important' %}priority-important{% elif notification.priority == 'warning' %}priority-warning{% else %}priority-info{% endif %}" data-notification-id="{{ notification.id }}" data-mark-read-url="{% url 'administration:notification_mark_read' notification.id %}">
+                    <div class="notification-icon">
+                        {% if notification.priority == 'important' %}
+                            <i class="bi bi-exclamation-circle"></i>
+                        {% elif notification.priority == 'warning' %}
+                            <i class="bi bi-exclamation-triangle"></i>
+                        {% else %}
+                            <i class="bi bi-info-circle"></i>
+                        {% endif %}
+                    </div>
+                    <div class="notification-content">
+                        <strong>{{ notification.title }}</strong>
+                        <p>{{ notification.message }}</p>
+                        <small>{{ notification.created_at|date:"d/m/Y H:i" }}</small>
+                    </div>
+                    {% if not notification.is_read %}
+                        <span class="notification-dot"></span>
+                    {% endif %}
+                </div>
+            {% empty %}
+                <div class="notification-empty">
+                    <p>Aucune notification pour le moment.</p>
+                </div>
+            {% endfor %}
+        </div>
+    </article>
+</section>
+
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        const markAllReadBtn = document.getElementById("markAllReadBtn");
+        if (markAllReadBtn) {
+            markAllReadBtn.addEventListener("click", async () => {
+                try {
+                    const response = await fetch("{% url 'administration:notification_mark_all_read' %}", {
+                        headers: { "X-Requested-With": "fetch" }
+                    });
+                    if (response.ok) {
+                        window.location.reload();
+                    }
+                } catch (error) {
+                    return;
+                }
+            });
+        }
+
+        document.querySelectorAll(".notification-item").forEach((item) => {
+            item.addEventListener("click", async (event) => {
+                const markReadUrl = item.dataset.markReadUrl;
+                if (markReadUrl) {
+                    try {
+                        await fetch(markReadUrl, { headers: { "X-Requested-With": "fetch" } });
+                    } catch (error) {
+                        return;
+                    }
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

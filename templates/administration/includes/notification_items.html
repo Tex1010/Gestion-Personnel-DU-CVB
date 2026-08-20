@@ -1,0 +1,25 @@
+{% for notification in notifications %}
+    <a href="{% if notification.link_url %}{{ notification.link_url }}{% else %}#{% endif %}" class="notification-item {% if not notification.is_read %}unread{% endif %} {% if notification.priority == 'important' %}priority-important{% elif notification.priority == 'warning' %}priority-warning{% else %}priority-info{% endif %}" data-notification-id="{{ notification.id }}" data-mark-read-url="{% url 'administration:notification_mark_read' notification.id %}">
+        <div class="notification-icon">
+            {% if notification.priority == 'important' %}
+                <i class="bi bi-exclamation-circle"></i>
+            {% elif notification.priority == 'warning' %}
+                <i class="bi bi-exclamation-triangle"></i>
+            {% else %}
+                <i class="bi bi-info-circle"></i>
+            {% endif %}
+        </div>
+        <div class="notification-content">
+            <strong>{{ notification.title }}</strong>
+            <p>{{ notification.message }}</p>
+            <small>{{ notification.created_at|timesince }}</small>
+        </div>
+        {% if not notification.is_read %}
+            <span class="notification-dot"></span>
+        {% endif %}
+    </a>
+{% empty %}
+    <div class="notification-empty">
+        <p>Aucune notification.</p>
+    </div>
+{% endfor %}

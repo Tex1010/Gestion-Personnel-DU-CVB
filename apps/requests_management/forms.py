@@ -62,7 +62,9 @@ class AbsenceRequestForm(forms.ModelForm):
             if self.request_type == StaffRequest.TYPE_LEAVE:
                 current_balance = self.profile.leave_balance
             else:
-                current_balance = self.profile.recovery_balance
+                from apps.personnel.recovery_service import get_recovery_balance
+
+                current_balance = get_recovery_balance(self.profile)
 
         self.fields["total_days"].required = False
         self.fields["total_days"].widget.attrs.update(
@@ -230,7 +232,9 @@ class AbsenceRequestForm(forms.ModelForm):
             if self.request_type == StaffRequest.TYPE_LEAVE:
                 current_balance = self.profile.leave_balance
             else:
-                current_balance = self.profile.recovery_balance
+                from apps.personnel.recovery_service import get_recovery_balance
+
+                current_balance = get_recovery_balance(self.profile)
 
         if total_days is not None:
             remaining = current_balance - total_days

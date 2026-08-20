@@ -27,6 +27,7 @@ from apps.administration.forms import (
 from apps.administration.models import (
     AccountActionHistory,
     LoginBranding,
+    Notification,
     RequestActionHistory,
 )
 from apps.personnel.models import ContractType, Department, EmployeeProfile, Project, Role
@@ -197,7 +198,7 @@ def _dashboard_employee_search_values(employee):
         employee.display_name,
         employee.position or "",
         employee.leave_balance,
-        employee.recovery_balance,
+        employee.recovery_total_balance,
     ]
 
 
@@ -210,7 +211,7 @@ def _account_search_values(employee, current_user):
         employee.department_name,
         employee.dashboard_role_label,
         employee.leave_balance,
-        employee.recovery_balance,
+        employee.recovery_total_balance,
     ]
     if current_user and employee.user_id == current_user.id:
         values.append("Session en cours")
@@ -408,7 +409,7 @@ def _export_employee_rows(employees):
                 employee.dashboard_role_label,
                 employee.contract_type_label,
                 employee.leave_balance,
-                employee.recovery_balance,
+                employee.recovery_total_balance,
             ]
         )
     return headers, rows
@@ -440,7 +441,7 @@ def _export_account_rows(employees):
                 employee.dashboard_role_label,
                 employee.contract_type_label,
                 employee.leave_balance,
-                employee.recovery_balance,
+                employee.recovery_total_balance,
             ]
         )
     return headers, rows
@@ -624,6 +625,7 @@ def _build_excel_response(filename, sheet_title, headers, rows):
 
 def _build_admin_dashboard_payload(current_profile):
     from apps.personnel.leave_service import get_leave_balance
+    from apps.personnel.recovery_service import get_recovery_balance
 
     employees = _visible_employee_queryset(current_profile)
     actionable_requests = _scoped_request_queryset(
@@ -636,26 +638,31 @@ def _build_admin_dashboard_payload(current_profile):
     # On calcule la distribution et le comptage en Python.
     leave_values = []
     low_leave_count = 0
+    recovery_values = []
+    low_recovery_count = 0
     for emp in employees:
         balance = get_leave_balance(emp)
         leave_values.append(balance)
         if balance < Decimal("2.0"):
             low_leave_count += 1
 
+        recovery_balance = get_recovery_balance(emp)
+        recovery_values.append(recovery_balance)
+        if recovery_balance < Decimal("2.0"):
+            low_recovery_count += 1
+
     leave_chart_labels, leave_chart_values = _build_balance_distribution_from_values(
         leave_values, "jour(s)"
     )
-    recovery_chart_labels, recovery_chart_values = _build_balance_distribution(
-        employees,
-        "recovery_balance",
-        "unite(s)",
+    recovery_chart_labels, recovery_chart_values = _build_balance_distribution_from_values(
+        recovery_values, "unite(s)"
     )
     return {
         "employees": employees,
         "employee_count": employees.count(),
         "pending_count": actionable_requests.count(),
         "low_leave_count": low_leave_count,
-        "low_recovery_count": employees.filter(recovery_balance__lt=Decimal("2.0")).count(),
+        "low_recovery_count": low_recovery_count,
         "leave_chart_labels": leave_chart_labels,
         "leave_chart_values": leave_chart_values,
         "recovery_chart_labels": recovery_chart_labels,
@@ -919,6 +926,11 @@ def _record_account_history(actor, user, action, details=""):
 
 def _apply_request_balance(request_item):
     from apps.personnel.leave_service import consume_leave, get_leave_balance
+    from apps.personnel.recovery_service import (
+        add_recovery,
+        consume_recovery,
+        get_recovery_balance,
+    )
 
     profile = request_item.employee
     amount = request_item.total_days or Decimal("0.0")
@@ -940,18 +952,32 @@ def _apply_request_balance(request_item):
         return True, "Le solde de conge a ete mis a jour."
 
     if request_item.request_type == StaffRequest.TYPE_ABSENCE:
-        if profile.recovery_balance < amount:
+        if get_recovery_balance(profile) < amount:
             return (
                 False,
                 "Solde de recuperation insuffisant pour approuver cette demande d'absence.",
             )
-        profile.recovery_balance -= amount
-        profile.save(update_fields=["recovery_balance", "updated_at"])
+        breakdown = consume_recovery(profile, amount)
+        if breakdown is None:
+            return (
+                False,
+                "Solde de recuperation insuffisant pour approuver cette demande d'absence.",
+            )
+        request_item.recovery_consumption = breakdown
+        request_item.save(update_fields=["recovery_consumption", "updated_at"])
         return True, "Le solde de recuperation a ete mis a jour."
 
     if request_item.request_type == StaffRequest.TYPE_RECOVERY:
-        profile.recovery_balance += amount
-        profile.save(update_fields=["recovery_balance", "updated_at"])
+        # Ajouter la recuperation à l'année de la première ligne de travail
+        from apps.personnel.recovery_service import get_current_year
+
+        year = get_current_year()
+        first_line = request_item.recovery_lines.first()
+        if first_line and first_line.work_date:
+            year = first_line.work_date.year
+        ok, message = add_recovery(profile, year, amount)
+        if not ok:
+            return False, message
         return True, "Le solde de recuperation a ete augmente."
 
     return True, "La demande a ete approuvee."
@@ -959,6 +985,10 @@ def _apply_request_balance(request_item):
 
 def _restore_request_balance_for_cancellation(request_item):
     from apps.personnel.leave_service import restore_leave
+    from apps.personnel.recovery_service import (
+        get_recovery_balance,
+        restore_recovery,
+    )
 
     profile = request_item.employee
     amount = request_item.total_days or Decimal("0.0")
@@ -968,18 +998,91 @@ def _restore_request_balance_for_cancellation(request_item):
         return True, "Le solde de conge a ete restaure."
 
     if request_item.request_type == StaffRequest.TYPE_ABSENCE:
-        profile.recovery_balance += amount
-        profile.save(update_fields=["recovery_balance", "updated_at"])
+        restore_recovery(profile, request_item.recovery_consumption or {})
         return True, "Le solde de recuperation a ete restaure."
 
     if request_item.request_type == StaffRequest.TYPE_RECOVERY:
-        if profile.recovery_balance < amount:
+        if get_recovery_balance(profile) < amount:
             return False, "Impossible d'annuler cette recuperation approuvee car son solde a deja ete utilise."
-        profile.recovery_balance -= amount
-        profile.save(update_fields=["recovery_balance", "updated_at"])
+        # Retirer la récupération de l'année d'origine
+        from apps.personnel.recovery_service import get_current_year
+
+        year = get_current_year()
+        first_line = request_item.recovery_lines.first()
+        if first_line and first_line.work_date:
+            year = first_line.work_date.year
+        from apps.personnel.models import AnnualRecovery
+
+        try:
+            ar = AnnualRecovery.objects.get(employee=profile, year=year)
+            ar.balance = max(Decimal("0"), ar.balance - amount)
+            ar.save(update_fields=["balance", "updated_at"])
+        except AnnualRecovery.DoesNotExist:
+            pass
         return True, "Le solde de recuperation a ete ajuste."
 
     return True, ""
+
+
+@login_required
+def notifications_view(request):
+    """Page de toutes les notifications de l'utilisateur."""
+    filter_type = request.GET.get("filter", "all")
+    queryset = Notification.objects.filter(recipient=request.user)
+
+    if filter_type == "unread":
+        queryset = queryset.filter(is_read=False)
+    elif filter_type == "read":
+        queryset = queryset.filter(is_read=True)
+
+    notifications = queryset[:100]
+    unread_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+
+    return render(
+        request,
+        "administration/notifications.html",
+        {
+            "notifications": notifications,
+            "unread_count": unread_count,
+            "filter_type": filter_type,
+        },
+    )
+
+
+@login_required
+def notifications_data_view(request):
+    """Données AJAX pour le dropdown de notifications."""
+    notifications = Notification.objects.filter(recipient=request.user)[:5]
+    unread_count = Notification.objects.filter(recipient=request.user, is_read=False).count()
+
+    return JsonResponse(
+        {
+            "unread_count": unread_count,
+            "notifications_html": render_to_string(
+                "administration/includes/notification_items.html",
+                {"notifications": notifications},
+                request=request,
+            ),
+        }
+    )
+
+
+@login_required
+def notification_mark_read_view(request, notification_id):
+    """Marque une notification comme lue."""
+    notification = get_object_or_404(
+        Notification, pk=notification_id, recipient=request.user
+    )
+    notification.is_read = True
+    notification.save(update_fields=["is_read"])
+    return JsonResponse({"ok": True})
+
+
+@login_required
+def notification_mark_all_read_view(request):
+    """Marque toutes les notifications de l'utilisateur comme lues."""
+    Notification.objects.filter(recipient=request.user, is_read=False).update(is_read=True)
+    return JsonResponse({"ok": True})
 
 
 @login_required
@@ -1199,6 +1302,9 @@ def request_action_view(request, request_id, action):
             new_status=request_item.status,
             comment=comment or "Annulation par la Ressource Humain (RH)",
         )
+        from apps.administration.notifications_service import notify_request_cancelled
+
+        notify_request_cancelled(request_item)
         messages.success(request, "La demande a ete annulee." + (f" {balance_message}" if balance_message else ""))
         return redirect(_requests_redirect(show_history=True))
 
@@ -1312,6 +1418,16 @@ def request_action_view(request, request_id, action):
         new_status=request_item.status,
         comment=comment,
     )
+
+    from apps.administration.notifications_service import (
+        notify_request_approved,
+        notify_request_rejected,
+    )
+
+    if request_item.status == StaffRequest.STATUS_APPROVED:
+        notify_request_approved(request_item)
+    elif request_item.status == StaffRequest.STATUS_REJECTED:
+        notify_request_rejected(request_item, comment=comment)
 
     messages.success(
         request,

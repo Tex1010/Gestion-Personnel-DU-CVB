@@ -179,6 +179,10 @@ def _build_basic_pdf_bytes(request_item, stage_statuses):
 
 def _restore_request_balance(request_item):
     from apps.personnel.leave_service import restore_leave
+    from apps.personnel.recovery_service import (
+        get_recovery_balance,
+        restore_recovery,
+    )
 
     if request_item.status != StaffRequest.STATUS_APPROVED:
         return True, ""
@@ -191,18 +195,30 @@ def _restore_request_balance(request_item):
         return True, "Le solde de conge a ete restaure."
 
     if request_item.request_type == StaffRequest.TYPE_ABSENCE:
-        profile.recovery_balance += amount
-        profile.save(update_fields=["recovery_balance", "updated_at"])
+        restore_recovery(profile, request_item.recovery_consumption or {})
         return True, "Le solde de recuperation a ete restaure."
 
     if request_item.request_type == StaffRequest.TYPE_RECOVERY:
-        if profile.recovery_balance < amount:
+        if get_recovery_balance(profile) < amount:
             return (
                 False,
                 "Impossible de supprimer cette recuperation approuvee car son solde a deja ete utilise.",
             )
-        profile.recovery_balance -= amount
-        profile.save(update_fields=["recovery_balance", "updated_at"])
+        # Retirer la récupération de l'année d'origine
+        from apps.personnel.recovery_service import get_current_year
+
+        year = get_current_year()
+        first_line = request_item.recovery_lines.first()
+        if first_line and first_line.work_date:
+            year = first_line.work_date.year
+        from apps.personnel.models import AnnualRecovery
+
+        try:
+            ar = AnnualRecovery.objects.get(employee=profile, year=year)
+            ar.balance = max(Decimal("0"), ar.balance - amount)
+            ar.save(update_fields=["balance", "updated_at"])
+        except AnnualRecovery.DoesNotExist:
+            pass
         return True, "Le solde de recuperation a ete ajuste."
 
     return True, ""
@@ -313,6 +329,15 @@ def _balance_request_view(request, request_type):
             balance_request.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
         balance_request.save()
         _send_request_email_alert(balance_request, branding=branding)
+        from apps.administration.notifications_service import notify_request_created
+        from apps.personnel.models import EmployeeProfile as EmpProfile
+
+        validators = []
+        for emp in EmpProfile.objects.filter(
+            role__can_validate_administration=True, user__is_active=True
+        ).select_related("user"):
+            validators.append(emp.user)
+        notify_request_created(balance_request, validators)
         success_message = (
             "La demande de conge a ete enregistree."
             if request_type == StaffRequest.TYPE_LEAVE
@@ -415,6 +440,15 @@ def recovery_request_view(request):
         recovery_request.total_days = total_hours
         recovery_request.save(update_fields=["total_days", "updated_at"])
         _send_request_email_alert(recovery_request, branding=branding)
+        from apps.administration.notifications_service import notify_request_created
+        from apps.personnel.models import EmployeeProfile as EmpProfile
+
+        validators = []
+        for emp in EmpProfile.objects.filter(
+            role__can_validate_administration=True, user__is_active=True
+        ).select_related("user"):
+            validators.append(emp.user)
+        notify_request_created(recovery_request, validators)
         _queue_floating_notification(
             request,
             "Demande envoyee",
