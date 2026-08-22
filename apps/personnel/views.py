@@ -154,6 +154,39 @@ def dashboard_view(request):
         branding and branding.profile_photo_editing_enabled
     )
 
+    approved_absences = profile.requests.filter(
+        request_type=StaffRequest.TYPE_ABSENCE,
+        status=StaffRequest.STATUS_APPROVED,
+    ).order_by("-start_date")
+
+    # Total des JOURS d'absence acceptés (somme des total_days, pas le nombre de demandes).
+    from decimal import Decimal as Dec
+
+    approved_absence_days = Dec("0.0")
+    for absence in approved_absences:
+        approved_absence_days += (absence.total_days or Dec("0.0"))
+
+    # Limite d'absence configurée par la RH (absences financées par le solde de récupération).
+    from apps.personnel.recovery_service import get_recovery_limit, is_recovery_limit_enabled
+
+    absence_limit_enabled = is_recovery_limit_enabled()
+    absence_limit = get_recovery_limit()
+
+    approved_absence_days_float = float(approved_absence_days)
+    absence_limit_float = float(absence_limit)
+    remaining_absence_days = max(
+        Dec("0.0"), Dec(str(absence_limit_float - approved_absence_days_float))
+    )
+    percent_used = 0
+    if absence_limit_enabled and absence_limit_float > 0:
+        percent_used = int(
+            round(min(100.0, (approved_absence_days_float / absence_limit_float) * 100.0))
+        )
+
+    def fmt_decimal(value):
+        formatted = format(value, "f").rstrip("0").rstrip(".")
+        return formatted or "0"
+
     context = {
         "profile": profile,
         "profile_photo_editing_enabled": profile_photo_editing_enabled,
@@ -170,10 +203,12 @@ def dashboard_view(request):
         "chart_values": json.dumps(payload["chart_values"]),
         "leave_window_data": profile.leave_window_data,
         "recovery_window_data": profile.recovery_window_data,
-        "approved_absences": profile.requests.filter(
-            request_type=StaffRequest.TYPE_ABSENCE,
-            status=StaffRequest.STATUS_APPROVED,
-        ).order_by("-start_date"),
+        "approved_absences": approved_absences,
+        "approved_absence_days": fmt_decimal(approved_absence_days),
+        "absence_limit_enabled": absence_limit_enabled,
+        "absence_limit": fmt_decimal(absence_limit),
+        "remaining_absence_days": fmt_decimal(remaining_absence_days),
+        "absence_percent_used": percent_used,
         "hr_events_data": get_hr_events_dashboard_data(profile),
     }
     return render(request, "personnel/dashboard.html", context)

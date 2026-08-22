@@ -1,0 +1,1067 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block extra_head %}
+<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.min.css" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<section class="page-section calendar-page">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">📅 Calendrier</span>
+            <h1>{% if can_search_employees %}Calendrier du personnel{% else %}Mon calendrier{% endif %}</h1>
+            <p>Visualisez les congés, absences et récupérations sur une année complète.</p>
+        </div>
+        <div class="header-actions">
+            {% if can_search_employees %}
+                <a href="{% url 'administration:presence_overview' %}" class="btn-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                    Congés & absences
+                </a>
+            {% else %}
+                <a href="{% url 'personnel:dashboard' %}" class="btn-secondary">
+                    <i class="bi bi-arrow-left"></i>
+                    Retour
+                </a>
+            {% endif %}
+        </div>
+    </div>
+
+    <article class="card calendar-toolbar-card">
+        <div class="calendar-toolbar-grid">
+            {% if can_search_employees %}
+                <div class="calendar-toolbar-field calendar-employee-field">
+                    <label class="calendar-toolbar-label" for="calendarEmployeeSelect">
+                        <i class="bi bi-person-badge"></i>
+                        Employé
+                    </label>
+                    <select id="calendarEmployeeSelect" placeholder="Rechercher un employé..." class="tom-select-employee">
+                        <option value=""></option>
+                        {% for emp in calendar_employees %}
+                            <option value="{{ emp.id }}" {% if calendar_employee and emp.id == calendar_employee.id %}selected{% endif %}>
+                                {{ emp.display_name }}{% if emp.position %} | {{ emp.position }}{% endif %}{% if emp.department %} | {{ emp.department }}{% endif %}
+                            </option>
+                        {% endfor %}
+                    </select>
+                    <small class="calendar-toolbar-helper" id="calendarEmployeeHelper">
+                        {% if calendar_employee %}
+                            {{ calendar_employee.display_name }} — {{ calendar_employee.position|default:"Poste non renseigné" }}{% if calendar_employee.department %} · {{ calendar_employee.department.name }}{% endif %}
+                        {% else %}
+                            Commencez à taper un nom, un prénom ou un matricule pour rechercher.
+                        {% endif %}
+                    </small>
+                </div>
+            {% else %}
+                <div class="calendar-toolbar-field calendar-self-field">
+                    <label class="calendar-toolbar-label">
+                        <i class="bi bi-person-heart"></i>
+                        Mon calendrier
+                    </label>
+                    <strong class="calendar-self-name">{{ calendar_employee.display_name|default:"" }}</strong>
+                    <small class="calendar-toolbar-helper">{{ calendar_employee.position|default:"Poste non renseigné" }}{% if calendar_employee.department %} · {{ calendar_employee.department.name }}{% endif %}</small>
+                </div>
+            {% endif %}
+
+            <div class="calendar-toolbar-field">
+                <label class="calendar-toolbar-label" for="calendarYearSelect">
+                    <i class="bi bi-calendar3"></i>
+                    Année
+                </label>
+                <div class="calendar-year-controls">
+                    <button type="button" class="btn-secondary calendar-year-nav" id="calendarYearPrev" title="Année précédente" aria-label="Année précédente">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <select id="calendarYearSelect" class="form-select calendar-year-select">
+                        {% for year_option in year_options %}
+                            <option value="{{ year_option }}" {% if year_option == selected_year %}selected{% endif %}>{{ year_option }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="button" class="btn-secondary calendar-year-nav" id="calendarYearNext" title="Année suivante" aria-label="Année suivante">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="calendar-toolbar-field">
+                <label class="calendar-toolbar-label">
+                    <i class="bi bi-funnel"></i>
+                    Événements RH
+                </label>
+                <div class="calendar-filter-toggles">
+                    <label class="calendar-filter-chip leave">
+                        <input type="checkbox" id="calendarFilterLeave" {% if include_leave %}checked{% endif %}>
+                        <span class="calendar-filter-dot leave"></span>
+                        <span>Congés</span>
+                    </label>
+                    <label class="calendar-filter-chip absence">
+                        <input type="checkbox" id="calendarFilterAbsence" {% if include_absence %}checked{% endif %}>
+                        <span class="calendar-filter-dot absence"></span>
+                        <span>Absences</span>
+                    </label>
+                    <label class="calendar-filter-chip recovery">
+                        <input type="checkbox" id="calendarFilterRecovery" {% if include_recovery %}checked{% endif %}>
+                        <span class="calendar-filter-dot recovery"></span>
+                        <span>Récupérations</span>
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="calendar-toolbar-footer">
+            <div class="calendar-legend">
+                <span class="calendar-legend-title">Légende</span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot leave"></span> Congé</span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot absence"></span> Absence</span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot recovery"></span> Récupération</span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot holiday"></span> Jour férié</span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot weekend"></span> Week-end</span>
+            </div>
+            <div class="calendar-sync-status" id="calendarSyncStatus" title="Mise à jour automatique">
+                <span class="sync-dot"></span>
+                <span id="calendarSyncLabel">Synchronisé</span>
+            </div>
+        </div>
+    </article>
+
+    {% if can_search_employees and not calendar_employee %}
+        <div class="calendar-no-selection-banner">
+            <i class="bi bi-person-plus"></i>
+            <span>Veuillez sélectionner un employé pour afficher son calendrier.</span>
+        </div>
+    {% endif %}
+
+    {% if calendar_employee %}
+        <article class="card calendar-employee-summary" id="calendarEmployeeSummary">
+            <div class="calendar-employee-summary-avatar">
+                {% if calendar_employee.photo %}
+                    <img src="{{ calendar_employee.photo.url }}" alt="{{ calendar_employee.display_name }}">
+                {% else %}
+                    <span class="avatar-fallback">{{ calendar_employee.user.first_name|first|default:"E" }}{{ calendar_employee.user.last_name|first|default:"P" }}</span>
+                {% endif %}
+            </div>
+            <div class="calendar-employee-summary-identity">
+                <span class="eyebrow">Employé sélectionné</span>
+                <h3>{{ calendar_employee.display_name }}</h3>
+                <small>{{ calendar_employee.position|default:"Poste non renseigné" }}{% if calendar_employee.department %} · {{ calendar_employee.department.name }}{% endif %}</small>
+            </div>
+            <div class="calendar-employee-summary-stats">
+                <div class="calendar-summary-stat">
+                    <span class="calendar-summary-stat-label">Congés</span>
+                    <strong id="calendarSummaryLeave" class="stat-leave">{{ summary_leave }}</strong>
+                </div>
+                <div class="calendar-summary-stat">
+                    <span class="calendar-summary-stat-label">Absences</span>
+                    <strong id="calendarSummaryAbsence" class="stat-absence">{{ summary_absence }}</strong>
+                </div>
+                <div class="calendar-summary-stat">
+                    <span class="calendar-summary-stat-label">Récupérations</span>
+                    <strong id="calendarSummaryRecovery" class="stat-recovery">{{ summary_recovery }}</strong>
+                </div>
+            </div>
+        </article>
+    {% endif %}
+
+    <div class="calendar-months-grid" id="calendarMonthsGrid">
+        {% for month in months %}
+            <article class="card calendar-month-card" data-month="{{ forloop.counter0 }}">
+                <div class="calendar-month-header">
+                    <h2>{{ month.name }}</h2>
+                    <span class="calendar-month-year">{{ selected_year }}</span>
+                </div>
+                <div class="calendar-weekdays" aria-hidden="true">
+                    <span>Lun</span>
+                    <span>Mar</span>
+                    <span>Mer</span>
+                    <span>Jeu</span>
+                    <span>Ven</span>
+                    <span>Sam</span>
+                    <span>Dim</span>
+                </div>
+                <div class="calendar-days">
+                    {% for week in month.weeks %}
+                        {% for cell in week %}
+                            {% if cell.day %}
+                                <div class="calendar-day{% if cell.is_weekend %} weekend{% endif %}{% if cell.is_holiday %} holiday{% endif %}{% if cell.events %} has-events{% endif %}"
+                                     data-date="{{ cell.date_key }}"
+                                     {% if cell.events %}tabindex="0" role="button" aria-label="Voir les événements du {{ cell.date_key }}"{% endif %}>
+                                    {% if cell.events %}
+                                        <div class="calendar-day-tooltip">
+                                            <div class="calendar-tooltip">
+                                                <div class="calendar-tooltip-date">{{ cell.date_key }}</div>
+                                                {% for event in cell.events %}
+                                                    <div class="calendar-tooltip-event {{ event.type }}">
+                                                        <span class="calendar-tooltip-label">
+                                                            {% if event.type == "leave" %}🟢 Congé{% elif event.type == "absence" %}🔴 Absence{% elif event.type == "recovery" %}🔵 Récupération{% endif %}
+                                                        </span>
+                                                        <span class="badge {% if event.status == "approved" %}approved{% else %}submitted{% endif %}">{{ event.status_label }}</span>
+                                                        {% if event.total_days and event.total_days != "0" %}
+                                                            <span class="calendar-tooltip-duration">{{ event.total_days }} jour(s)</span>
+                                                        {% elif event.recovery_duration_hours %}
+                                                            <span class="calendar-tooltip-duration">{{ event.recovery_duration_hours }} heure(s)</span>
+                                                        {% endif %}
+                                                    </div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    {% endif %}
+                                    <span class="calendar-day-number">{{ cell.day }}</span>
+                                    {% if cell.events %}
+                                        <span class="calendar-day-events">
+                                            {% for event in cell.events %}
+                                                <span class="calendar-day-event-badge {{ event.type }}" title="{% if event.type == "leave" %}Congé{% elif event.type == "absence" %}Absence{% else %}Récupération{% endif %}"></span>
+                                            {% endfor %}
+                                        </span>
+                                    {% endif %}
+                                </div>
+                            {% else %}
+                                <div class="calendar-day empty" aria-hidden="true"></div>
+                            {% endif %}
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </article>
+        {% endfor %}
+    </div>
+</section>
+
+<div class="modal fade" id="calendarEventModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0 pb-0">
+                <div>
+                    <span class="eyebrow" id="calendarEventEyebrow">Événement</span>
+                    <h5 class="modal-title mt-2" id="calendarEventTitle"></h5>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+            </div>
+            <div class="modal-body" id="calendarEventBody"></div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn-secondary" data-bs-dismiss="modal">Fermer</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function() {
+    "use strict";
+
+    const selectedYear = {{ selected_year }};
+    const eventsByDate = {{ events_json|safe }};
+    const eventModal = document.getElementById("calendarEventModal");
+    const eventModalInstance = eventModal ? bootstrap.Modal.getOrCreateInstance(eventModal) : null;
+
+    const TYPE_LABELS = {
+        leave: "Congé",
+        absence: "Absence",
+        recovery: "Récupération"
+    };
+    const TYPE_ICONS = {
+        leave: "🟢",
+        absence: "🔴",
+        recovery: "🔵"
+    };
+    const TYPE_CSS = {
+        leave: "leave",
+        absence: "absence",
+        recovery: "recovery"
+    };
+
+    function formatDisplayDate(isoDate) {
+        const parts = isoDate.split("-");
+        return parts[2] + "/" + parts[1] + "/" + parts[0];
+    }
+
+    // ----------------------------------------------------------------
+    //  Event detail modal (client-side from server-rendered data)
+    // ----------------------------------------------------------------
+    function eventStatusBadge(event) {
+        const statusClass = event.status === "approved" ? "approved" : "submitted";
+        return '<span class="badge ' + statusClass + '">' + (event.status_label || event.status) + "</span>";
+    }
+
+    function buildEventDetail(event) {
+        const icon = TYPE_ICONS[event.type] || "📌";
+        const label = TYPE_LABELS[event.type] || event.type;
+        const cssClass = TYPE_CSS[event.type] || "other";
+        const dateLabel = event.recovery_work_date || event.date || event.start_date;
+
+        let rows = "";
+        if (event.employee_name && event.employee_id) {
+            rows += '<div class="calendar-event-row"><span>Employé</span><strong>' + event.employee_name + "</strong></div>";
+        }
+        if (event.request_type_label) {
+            rows += '<div class="calendar-event-row"><span>Type</span><strong>' + event.request_type_label + "</strong></div>";
+        }
+        if (event.status_label) {
+            rows += '<div class="calendar-event-row"><span>Statut</span>' + eventStatusBadge(event) + "</div>";
+        }
+        if (dateLabel) {
+            rows += '<div class="calendar-event-row"><span>Date</span><strong>' + dateLabel + "</strong></div>";
+        }
+        if (event.start_date && event.end_date && event.start_date !== event.end_date) {
+            rows += '<div class="calendar-event-row"><span>Période</span><strong>' + event.start_date + " → " + event.end_date + "</strong></div>";
+        }
+        if (event.total_days && event.total_days !== "0") {
+            const unit = event.type === "recovery" ? "heure(s)" : "jour(s)";
+            rows += '<div class="calendar-event-row"><span>Durée</span><strong>' + event.total_days + " " + unit + "</strong></div>";
+        }
+        if (event.recovery_start_time && event.recovery_end_time) {
+            rows += '<div class="calendar-event-row"><span>Heures</span><strong>' + event.recovery_start_time + " → " + event.recovery_end_time + "</strong></div>";
+        }
+        if (event.recovery_duration_hours && event.recovery_duration_hours !== "0") {
+            rows += '<div class="calendar-event-row"><span>Durée récupération</span><strong>' + event.recovery_duration_hours + " heure(s)</strong></div>";
+        }
+        if (event.is_holiday) {
+            rows += '<div class="calendar-event-row"><span>Férié</span><strong>Oui</strong></div>';
+        }
+        if (event.reason) {
+            rows += '<div class="calendar-event-row"><span>Motif</span><strong>' + event.reason + "</strong></div>";
+        }
+        if (event.project_name) {
+            rows += '<div class="calendar-event-row"><span>Projet</span><strong>' + event.project_name + "</strong></div>";
+        }
+        if (event.label) {
+            rows += '<div class="calendar-event-row"><span>Détail</span><strong>' + event.label + "</strong></div>";
+        }
+
+        return (
+            '<div class="calendar-event-detail">' +
+                '<div class="calendar-event-detail-header ' + cssClass + '">' +
+                    '<span class="calendar-event-icon">' + icon + "</span>" +
+                    "<span>" + label + "</span>" +
+                "</div>" +
+                '<div class="calendar-event-rows">' + rows + "</div>" +
+            "</div>"
+        );
+    }
+
+    function openEventModal(dateKey, dayCell) {
+        if (!eventModalInstance) return;
+        const events = eventsByDate[dateKey] || [];
+        if (events.length === 0) return;
+        const title = document.getElementById("calendarEventTitle");
+        const eyebrow = document.getElementById("calendarEventEyebrow");
+        const body = document.getElementById("calendarEventBody");
+        if (title) title.textContent = "📅 " + formatDisplayDate(dateKey);
+        if (eyebrow) eyebrow.textContent = events.length + " événement(s)";
+        if (body) {
+            body.innerHTML = events.map(buildEventDetail).join('<hr class="calendar-event-divider">');
+        }
+        eventModalInstance.show();
+    }
+
+    // Bind click / keyboard on server-rendered day cells
+    document.querySelectorAll(".calendar-day.has-events").forEach(function(dayCell) {
+        const dateKey = dayCell.dataset.date;
+        if (!dateKey) return;
+        dayCell.addEventListener("click", function(e) {
+            if (e.target.closest(".calendar-day-tooltip")) return;
+            openEventModal(dateKey, dayCell);
+        });
+        dayCell.addEventListener("keydown", function(e) {
+            if (e.key === "Enter") {
+                e.preventDefault();
+                openEventModal(dateKey, dayCell);
+            }
+        });
+    });
+
+    // ----------------------------------------------------------------
+    //  Sync status indicator (subtle, non-intrusive)
+    // ----------------------------------------------------------------
+    let lastSyncTime = Date.now();
+    function updateSyncLabel() {
+        const label = document.getElementById("calendarSyncLabel");
+        if (!label) return;
+        const seconds = Math.max(0, Math.floor((Date.now() - lastSyncTime) / 1000));
+        if (seconds < 5) {
+            label.textContent = "Synchronisé à l'instant";
+        } else if (seconds < 60) {
+            label.textContent = "Synchronisé il y a " + seconds + " s";
+        } else {
+            const minutes = Math.floor(seconds / 60);
+            label.textContent = "Synchronisé il y a " + minutes + " min";
+        }
+    }
+    window.setInterval(updateSyncLabel, 1000);
+    updateSyncLabel();
+
+    // ----------------------------------------------------------------
+    //  Tom Select employee search (consistent with Événements RH)
+    // ----------------------------------------------------------------
+    const employeeSelect = document.getElementById("calendarEmployeeSelect");
+    const yearSelect = document.getElementById("calendarYearSelect");
+
+    if (employeeSelect && typeof TomSelect !== "undefined") {
+        new TomSelect(employeeSelect, {
+            maxOptions: 300,
+            sortField: [
+                { field: "$order" },
+                { field: "$score" }
+            ],
+            searchField: ["text"],
+            placeholder: "Rechercher un employé...",
+            allowEmptyOption: true,
+            onChange: function(value) {
+                const params = new URLSearchParams(window.location.search);
+                params.set("year", yearSelect ? String(yearSelect.value) : String(selectedYear));
+                if (value) {
+                    params.set("employee", value);
+                } else {
+                    params.delete("employee");
+                }
+                window.location.href = window.location.pathname + "?" + params.toString();
+            },
+            render: {
+                option: function(data, escape) {
+                    const text = data.text;
+                    const parts = text.split(" | ");
+                    if (parts.length >= 2) {
+                        const name = parts[0];
+                        const extra = parts.slice(1).join(" | ");
+                        return '<div class="ts-option-custom">' +
+                            '<span class="ts-option-name">' + escape(name) + "</span>" +
+                            '<span class="ts-option-extra">' + escape(extra) + "</span>" +
+                            "</div>";
+                    }
+                    return "<div>" + escape(text) + "</div>";
+                }
+            }
+        });
+    }
+
+    // ----------------------------------------------------------------
+    //  Year navigation
+    // ----------------------------------------------------------------
+    const prevBtn = document.getElementById("calendarYearPrev");
+    const nextBtn = document.getElementById("calendarYearNext");
+
+    function buildCalendarUrl(year) {
+        const params = new URLSearchParams(window.location.search);
+        params.set("year", String(year));
+        return window.location.pathname + "?" + params.toString();
+    }
+
+    function navigateToYear(delta) {
+        if (!yearSelect) return;
+        const current = parseInt(yearSelect.value, 10);
+        const target = current + delta;
+        if (yearSelect.querySelector('option[value="' + target + '"]')) {
+            yearSelect.value = target;
+            applyFilters();
+        } else {
+            window.location.href = buildCalendarUrl(target);
+        }
+    }
+
+    if (prevBtn) prevBtn.addEventListener("click", function() { navigateToYear(-1); });
+    if (nextBtn) nextBtn.addEventListener("click", function() { navigateToYear(1); });
+    if (yearSelect) {
+        yearSelect.addEventListener("change", function() {
+            applyFilters();
+        });
+    }
+
+    // ----------------------------------------------------------------
+    //  Filters (visual only — server-side filtering via URL params)
+    // ----------------------------------------------------------------
+    const filterLeave = document.getElementById("calendarFilterLeave");
+    const filterAbsence = document.getElementById("calendarFilterAbsence");
+    const filterRecovery = document.getElementById("calendarFilterRecovery");
+
+    function applyFilters() {
+        const params = new URLSearchParams(window.location.search);
+        if (yearSelect) params.set("year", yearSelect.value);
+        if (filterLeave) params.set("leave", filterLeave.checked ? "1" : "0");
+        if (filterAbsence) params.set("absence", filterAbsence.checked ? "1" : "0");
+        if (filterRecovery) params.set("recovery", filterRecovery.checked ? "1" : "0");
+        window.location.href = window.location.pathname + "?" + params.toString();
+    }
+
+    [filterLeave, filterAbsence, filterRecovery].forEach(function(checkbox) {
+        if (checkbox) checkbox.addEventListener("change", applyFilters);
+    });
+});
+</script>
+
+<style>
+    /* ================================================================
+       Calendar Toolbar (header)
+       ================================================================ */
+    .calendar-toolbar-card {
+        padding: 20px 24px;
+        margin-bottom: 20px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+    }
+    .calendar-toolbar-grid {
+        display: grid;
+        grid-template-columns: minmax(280px, 1fr) auto auto;
+        gap: 22px;
+        align-items: end;
+    }
+    @media (max-width: 1200px) {
+        .calendar-toolbar-grid {
+            grid-template-columns: 1fr;
+            align-items: stretch;
+        }
+    }
+    .calendar-toolbar-field {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+    }
+    .calendar-toolbar-label {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        margin-bottom: 2px;
+    }
+    .calendar-toolbar-helper {
+        font-size: 0.78rem;
+        color: var(--muted);
+        margin-top: 4px;
+    }
+    .calendar-self-name {
+        font-size: 1.1rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+
+    /* Tom Select overrides to match app design */
+    .calendar-employee-field .ts-wrapper {
+        width: 100%;
+    }
+    .calendar-employee-field .ts-control {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--paper);
+        color: var(--text);
+        font-size: 0.9rem;
+        min-height: 42px;
+        padding: 6px 12px;
+        box-shadow: none;
+    }
+    .calendar-employee-field .ts-control:hover {
+        border-color: var(--green);
+    }
+    .calendar-employee-field .ts-wrapper.focus .ts-control {
+        border-color: var(--green);
+        box-shadow: 0 0 0 3px rgba(37, 92, 58, 0.12);
+    }
+    .calendar-employee-field .ts-dropdown {
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: var(--shadow-soft);
+        background: var(--paper);
+        color: var(--text);
+        z-index: 60;
+    }
+    .calendar-employee-field .ts-dropdown .option {
+        padding: 8px 12px;
+        font-size: 0.88rem;
+    }
+    .calendar-employee-field .ts-dropdown .option.active {
+        background: var(--green-soft);
+        color: var(--green);
+    }
+    .calendar-employee-field .ts-dropdown .option.selected {
+        background: var(--green-soft);
+    }
+    .ts-option-custom {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+    }
+    .ts-option-name {
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .ts-option-extra {
+        font-size: 0.75rem;
+        color: var(--muted);
+    }
+
+    /* Year controls */
+    .calendar-year-controls {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+    .calendar-year-select {
+        width: 110px;
+        font-weight: 600;
+        border-radius: 12px;
+        min-height: 42px;
+    }
+    .calendar-year-nav {
+        width: 42px;
+        height: 42px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        border-radius: 12px;
+    }
+
+    /* Filter chips */
+    .calendar-filter-toggles {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .calendar-filter-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        padding: 8px 14px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        font-size: 0.84rem;
+        font-weight: 600;
+        cursor: pointer;
+        user-select: none;
+        background: var(--card);
+        transition: background-color 0.18s ease, border-color 0.18s ease, transform 0.18s ease;
+    }
+    .calendar-filter-chip:hover {
+        border-color: var(--green);
+        transform: translateY(-1px);
+    }
+    .calendar-filter-chip input {
+        margin: 0;
+        accent-color: var(--green);
+        width: 16px;
+        height: 16px;
+    }
+    .calendar-filter-dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        border-radius: 50%;
+        flex-shrink: 0;
+    }
+    .calendar-filter-dot.leave { background: #2e7d32; }
+    .calendar-filter-dot.absence { background: #c62828; }
+    .calendar-filter-dot.recovery { background: #1565c0; }
+    .calendar-filter-dot.holiday { background: #f9a825; }
+    .calendar-filter-dot.weekend { background: #bdbdbd; }
+
+    /* Toolbar footer: legend + sync */
+    .calendar-toolbar-footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+    }
+    .calendar-legend {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 14px;
+        font-size: 0.8rem;
+        color: var(--muted);
+    }
+    .calendar-legend-title {
+        font-weight: 700;
+        color: var(--text);
+    }
+    .calendar-legend-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+    }
+    .calendar-sync-status {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        font-size: 0.76rem;
+        color: var(--muted);
+        padding: 4px 12px;
+        border-radius: 999px;
+        background: var(--green-soft);
+    }
+    .sync-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #2e7d32;
+        animation: syncPulse 2s ease-in-out infinite;
+    }
+    @keyframes syncPulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.4; }
+    }
+
+    /* No-selection banner */
+    .calendar-no-selection-banner {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 14px 20px;
+        margin-bottom: 20px;
+        border-radius: var(--radius-md);
+        background: var(--green-soft);
+        border: 1px solid var(--border);
+        color: var(--text);
+        font-weight: 600;
+        font-size: 0.9rem;
+    }
+    .calendar-no-selection-banner i {
+        font-size: 1.3rem;
+        color: var(--green);
+    }
+
+    /* ================================================================
+       Employee summary card
+       ================================================================ */
+    .calendar-employee-summary {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        gap: 18px;
+        align-items: center;
+        padding: 16px 22px;
+        margin-bottom: 20px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-lg);
+        background: var(--card);
+    }
+    @media (max-width: 720px) {
+        .calendar-employee-summary {
+            grid-template-columns: 1fr;
+            text-align: center;
+        }
+    }
+    .calendar-employee-summary-avatar {
+        width: 54px;
+        height: 54px;
+        border-radius: 14px;
+        overflow: hidden;
+        background: var(--green-soft);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+    }
+    .calendar-employee-summary-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .calendar-employee-summary-avatar .avatar-fallback {
+        width: 100%;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.2rem;
+        font-weight: 700;
+        color: var(--green);
+    }
+    .calendar-employee-summary-identity h3 {
+        margin: 2px 0 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+    .calendar-employee-summary-identity small {
+        color: var(--muted);
+        font-size: 0.82rem;
+    }
+    .calendar-employee-summary-stats {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+    .calendar-summary-stat {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+        padding: 8px 18px;
+        border-radius: 14px;
+        background: var(--paper);
+        border: 1px solid var(--border);
+    }
+    .calendar-summary-stat-label {
+        font-size: 0.7rem;
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+        color: var(--muted);
+        font-weight: 600;
+    }
+    .calendar-summary-stat strong {
+        font-size: 1.05rem;
+        font-weight: 700;
+    }
+    .calendar-summary-stat strong.stat-leave { color: #2e7d32; }
+    .calendar-summary-stat strong.stat-absence { color: #c62828; }
+    .calendar-summary-stat strong.stat-recovery { color: #1565c0; }
+
+    /* ================================================================
+       Month cards
+       ================================================================ */
+    .calendar-months-grid {
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 20px;
+    }
+    @media (max-width: 1450px) {
+        .calendar-months-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+    }
+    @media (max-width: 920px) {
+        .calendar-months-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+    .calendar-month-card {
+        padding: 18px 16px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-md);
+        background: var(--card);
+        transition: box-shadow 0.2s ease;
+    }
+    .calendar-month-card:hover {
+        box-shadow: var(--shadow-soft);
+    }
+    .calendar-month-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 10px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid var(--green-soft);
+    }
+    .calendar-month-header h2 {
+        margin: 0;
+        font-size: 1.02rem;
+        font-weight: 800;
+        color: var(--green);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+    .calendar-month-year {
+        font-size: 0.75rem;
+        font-weight: 700;
+        color: var(--muted);
+        background: var(--green-soft);
+        padding: 3px 10px;
+        border-radius: 999px;
+    }
+    .calendar-weekdays {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+        margin-bottom: 5px;
+    }
+    .calendar-weekdays span {
+        text-align: center;
+        font-size: 0.68rem;
+        font-weight: 800;
+        color: var(--muted);
+        padding: 5px 0;
+        text-transform: uppercase;
+        letter-spacing: 0.02em;
+    }
+    .calendar-days {
+        display: grid;
+        grid-template-columns: repeat(7, 1fr);
+        gap: 5px;
+    }
+    .calendar-day {
+        min-height: 66px;
+        border-radius: 10px;
+        border: 1px solid var(--border);
+        background: var(--paper);
+        padding: 5px 6px;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        position: relative;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease;
+    }
+    .calendar-day:hover {
+        border-color: var(--green);
+        box-shadow: 0 4px 14px rgba(37, 92, 58, 0.14);
+        z-index: 2;
+    }
+    .calendar-day.weekend {
+        background: rgba(0, 0, 0, 0.03);
+    }
+    .calendar-day.holiday {
+        border-color: rgba(249, 168, 37, 0.6);
+        background: rgba(249, 168, 37, 0.07);
+    }
+    .calendar-day.has-events {
+        cursor: pointer;
+        border-color: rgba(37, 92, 58, 0.35);
+    }
+    .calendar-day.has-events:hover {
+        transform: translateY(-1px);
+    }
+    .calendar-day.empty {
+        border: none;
+        background: transparent;
+        min-height: 66px;
+    }
+    .calendar-day-number {
+        font-size: 0.8rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+    .calendar-day.weekend .calendar-day-number {
+        color: var(--muted);
+    }
+    .calendar-day.holiday .calendar-day-number {
+        color: #b26a00;
+    }
+    .calendar-day-events {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px;
+        margin-top: auto;
+    }
+    .calendar-day-event-badge {
+        width: 9px;
+        height: 9px;
+        border-radius: 50%;
+        display: inline-block;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+    }
+    .calendar-day-event-badge.leave { background: #2e7d32; }
+    .calendar-day-event-badge.absence { background: #c62828; }
+    .calendar-day-event-badge.recovery { background: #1565c0; }
+
+    /* Tooltip on hover */
+    .calendar-day-tooltip {
+        display: none;
+        position: absolute;
+        bottom: calc(100% + 6px);
+        left: 50%;
+        transform: translateX(-50%);
+        min-width: 200px;
+        max-width: 260px;
+        background: var(--paper);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 10px 12px;
+        z-index: 100;
+        pointer-events: none;
+    }
+    .calendar-day:hover .calendar-day-tooltip,
+    .calendar-day:focus .calendar-day-tooltip {
+        display: block;
+    }
+    .calendar-tooltip {
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+    }
+    .calendar-tooltip-date {
+        font-size: 0.78rem;
+        font-weight: 800;
+        color: var(--green);
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 6px;
+        margin-bottom: 4px;
+    }
+    .calendar-tooltip-event {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 0.78rem;
+    }
+    .calendar-tooltip-event .badge {
+        font-size: 0.68rem;
+        padding: 3px 8px;
+    }
+    .calendar-tooltip-label {
+        font-weight: 700;
+        white-space: nowrap;
+    }
+    .calendar-tooltip-duration {
+        color: var(--muted);
+        font-size: 0.72rem;
+        margin-left: auto;
+        white-space: nowrap;
+    }
+
+    /* ================================================================
+       Event detail modal
+       ================================================================ */
+    .calendar-event-detail-header {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        font-weight: 800;
+        font-size: 0.88rem;
+        padding: 6px 14px;
+        border-radius: 999px;
+        margin-bottom: 12px;
+    }
+    .calendar-event-detail-header.leave { background: rgba(46, 125, 50, 0.12); color: #2e7d32; }
+    .calendar-event-detail-header.absence { background: rgba(198, 40, 40, 0.12); color: #c62828; }
+    .calendar-event-detail-header.recovery { background: rgba(21, 101, 192, 0.12); color: #1565c0; }
+    .calendar-event-icon { font-size: 1rem; }
+    .calendar-event-rows {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+    .calendar-event-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        font-size: 0.85rem;
+    }
+    .calendar-event-row > span {
+        color: var(--muted);
+        font-weight: 500;
+    }
+    .calendar-event-row > strong {
+        color: var(--text);
+        text-align: right;
+        font-weight: 600;
+    }
+    .calendar-event-divider {
+        margin: 14px 0;
+        border-color: var(--border);
+        opacity: 0.6;
+    }
+
+    /* ================================================================
+       Responsive
+       ================================================================ */
+    @media (max-width: 600px) {
+        .calendar-toolbar-card { padding: 14px 16px; }
+        .calendar-month-card { padding: 12px 10px; }
+        .calendar-day { min-height: 48px; padding: 4px; }
+        .calendar-day-number { font-size: 0.72rem; }
+        .calendar-day.empty { min-height: 48px; }
+        .calendar-weekdays span { font-size: 0.6rem; }
+        .calendar-month-header h2 { font-size: 0.9rem; }
+        .calendar-day-tooltip { min-width: 170px; max-width: 210px; left: 0; right: 0; transform: none; }
+        .calendar-employee-summary { padding: 14px 16px; }
+        .calendar-summary-stat { padding: 6px 12px; }
+    }
+</style>
+{% endblock %}

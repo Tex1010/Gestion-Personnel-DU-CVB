@@ -17,9 +17,11 @@ from django.utils.timezone import localtime
 
 from apps.accounts.utils import approval_required, can_manage_settings, settings_required
 from apps.administration.forms import (
+    BrandingIdentityForm,
     ContractTypeForm,
     DepartmentForm,
     EmployeeAccountForm,
+    HRParamsForm,
     LoginBrandingForm,
     ProjectForm,
     RoleForm,
@@ -1497,7 +1499,8 @@ def settings_view(request):
     contract_type_form = ContractTypeForm()
     account_form = EmployeeAccountForm()
     edit_account_form = EmployeeAccountForm(profile=edit_profile) if edit_profile else None
-    branding_form = LoginBrandingForm(instance=branding)
+    branding_form = BrandingIdentityForm(instance=branding)
+    hr_params_form = HRParamsForm(instance=branding)
 
     if request.method == "POST":
         panel = request.POST.get("panel", panel)
@@ -1560,7 +1563,7 @@ def settings_view(request):
             return redirect(_settings_redirect(panel="accounts", show_history=True))
 
         elif "save-branding" in request.POST:
-            branding_form = LoginBrandingForm(
+            branding_form = BrandingIdentityForm(
                 request.POST,
                 request.FILES,
                 instance=branding,
@@ -1571,13 +1574,12 @@ def settings_view(request):
                 return redirect(_settings_redirect(panel="branding"))
 
         elif "save-hr-params" in request.POST:
-            branding_form = LoginBrandingForm(
+            hr_params_form = HRParamsForm(
                 request.POST,
-                request.FILES,
                 instance=branding,
             )
-            if branding_form.is_valid():
-                branding_form.save()
+            if hr_params_form.is_valid():
+                hr_params_form.save()
                 messages.success(request, "Les parametres globaux des conges ont ete mis a jour.")
                 return redirect(_settings_redirect(panel="human_resources"))
 
@@ -1716,6 +1718,7 @@ def settings_view(request):
             "account_form": account_form,
             "edit_account_form": edit_account_form,
             "branding_form": branding_form,
+            "hr_params_form": hr_params_form,
             "department_form": department_form,
             "project_form": project_form,
             "role_form": role_form,

@@ -53,6 +53,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.error_handling.middleware.GlobalExceptionMiddleware',
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -133,3 +134,76 @@ LOGIN_REDIRECT_URL = 'personnel:dashboard'
 LOGOUT_REDIRECT_URL = 'accounts:login'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# ---------------------------------------------------------------------------
+# Gestion professionnelle des erreurs
+# ---------------------------------------------------------------------------
+
+# Email IT pour les notifications d'erreurs critiques (optionnel)
+ADMIN_NOTIFICATION_EMAIL = 'it@centrevalbio.org'
+
+# Journalisation structurée (accessible uniquement au personnel autorisé)
+import os
+
+LOGS_DIR = BASE_DIR / 'logs'
+os.makedirs(LOGS_DIR, exist_ok=True)
+
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': (
+                '[{asctime}] {levelname} {name} | '
+                'ID={message}'
+            ),
+            'style': '{',
+        },
+        'detailed': {
+            'format': (
+                '[{asctime}] {levelname} | Message: {message} | '
+                'Path: {pathname}:{lineno} | Method: {funcName}'
+            ),
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'application_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'application.log'),
+            'maxBytes': 5 * 1024 * 1024,  # 5 MB
+            'backupCount': 5,
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
+        'error_file': {
+            'class': 'logging.handlers.RotatingFileHandler',
+            'filename': str(LOGS_DIR / 'errors.log'),
+            'maxBytes': 5 * 1024 * 1024,
+            'backupCount': 5,
+            'formatter': 'detailed',
+            'encoding': 'utf-8',
+        },
+    },
+    'loggers': {
+        'application': {
+            'handlers': ['console', 'application_file', 'error_file'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'application.notifications': {
+            'handlers': ['console', 'application_file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.request': {
+            'handlers': ['error_file'],
+            'level': 'ERROR',
+            'propagate': False,
+        },
+    },
+}

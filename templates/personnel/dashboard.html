@@ -13,10 +13,14 @@
         <div class="header-actions">
             <a href="{% url 'requests_management:absence_create' %}" class="btn-secondary">Nouvelle absence</a>
             <a href="{% url 'requests_management:leave_create' %}" class="btn-secondary">Nouveau conge</a>
-            <a href="{% url 'requests_management:recovery_create' %}" class="btn-primary">Nouvelle recuperation</a>
+            <a href="{% url 'requests_management:recovery_create' %}" class="btn-secondary">Nouvelle recuperation</a>
+            <a href="{% url 'personnel:calendar' %}" class="btn-primary">
+                <i class="bi bi-calendar-month"></i>
+                Mon calendrier
+            </a>
             <button type="button" class="btn-secondary" id="leaveWindowButton">
                 <i class="bi bi-calendar3"></i>
-                Fenetre de 3 ans
+                Fenetre
             </button>
         </div>
     </div>
@@ -37,7 +41,7 @@
                         {% if profile_photo_editing_enabled %}
                             <button type="button" class="btn-secondary btn-sm" id="changePhotoBtn">
                                 <i class="bi bi-camera"></i>
-                                Modifier ma photo
+                                Modifier
                             </button>
                         {% endif %}
                     </div>
@@ -94,43 +98,82 @@
     </div>
 
     <div class="floating-window-overlay" id="leaveWindowOverlay" hidden>
-        <div class="floating-window-panel">
+        <div class="floating-window-panel floating-window-panel-wide">
             <div class="floating-window-header">
                 <div>
-                    <h2>Fenetre de 3 ans</h2>
-                    <p class="helper">Lecture rapide de vos quotas disponibles et bloques.</p>
+                    <span class="eyebrow">Fenêtre glissante</span>
+                    <h2>Mes congés</h2>
+                    <p class="helper">Lecture rapide de vos quotas disponibles et bloqués.</p>
                 </div>
                 <button type="button" class="floating-window-close" id="leaveWindowClose" aria-label="Fermer">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
             <div class="floating-window-body">
-                <div class="leave-window-list">
+                <div class="leave-global-summary">
+                    <div class="leave-summary-item">
+                        <span class="leave-summary-icon"><i class="bi bi-calendar-check"></i></span>
+                        <div class="leave-summary-copy">
+                            <strong class="leave-summary-value">{{ profile.leave_balance }}</strong>
+                            <span class="leave-summary-label">Jours disponibles</span>
+                            <small>Total consommable</small>
+                        </div>
+                    </div>
+                    <div class="leave-summary-item">
+                        <span class="leave-summary-icon"><i class="bi bi-calendar2-week"></i></span>
+                        <div class="leave-summary-copy">
+                            <strong class="leave-summary-value">{{ leave_window_data|length }}</strong>
+                            <span class="leave-summary-label">Années affichées</span>
+                            <small>Fenêtre glissante</small>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="leave-window-grid">
                     {% for item in leave_window_data %}
-                        <div class="leave-year-card {% if item.is_blocked %}blocked{% endif %}">
+                        <div class="leave-year-card {% if item.is_blocked %}blocked{% elif forloop.first %}priority{% endif %}">
                             <div class="leave-year-header">
                                 <span class="leave-year">{{ item.year }}</span>
                                 {% if item.is_blocked %}
-                                    <span class="leave-status-badge blocked">Bloqué</span>
+                                    <span class="leave-status-badge blocked"><i class="bi bi-lock-fill"></i> Bloquée</span>
+                                {% elif forloop.first %}
+                                    <span class="leave-status-badge priority-badge"><i class="bi bi-star-fill"></i> Prioritaire</span>
                                 {% else %}
-                                    <span class="leave-status-badge available">Disponible</span>
+                                    <span class="leave-status-badge available"><i class="bi bi-check-circle-fill"></i> Disponible</span>
                                 {% endif %}
+                            </div>
+                            <div class="leave-year-hero">
+                                <strong class="leave-year-remaining">{{ item.remaining }}</strong>
+                                <span>JOURS RESTANTS</span>
                             </div>
                             <div class="leave-year-details">
                                 <div class="leave-detail"><span>Quota</span><strong>{{ item.quota }}</strong></div>
                                 <div class="leave-detail"><span>Consommé</span><strong>{{ item.consumed }}</strong></div>
-                                <div class="leave-detail"><span>Restant</span><strong>{{ item.remaining }}</strong></div>
+                            </div>
+                            <div class="leave-progress-block">
+                                <div class="leave-progress-bar">
+                                    <div class="leave-progress-fill{% if item.is_blocked %} blocked{% endif %}" data-quota="{{ item.quota }}" data-consumed="{{ item.consumed }}"></div>
+                                </div>
+                                <div class="leave-progress-labels">
+                                    <span>{{ item.consumed }} utilisés</span>
+                                    <span>{{ item.quota }} total</span>
+                                </div>
                             </div>
                             {% if item.is_blocked %}
-                                <div class="leave-status-text">Non consommable avant {{ item.year|add:1 }}</div>
+                                <div class="leave-status-text"><i class="bi bi-lock-fill"></i> Droits non consommables. Disponibles à partir de {{ item.year|add:1 }}</div>
+                            {% elif forloop.first %}
+                                <div class="leave-status-text priority-text"><i class="bi bi-star-fill"></i> À consommer en priorité</div>
                             {% else %}
-                                <div class="leave-status-text">Disponible aujourd'hui</div>
+                                <div class="leave-status-text"><i class="bi bi-check-circle"></i> Disponible à la consommation</div>
                             {% endif %}
                         </div>
                     {% endfor %}
                 </div>
-                <div class="leave-window-divider"></div>
-                <div class="leave-window-list">
+
+                <div class="leave-window-divider">
+                    <span>Récupérations</span>
+                </div>
+                <div class="leave-window-grid recovery-grid">
                     {% for item in recovery_window_data %}
                         <div class="leave-year-card recovery-card">
                             <div class="leave-year-header">
@@ -150,13 +193,48 @@
         </div>
     </div>
 
-    <article class="card">
+    <article class="card approved-absences-card">
         <div class="card-head">
             <div>
-                <h2>Mes demandes d'absence acceptées</h2>
-                <p class="helper">Liste des absences déjà validées et approuvées.</p>
+                <h2><i class="bi bi-check2-circle"></i> Mes absences acceptées</h2>
+                <p class="helper">Suivi de vos jours d'absence validés et approuvés.</p>
             </div>
         </div>
+        <div class="approved-absences-hero">
+            <div class="approved-absences-count">
+                <strong id="approvedAbsencesDays">{{ approved_absence_days }}</strong>
+                <span class="approved-absences-count-label">jours d'absence acceptés</span>
+            </div>
+            <div class="approved-absences-hero-badge">
+                <span class="badge approved"><i class="bi bi-check-circle-fill"></i> Acceptés</span>
+            </div>
+        </div>
+
+        {% if absence_limit_enabled %}
+        <div class="approved-absences-limit-block">
+            <div class="approved-absences-limit-row">
+                <span class="approved-absences-used">{{ approved_absence_days }} / {{ absence_limit }} jours</span>
+                <span class="approved-absences-percent">{{ absence_percent_used }}%</span>
+            </div>
+            <div class="approved-absences-progress">
+                <div class="approved-absences-progress-fill" data-percent="{{ absence_percent_used }}"></div>
+            </div>
+            <div class="approved-absences-limit-footer">
+                {% if remaining_absence_days > "0" %}
+                    <span><strong>{{ remaining_absence_days }}</strong> jours restants</span>
+                {% else %}
+                    <span class="approved-absences-limit-reached"><i class="bi bi-exclamation-triangle-fill"></i> Limite atteinte</span>
+                {% endif %}
+                <span>Limite annuelle : {{ absence_limit }} jours</span>
+            </div>
+        </div>
+        {% else %}
+        <div class="approved-absences-limit-disabled">
+            <i class="bi bi-info-circle"></i>
+            <span>Limite d'absence désactivée</span>
+        </div>
+        {% endif %}
+
         <div class="approved-absences-list">
             {% for absence in approved_absences %}
                 <div class="approved-absence-item">
@@ -322,7 +400,7 @@
             <div class="modal-header border-0 pb-0">
                 <div>
                     <span class="eyebrow">Photo de profil</span>
-                    <h5 class="modal-title mt-2">Modifier ma photo</h5>
+                    <h5 class="modal-title mt-2">Modifier</h5>
                     <p class="helper mb-0">Choisissez une nouvelle image (JPG, PNG, WEBP - max 5 MB).</p>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
@@ -400,6 +478,140 @@
 </div>
 
 <style>
+    /* ================================================================
+       Approved absences hero card (modern UI)
+       ================================================================ */
+    .approved-absences-card {
+        border: 1px solid rgba(46, 125, 50, 0.25);
+        background: linear-gradient(135deg, var(--card) 0%, rgba(46, 125, 50, 0.06) 100%);
+    }
+    .approved-absences-card .card-head h2 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--green);
+    }
+    .approved-absences-hero {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        padding: 28px 20px;
+        text-align: center;
+        background: rgba(46, 125, 50, 0.07);
+        border-radius: var(--radius-md);
+        margin-bottom: 20px;
+        border: 1px dashed rgba(46, 125, 50, 0.25);
+    }
+    .approved-absences-count {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+    .approved-absences-count strong {
+        font-size: 5rem;
+        font-weight: 900;
+        line-height: 1;
+        color: #2e7d32;
+        letter-spacing: -0.03em;
+        text-shadow: 0 4px 18px rgba(46, 125, 50, 0.18);
+    }
+    .approved-absences-count-label {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .approved-absences-hero-badge .badge {
+        font-size: 0.85rem;
+        padding: 8px 16px;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+    .approved-absences-hero-badge .badge i {
+        margin-right: 5px;
+    }
+    /* Limit / progress block */
+    .approved-absences-limit-block {
+        background: rgba(46, 125, 50, 0.06);
+        border: 1px solid rgba(46, 125, 50, 0.2);
+        border-radius: var(--radius-md);
+        padding: 18px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .approved-absences-limit-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+    .approved-absences-used {
+        color: var(--green);
+    }
+    .approved-absences-percent {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--muted);
+    }
+    .approved-absences-progress {
+        height: 12px;
+        border-radius: 999px;
+        background: rgba(46, 125, 50, 0.12);
+        overflow: hidden;
+    }
+    .approved-absences-progress-fill {
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, #2e7d32, #43a047);
+        border-radius: 999px;
+        transition: width 0.6s ease;
+    }
+    .approved-absences-limit-footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--muted);
+    }
+    .approved-absences-limit-footer strong {
+        color: var(--green);
+    }
+    .approved-absences-limit-reached {
+        color: #c62828;
+        font-weight: 700;
+    }
+    .approved-absences-limit-disabled {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.03);
+        border: 1px dashed var(--border);
+        font-size: 0.88rem;
+        color: var(--muted);
+        margin-bottom: 20px;
+    }
+    @media (max-width: 600px) {
+        .approved-absences-count strong {
+            font-size: 3.5rem;
+        }
+        .approved-absences-hero {
+            padding: 20px 16px;
+            gap: 16px;
+        }
+    }
     .photo-preview-container { display: flex; justify-content: center; align-items: center; padding: 16px; }
     .photo-preview { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #e8f0e8; }
     .photo-preview-fallback { width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
@@ -719,6 +931,25 @@
                 photoError.textContent = "Erreur lors de l'envoi de la photo.";
                 photoError.hidden = false;
             }
+        });
+    });
+</script>
+<script>
+    document.addEventListener("DOMContentLoaded", () => {
+        document.querySelectorAll(".leave-progress-fill").forEach((fill) => {
+            const quota = parseFloat(fill.dataset.quota) || 0;
+            const consumed = parseFloat(fill.dataset.consumed) || 0;
+            const percent = quota > 0 ? Math.min(100, (consumed / quota) * 100) : 0;
+            window.requestAnimationFrame(() => {
+                fill.style.width = percent + "%";
+            });
+        });
+
+        document.querySelectorAll(".approved-absences-progress-fill").forEach((fill) => {
+            const percent = parseFloat(fill.dataset.percent) || 0;
+            window.requestAnimationFrame(() => {
+                fill.style.width = Math.min(100, percent) + "%";
+            });
         });
     });
 </script>

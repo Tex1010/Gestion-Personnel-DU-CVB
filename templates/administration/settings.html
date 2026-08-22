@@ -1025,22 +1025,22 @@
                     </div>
                     <div class="form-grid two">
                         <div>
-                            {{ branding_form.annual_leave_quota.label_tag }}
-                            {{ branding_form.annual_leave_quota }}
-                            {% if branding_form.annual_leave_quota.help_text %}<small class="helper">{{ branding_form.annual_leave_quota.help_text }}</small>{% endif %}
-                            {% for error in branding_form.annual_leave_quota.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            {{ hr_params_form.annual_leave_quota.label_tag }}
+                            {{ hr_params_form.annual_leave_quota }}
+                            {% if hr_params_form.annual_leave_quota.help_text %}<small class="helper">{{ hr_params_form.annual_leave_quota.help_text }}</small>{% endif %}
+                            {% for error in hr_params_form.annual_leave_quota.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
                         <div>
-                            {{ branding_form.leave_window_size.label_tag }}
-                            {{ branding_form.leave_window_size }}
-                            {% if branding_form.leave_window_size.help_text %}<small class="helper">{{ branding_form.leave_window_size.help_text }}</small>{% endif %}
-                            {% for error in branding_form.leave_window_size.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            {{ hr_params_form.leave_window_size.label_tag }}
+                            {{ hr_params_form.leave_window_size }}
+                            {% if hr_params_form.leave_window_size.help_text %}<small class="helper">{{ hr_params_form.leave_window_size.help_text }}</small>{% endif %}
+                            {% for error in hr_params_form.leave_window_size.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
                         <div style="grid-column: 1 / -1;">
-                            {{ branding_form.leave_rules.label_tag }}
-                            {{ branding_form.leave_rules }}
-                            {% if branding_form.leave_rules.help_text %}<small class="helper">{{ branding_form.leave_rules.help_text }}</small>{% endif %}
-                            {% for error in branding_form.leave_rules.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            {{ hr_params_form.leave_rules.label_tag }}
+                            {{ hr_params_form.leave_rules }}
+                            {% if hr_params_form.leave_rules.help_text %}<small class="helper">{{ hr_params_form.leave_rules.help_text }}</small>{% endif %}
+                            {% for error in hr_params_form.leave_rules.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
                     </div>
                 </div>
@@ -1051,20 +1051,20 @@
                     </div>
                     <div class="form-grid two">
                         <div class="toggle-setting-card">
-                            <label class="toggle-setting-label" for="{{ branding_form.recovery_limit_enabled.id_for_label }}">
+                            <label class="toggle-setting-label" for="{{ hr_params_form.recovery_limit_enabled.id_for_label }}">
                                 <span>
-                                    <strong>{{ branding_form.recovery_limit_enabled.label }}</strong>
-                                    <small class="helper">{{ branding_form.recovery_limit_enabled.help_text }}</small>
+                                    <strong>{{ hr_params_form.recovery_limit_enabled.label }}</strong>
+                                    <small class="helper">{{ hr_params_form.recovery_limit_enabled.help_text }}</small>
                                 </span>
-                                {{ branding_form.recovery_limit_enabled }}
+                                {{ hr_params_form.recovery_limit_enabled }}
                             </label>
-                            {% for error in branding_form.recovery_limit_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            {% for error in hr_params_form.recovery_limit_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
                         <div>
-                            {{ branding_form.recovery_annual_limit.label_tag }}
-                            {{ branding_form.recovery_annual_limit }}
-                            {% if branding_form.recovery_annual_limit.help_text %}<small class="helper">{{ branding_form.recovery_annual_limit.help_text }}</small>{% endif %}
-                            {% for error in branding_form.recovery_annual_limit.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            {{ hr_params_form.recovery_annual_limit.label_tag }}
+                            {{ hr_params_form.recovery_annual_limit }}
+                            {% if hr_params_form.recovery_annual_limit.help_text %}<small class="helper">{{ hr_params_form.recovery_annual_limit.help_text }}</small>{% endif %}
+                            {% for error in hr_params_form.recovery_annual_limit.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
                     </div>
                 </div>
@@ -1075,14 +1075,14 @@
                     </div>
                     <div class="form-grid two">
                         <div class="toggle-setting-card">
-                            <label class="toggle-setting-label" for="{{ branding_form.profile_photo_editing_enabled.id_for_label }}">
+                            <label class="toggle-setting-label" for="{{ hr_params_form.profile_photo_editing_enabled.id_for_label }}">
                                 <span>
-                                    <strong>{{ branding_form.profile_photo_editing_enabled.label }}</strong>
-                                    <small class="helper">{{ branding_form.profile_photo_editing_enabled.help_text }}</small>
+                                    <strong>{{ hr_params_form.profile_photo_editing_enabled.label }}</strong>
+                                    <small class="helper">{{ hr_params_form.profile_photo_editing_enabled.help_text }}</small>
                                 </span>
-                                {{ branding_form.profile_photo_editing_enabled }}
+                                {{ hr_params_form.profile_photo_editing_enabled }}
                             </label>
-                            {% for error in branding_form.profile_photo_editing_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            {% for error in hr_params_form.profile_photo_editing_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
                     </div>
                 </div>
@@ -1105,31 +1105,87 @@
                 {% csrf_token %}
                 <input type="hidden" name="panel" value="branding">
                 <input type="hidden" name="save-branding" value="1">
-                <div class="form-grid two">
-                    {% for field in branding_form %}
-                        {% if field.name == "request_submission_email_enabled" %}
-                            <div class="toggle-setting-card">
-                                <label class="toggle-setting-label" for="{{ field.id_for_label }}">
-                                    <span>
-                                        <strong>Alertes email a la soumission</strong>
-                                        <small class="helper">Utilise l'adresse email definie dans ce panneau pour prevenir la Ressource Humain (RH) a chaque nouvelle demande.</small>
-                                    </span>
-                                    {{ field }}
-                                </label>
-                                {% for error in field.errors %}
-                                    <small class="error-text">{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                        {% else %}
-                            <div>
-                                {{ field.label_tag }}
-                                {{ field }}
-                                {% for error in field.errors %}
-                                    <small class="error-text">{{ error }}</small>
-                                {% endfor %}
-                            </div>
-                        {% endif %}
-                    {% endfor %}
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Identite de l'organisation</h3>
+                        <p class="helper">Ces informations identifient votre organisation dans l'application.</p>
+                    </div>
+                    <div class="form-grid two">
+                        <div>
+                            {{ branding_form.site_name.label_tag }}
+                            {{ branding_form.site_name }}
+                            {% if branding_form.site_name.help_text %}<small class="helper">{{ branding_form.site_name.help_text }}</small>{% endif %}
+                            {% for error in branding_form.site_name.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ branding_form.subtitle.label_tag }}
+                            {{ branding_form.subtitle }}
+                            {% if branding_form.subtitle.help_text %}<small class="helper">{{ branding_form.subtitle.help_text }}</small>{% endif %}
+                            {% for error in branding_form.subtitle.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ branding_form.address.label_tag }}
+                            {{ branding_form.address }}
+                            {% if branding_form.address.help_text %}<small class="helper">{{ branding_form.address.help_text }}</small>{% endif %}
+                            {% for error in branding_form.address.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ branding_form.email.label_tag }}
+                            {{ branding_form.email }}
+                            {% if branding_form.email.help_text %}<small class="helper">{{ branding_form.email.help_text }}</small>{% endif %}
+                            {% for error in branding_form.email.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ branding_form.website.label_tag }}
+                            {{ branding_form.website }}
+                            {% if branding_form.website.help_text %}<small class="helper">{{ branding_form.website.help_text }}</small>{% endif %}
+                            {% for error in branding_form.website.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ branding_form.announcement.label_tag }}
+                            {{ branding_form.announcement }}
+                            {% if branding_form.announcement.help_text %}<small class="helper">{{ branding_form.announcement.help_text }}</small>{% endif %}
+                            {% for error in branding_form.announcement.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Alertes email</h3>
+                        <p class="helper">Controlez l'envoi des notifications par email.</p>
+                    </div>
+                    <div class="settings-toggle-grid">
+                        <div class="toggle-setting-card">
+                            <label class="toggle-setting-label" for="{{ branding_form.request_submission_email_enabled.id_for_label }}">
+                                <span>
+                                    <strong>Alertes email a la soumission</strong>
+                                    <small class="helper">Utilise l'adresse email definie dans ce panneau pour prevenir la Ressource Humain (RH) a chaque nouvelle demande.</small>
+                                </span>
+                                {{ branding_form.request_submission_email_enabled }}
+                            </label>
+                            {% for error in branding_form.request_submission_email_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3>Logo et illustration</h3>
+                        <p class="helper">Le logo est utilise sur la connexion, la navigation et les entetes. L'illustration est affichee sur la page de connexion.</p>
+                    </div>
+                    <div class="form-grid two">
+                        <div>
+                            {{ branding_form.logo_image.label_tag }}
+                            {{ branding_form.logo_image }}
+                            {% if branding_form.logo_image.help_text %}<small class="helper">{{ branding_form.logo_image.help_text }}</small>{% endif %}
+                            {% for error in branding_form.logo_image.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ branding_form.hero_image.label_tag }}
+                            {{ branding_form.hero_image }}
+                            {% if branding_form.hero_image.help_text %}<small class="helper">{{ branding_form.hero_image.help_text }}</small>{% endif %}
+                            {% for error in branding_form.hero_image.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
                 </div>
                 <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Enregistrer le logo et l'identite" data-confirm-message="Le nouveau logo sera applique a la connexion, a la navigation et aux entetes principaux." data-confirm-label="Oui, enregistrer" data-confirm-class="btn-primary"><i class="bi bi-stars"></i>Enregistrer l'identite</button>
             </form>

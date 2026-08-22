@@ -1,10 +1,16 @@
 from django.urls import path
 
 from apps.administration import views
+from apps.administration.calendar_views import (
+    calendar_employee_search_view,
+    calendar_view,
+)
 
 app_name = "administration"
 
 urlpatterns = [
+    path("calendrier/", calendar_view, name="calendar"),
+    path("calendrier/employes/recherche/", calendar_employee_search_view, name="calendar_employee_search"),
     path("tableau-de-bord/", views.dashboard_view, name="dashboard"),
     path("tableau-de-bord/donnees/", views.dashboard_data_view, name="dashboard_data"),
     path("presence/", views.presence_overview_view, name="presence_overview"),

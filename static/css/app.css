@@ -3968,47 +3968,157 @@ th {
     width: 100%;
 }
 
+/* --- Global summary bar --- */
+.leave-global-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 14px;
+    margin-bottom: 22px;
+}
+
+.leave-summary-item {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 16px 18px;
+    border-radius: var(--radius-md);
+    background: linear-gradient(180deg, rgba(37, 92, 58, 0.06), rgba(37, 92, 58, 0.02));
+    border: 1px solid rgba(37, 92, 58, 0.14);
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.leave-summary-item:hover {
+    border-color: rgba(37, 92, 58, 0.24);
+    box-shadow: 0 8px 20px rgba(24, 40, 28, 0.06);
+}
+
+.leave-summary-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    border-radius: 14px;
+    background: var(--green);
+    color: #fff;
+    font-size: 1.25rem;
+    flex-shrink: 0;
+}
+
+.leave-summary-copy {
+    display: grid;
+    gap: 2px;
+    min-width: 0;
+}
+
+.leave-summary-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--ink);
+}
+
+.leave-summary-label {
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--green);
+}
+
+.leave-summary-copy small {
+    font-size: 0.72rem;
+    color: var(--muted);
+}
+
+/* --- Year cards grid --- */
+.leave-window-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 14px;
+    width: 100%;
+}
+
 .leave-year-card {
     background: var(--card);
     border: 1px solid var(--border);
     border-radius: var(--radius-md);
-    padding: 14px 16px;
+    padding: 18px 16px;
     text-align: center;
-    transition: border-color 0.18s ease, box-shadow 0.18s ease;
+    transition: border-color 0.18s ease, box-shadow 0.18s ease, transform 0.18s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.leave-year-card::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: var(--green);
+    opacity: 0;
+    transition: opacity 0.2s ease;
 }
 
 .leave-year-card:hover {
     box-shadow: var(--shadow-soft);
+    transform: translateY(-2px);
+    border-color: rgba(37, 92, 58, 0.22);
+}
+
+.leave-year-card:hover::before {
+    opacity: 1;
 }
 
 .leave-year-card.blocked {
-    border-color: rgba(220, 53, 69, 0.3);
-    background: rgba(220, 53, 69, 0.03);
+    border-color: rgba(220, 53, 69, 0.28);
+    background: linear-gradient(180deg, rgba(220, 53, 69, 0.04), rgba(255, 255, 255, 0.9));
+}
+
+.leave-year-card.blocked::before {
+    background: #c0392b;
+    opacity: 1;
+}
+
+.leave-year-card.priority {
+    border-color: rgba(156, 107, 28, 0.35);
+    background: linear-gradient(180deg, rgba(156, 107, 28, 0.05), rgba(255, 255, 255, 0.92));
+    box-shadow: 0 8px 24px rgba(156, 107, 28, 0.08);
+}
+
+.leave-year-card.priority::before {
+    background: var(--amber);
+    opacity: 1;
 }
 
 .leave-year-header {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: space-between;
     gap: 10px;
-    margin-bottom: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
 }
 
 .leave-year {
-    font-size: 1.3rem;
-    font-weight: 700;
+    font-size: 1.35rem;
+    font-weight: 800;
     color: var(--ink);
+    letter-spacing: -0.01em;
 }
 
 .leave-status-badge {
     display: inline-flex;
     align-items: center;
-    gap: 4px;
-    padding: 3px 10px;
-    border-radius: 20px;
+    gap: 5px;
+    padding: 5px 12px;
+    border-radius: 999px;
     font-size: 0.72rem;
-    font-weight: 600;
+    font-weight: 700;
     white-space: nowrap;
+    letter-spacing: 0.02em;
 }
 
 .leave-status-badge.blocked {
@@ -4023,11 +4133,54 @@ th {
     border: 1px solid rgba(37, 92, 58, 0.3);
 }
 
+.leave-status-badge.priority-badge {
+    background: rgba(156, 107, 28, 0.14);
+    color: var(--amber);
+    border: 1px solid rgba(156, 107, 28, 0.32);
+}
+
+/* --- Hero number (remaining days) --- */
+.leave-year-hero {
+    display: grid;
+    gap: 4px;
+    margin-bottom: 16px;
+    padding: 10px 0;
+}
+
+.leave-year-remaining {
+    font-size: 2.6rem;
+    font-weight: 800;
+    line-height: 1;
+    color: var(--ink);
+    letter-spacing: -0.02em;
+}
+
+.leave-year-hero span {
+    font-size: 0.7rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+}
+
+.leave-year-card.blocked .leave-year-remaining {
+    color: #c0392b;
+}
+
+.leave-year-card.priority .leave-year-remaining {
+    color: var(--amber);
+}
+
+/* --- Details rows --- */
 .leave-year-details {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    margin-bottom: 8px;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(37, 92, 58, 0.04);
+    border: 1px solid rgba(37, 92, 58, 0.08);
 }
 
 .leave-detail {
@@ -4048,15 +4201,159 @@ th {
     font-weight: 700;
 }
 
-.leave-status-text {
+/* --- Progress bar --- */
+.leave-progress-block {
+    margin-bottom: 12px;
+}
+
+.leave-progress-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(37, 92, 58, 0.1);
+    overflow: hidden;
+    position: relative;
+}
+
+.leave-progress-fill {
+    height: 100%;
+    width: 0;
+    border-radius: 999px;
+    background: linear-gradient(90deg, var(--green), #3d8b5c);
+    transition: width 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.leave-progress-fill.blocked {
+    background: linear-gradient(90deg, #c0392b, #e07a6a);
+}
+
+.leave-progress-labels {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
     font-size: 0.72rem;
+    color: var(--muted);
+}
+
+.leave-progress-labels span:first-child {
+    font-weight: 600;
+    color: var(--ink);
+}
+
+/* --- Status text --- */
+.leave-status-text {
+    font-size: 0.74rem;
     color: var(--muted);
     font-style: italic;
     margin-top: 4px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    justify-content: center;
+    width: 100%;
 }
 
 .leave-year-card.blocked .leave-status-text {
     color: #c0392b;
+}
+
+.leave-status-text.priority-text {
+    color: var(--amber);
+    font-weight: 600;
+    font-style: normal;
+}
+
+/* --- Divider --- */
+.leave-window-divider {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    margin: 24px 0 16px;
+    color: var(--muted);
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.leave-window-divider::before,
+.leave-window-divider::after {
+    content: "";
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+}
+
+/* --- Recovery cards --- */
+.recovery-grid {
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+
+.leave-year-card.recovery-card {
+    border-color: rgba(61, 77, 95, 0.2);
+    background: linear-gradient(180deg, rgba(61, 77, 95, 0.04), rgba(255, 255, 255, 0.9));
+}
+
+.leave-year-card.recovery-card::before {
+    background: var(--slate);
+    opacity: 1;
+}
+
+.leave-year-card.recovery-card .leave-year {
+    font-size: 1.1rem;
+}
+
+.leave-year-card.recovery-card .leave-year-details {
+    background: rgba(61, 77, 95, 0.05);
+    border-color: rgba(61, 77, 95, 0.1);
+}
+
+.leave-year-card.recovery-card .leave-status-text {
+    color: var(--slate);
+    font-style: normal;
+    font-weight: 600;
+}
+
+/* --- Dark theme adjustments --- */
+[data-theme="dark"] .leave-summary-item {
+    background: linear-gradient(180deg, rgba(158, 215, 175, 0.08), rgba(158, 215, 175, 0.03));
+    border-color: rgba(158, 215, 175, 0.16);
+}
+
+[data-theme="dark"] .leave-summary-icon {
+    background: var(--green);
+    color: #0f1512;
+}
+
+[data-theme="dark"] .leave-year-card {
+    background: rgba(18, 25, 21, 0.88);
+}
+
+[data-theme="dark"] .leave-year-card.blocked {
+    background: linear-gradient(180deg, rgba(220, 53, 69, 0.08), rgba(18, 25, 21, 0.88));
+}
+
+[data-theme="dark"] .leave-year-card.priority {
+    background: linear-gradient(180deg, rgba(156, 107, 28, 0.1), rgba(18, 25, 21, 0.88));
+}
+
+[data-theme="dark"] .leave-year-details {
+    background: rgba(158, 215, 175, 0.06);
+    border-color: rgba(158, 215, 175, 0.1);
+}
+
+[data-theme="dark"] .leave-progress-bar {
+    background: rgba(158, 215, 175, 0.12);
+}
+
+[data-theme="dark"] .leave-year-card.recovery-card {
+    background: linear-gradient(180deg, rgba(61, 77, 95, 0.1), rgba(18, 25, 21, 0.88));
+}
+
+[data-theme="dark"] .leave-year-card.recovery-card .leave-year-details {
+    background: rgba(61, 77, 95, 0.12);
+    border-color: rgba(61, 77, 95, 0.18);
 }
 
 /* === Floating window overlay for 3-year leave window === */
@@ -4083,6 +4380,11 @@ th {
     box-shadow: var(--shadow);
     overflow: hidden;
     animation: riseUp 0.3s ease;
+}
+
+.floating-window-panel-wide {
+    width: min(100%, 1100px);
+    max-height: min(100vh - 40px, 92vh);
 }
 
 .floating-window-header {
