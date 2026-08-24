@@ -68,13 +68,13 @@ class GlobalExceptionMiddleware:
             except Exception:
                 logger.warning("Notification IT impossible pour %s", error_id)
 
-        # 3. Rendre la page 500 professionnelle
+        # 3. Rendre la page 500 professionnelle (template existant)
         context = {
             "error_id": error_id,
         }
         return render(
             request,
-            "error_handling/500.html",
+            "errors/500.html",
             context,
             status=500,
         )
