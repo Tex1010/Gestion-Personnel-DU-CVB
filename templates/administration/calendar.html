@@ -1,29 +1,30 @@
 {% extends "base.html" %}
+{% load static %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
 {% block extra_head %}
-<link href="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/css/tom-select.min.css" rel="stylesheet">
+<link href="{% static 'css/tom-select.min.css' %}" rel="stylesheet">
 {% endblock %}
 
 {% block content %}
 <section class="page-section calendar-page">
     <div class="section-header">
         <div>
-            <span class="eyebrow">📅 Calendrier</span>
-            <h1>{% if can_search_employees %}Calendrier du personnel{% else %}Mon calendrier{% endif %}</h1>
-            <p>Visualisez les congés, absences et récupérations sur une année complète.</p>
+            <span class="eyebrow"><span data-i18n="calendarEventDatePrefix">📅</span> <span data-i18n="calendar">Calendrier</span></span>
+            <h1 data-i18n="{% if can_search_employees %}calendarTitleStaff{% else %}calendarTitleSelf{% endif %}">{% if can_search_employees %}Calendrier du personnel{% else %}Mon calendrier{% endif %}</h1>
+            <p data-i18n="calendarDescription">Visualisez les congés, absences et récupérations sur une année complète.</p>
         </div>
         <div class="header-actions">
             {% if can_search_employees %}
                 <a href="{% url 'administration:presence_overview' %}" class="btn-secondary">
                     <i class="bi bi-arrow-left"></i>
-                    Congés & absences
+                    <span data-i18n="calendarBackToPresence">Congés & absences</span>
                 </a>
             {% else %}
                 <a href="{% url 'personnel:dashboard' %}" class="btn-secondary">
                     <i class="bi bi-arrow-left"></i>
-                    Retour
+                    <span data-i18n="calendarBackToDashboard">Retour</span>
                 </a>
             {% endif %}
         </div>
@@ -35,21 +36,16 @@
                 <div class="calendar-toolbar-field calendar-employee-field">
                     <label class="calendar-toolbar-label" for="calendarEmployeeSelect">
                         <i class="bi bi-person-badge"></i>
-                        Employé
+                        <span data-i18n="calendarEmployeeLabel">Employé</span>
                     </label>
-                    <select id="calendarEmployeeSelect" placeholder="Rechercher un employé..." class="tom-select-employee">
+                    <select id="calendarEmployeeSelect" class="tom-select-employee">
                         <option value=""></option>
-                        {% for emp in calendar_employees %}
-                            <option value="{{ emp.id }}" {% if calendar_employee and emp.id == calendar_employee.id %}selected{% endif %}>
-                                {{ emp.display_name }}{% if emp.position %} | {{ emp.position }}{% endif %}{% if emp.department %} | {{ emp.department }}{% endif %}
-                            </option>
-                        {% endfor %}
                     </select>
                     <small class="calendar-toolbar-helper" id="calendarEmployeeHelper">
                         {% if calendar_employee %}
-                            {{ calendar_employee.display_name }} — {{ calendar_employee.position|default:"Poste non renseigné" }}{% if calendar_employee.department %} · {{ calendar_employee.department.name }}{% endif %}
+                            {{ calendar_employee.display_name }} — {% if calendar_employee.position %}{{ calendar_employee.position }}{% else %}<span data-i18n="calendarPositionNotSet">Poste non renseigné</span>{% endif %}{% if calendar_employee.department %} · {{ calendar_employee.department.name }}{% endif %}
                         {% else %}
-                            Commencez à taper un nom, un prénom ou un matricule pour rechercher.
+                            <span data-i18n="employeeHelper">Commencez à taper un nom, un prénom ou un matricule pour rechercher.</span>
                         {% endif %}
                     </small>
                 </div>
@@ -57,20 +53,20 @@
                 <div class="calendar-toolbar-field calendar-self-field">
                     <label class="calendar-toolbar-label">
                         <i class="bi bi-person-heart"></i>
-                        Mon calendrier
+                        <span data-i18n="myCalendar">Mon calendrier</span>
                     </label>
                     <strong class="calendar-self-name">{{ calendar_employee.display_name|default:"" }}</strong>
-                    <small class="calendar-toolbar-helper">{{ calendar_employee.position|default:"Poste non renseigné" }}{% if calendar_employee.department %} · {{ calendar_employee.department.name }}{% endif %}</small>
+                    <small class="calendar-toolbar-helper">{% if calendar_employee.position %}{{ calendar_employee.position }}{% else %}<span data-i18n="calendarPositionNotSet">Poste non renseigné</span>{% endif %}{% if calendar_employee.department %} · {{ calendar_employee.department.name }}{% endif %}</small>
                 </div>
             {% endif %}
 
             <div class="calendar-toolbar-field">
                 <label class="calendar-toolbar-label" for="calendarYearSelect">
                     <i class="bi bi-calendar3"></i>
-                    Année
+                    <span data-i18n="calendarYearLabel">Année</span>
                 </label>
                 <div class="calendar-year-controls">
-                    <button type="button" class="btn-secondary calendar-year-nav" id="calendarYearPrev" title="Année précédente" aria-label="Année précédente">
+                    <button type="button" class="btn-secondary calendar-year-nav" id="calendarYearPrev" data-i18n-title="calendarPreviousYear" data-i18n-aria-label="calendarPreviousYear">
                         <i class="bi bi-chevron-left"></i>
                     </button>
                     <select id="calendarYearSelect" class="form-select calendar-year-select">
@@ -78,7 +74,7 @@
                             <option value="{{ year_option }}" {% if year_option == selected_year %}selected{% endif %}>{{ year_option }}</option>
                         {% endfor %}
                     </select>
-                    <button type="button" class="btn-secondary calendar-year-nav" id="calendarYearNext" title="Année suivante" aria-label="Année suivante">
+                    <button type="button" class="btn-secondary calendar-year-nav" id="calendarYearNext" data-i18n-title="calendarNextYear" data-i18n-aria-label="calendarNextYear">
                         <i class="bi bi-chevron-right"></i>
                     </button>
                 </div>
@@ -87,23 +83,28 @@
             <div class="calendar-toolbar-field">
                 <label class="calendar-toolbar-label">
                     <i class="bi bi-funnel"></i>
-                    Événements RH
+                    <span data-i18n="calendarRhEventsLabel">Événements RH</span>
                 </label>
                 <div class="calendar-filter-toggles">
                     <label class="calendar-filter-chip leave">
                         <input type="checkbox" id="calendarFilterLeave" {% if include_leave %}checked{% endif %}>
                         <span class="calendar-filter-dot leave"></span>
-                        <span>Congés</span>
+                        <span data-i18n="leave">Congés</span>
                     </label>
                     <label class="calendar-filter-chip absence">
                         <input type="checkbox" id="calendarFilterAbsence" {% if include_absence %}checked{% endif %}>
                         <span class="calendar-filter-dot absence"></span>
-                        <span>Absences</span>
+                        <span data-i18n="absence">Absences</span>
                     </label>
                     <label class="calendar-filter-chip recovery">
                         <input type="checkbox" id="calendarFilterRecovery" {% if include_recovery %}checked{% endif %}>
                         <span class="calendar-filter-dot recovery"></span>
-                        <span>Récupérations</span>
+                        <span data-i18n="recovery">Récupérations</span>
+                    </label>
+                    <label class="calendar-filter-chip hr-events">
+                        <input type="checkbox" id="calendarFilterHREvents" {% if include_hr_events %}checked{% endif %}>
+                        <span class="calendar-filter-dot hr-events"></span>
+                        <span data-i18n="hrEvents">Événements RH</span>
                     </label>
                 </div>
             </div>
@@ -111,16 +112,19 @@
 
         <div class="calendar-toolbar-footer">
             <div class="calendar-legend">
-                <span class="calendar-legend-title">Légende</span>
-                <span class="calendar-legend-item"><span class="calendar-filter-dot leave"></span> Congé</span>
-                <span class="calendar-legend-item"><span class="calendar-filter-dot absence"></span> Absence</span>
-                <span class="calendar-legend-item"><span class="calendar-filter-dot recovery"></span> Récupération</span>
-                <span class="calendar-legend-item"><span class="calendar-filter-dot holiday"></span> Jour férié</span>
-                <span class="calendar-legend-item"><span class="calendar-filter-dot weekend"></span> Week-end</span>
+                <span class="calendar-legend-title" data-i18n="legend">Légende</span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot leave"></span> <span data-i18n="leave">Congé</span></span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot absence"></span> <span data-i18n="absence">Absence</span></span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot recovery"></span> <span data-i18n="recovery">Récupération</span></span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot family-event"></span> <span data-i18n="familyEvent">Événement familial</span></span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot medical-leave"></span> <span data-i18n="medicalLeave">Repos médical</span></span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot sick-absence"></span> <span data-i18n="sickAbsence">Absence maladie</span></span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot holiday"></span> <span data-i18n="holiday">Jour férié</span></span>
+                <span class="calendar-legend-item"><span class="calendar-filter-dot weekend"></span> <span data-i18n="weekend">Week-end</span></span>
             </div>
-            <div class="calendar-sync-status" id="calendarSyncStatus" title="Mise à jour automatique">
+            <div class="calendar-sync-status" id="calendarSyncStatus" data-i18n-title="synchronized">
                 <span class="sync-dot"></span>
-                <span id="calendarSyncLabel">Synchronisé</span>
+                <span id="calendarSyncLabel" data-i18n="synchronized">Synchronisé</span>
             </div>
         </div>
     </article>
@@ -128,7 +132,7 @@
     {% if can_search_employees and not calendar_employee %}
         <div class="calendar-no-selection-banner">
             <i class="bi bi-person-plus"></i>
-            <span>Veuillez sélectionner un employé pour afficher son calendrier.</span>
+            <span data-i18n="noEmployeeSelected">Veuillez sélectionner un employé pour afficher son calendrier.</span>
         </div>
     {% endif %}
 
@@ -142,42 +146,55 @@
                 {% endif %}
             </div>
             <div class="calendar-employee-summary-identity">
-                <span class="eyebrow">Employé sélectionné</span>
+                <span class="eyebrow" data-i18n="selectedEmployee">Employé sélectionné</span>
                 <h3>{{ calendar_employee.display_name }}</h3>
-                <small>{{ calendar_employee.position|default:"Poste non renseigné" }}{% if calendar_employee.department %} · {{ calendar_employee.department.name }}{% endif %}</small>
+                <small>{% if calendar_employee.position %}{{ calendar_employee.position }}{% else %}<span data-i18n="calendarPositionNotSet">Poste non renseigné</span>{% endif %}{% if calendar_employee.department %} · {{ calendar_employee.department.name }}{% endif %}</small>
             </div>
             <div class="calendar-employee-summary-stats">
                 <div class="calendar-summary-stat">
-                    <span class="calendar-summary-stat-label">Congés</span>
+                    <span class="calendar-summary-stat-label" data-i18n="leave">Congés</span>
                     <strong id="calendarSummaryLeave" class="stat-leave">{{ summary_leave }}</strong>
                 </div>
                 <div class="calendar-summary-stat">
-                    <span class="calendar-summary-stat-label">Absences</span>
+                    <span class="calendar-summary-stat-label" data-i18n="absence">Absences</span>
                     <strong id="calendarSummaryAbsence" class="stat-absence">{{ summary_absence }}</strong>
                 </div>
                 <div class="calendar-summary-stat">
-                    <span class="calendar-summary-stat-label">Récupérations</span>
+                    <span class="calendar-summary-stat-label" data-i18n="recovery">Récupérations</span>
                     <strong id="calendarSummaryRecovery" class="stat-recovery">{{ summary_recovery }}</strong>
+                </div>
+                <div class="calendar-summary-stat">
+                    <span class="calendar-summary-stat-label" data-i18n="familyEvent">Événements familiaux</span>
+                    <strong id="calendarSummaryFamilyEvent" class="stat-family-event">{{ summary_family_event }}</strong>
+                </div>
+                <div class="calendar-summary-stat">
+                    <span class="calendar-summary-stat-label" data-i18n="medicalLeave">Repos médical</span>
+                    <strong id="calendarSummaryMedicalLeave" class="stat-medical-leave">{{ summary_medical_leave }}</strong>
+                </div>
+                <div class="calendar-summary-stat">
+                    <span class="calendar-summary-stat-label" data-i18n="sickAbsence">Absences maladie</span>
+                    <strong id="calendarSummarySickAbsence" class="stat-sick-absence">{{ summary_sick_absence }}</strong>
                 </div>
             </div>
         </article>
     {% endif %}
 
+    {% if calendar_employee %}
     <div class="calendar-months-grid" id="calendarMonthsGrid">
         {% for month in months %}
             <article class="card calendar-month-card" data-month="{{ forloop.counter0 }}">
                 <div class="calendar-month-header">
-                    <h2>{{ month.name }}</h2>
+                    <h2 data-i18n="month{{ forloop.counter0 }}">{{ month.name }}</h2>
                     <span class="calendar-month-year">{{ selected_year }}</span>
                 </div>
                 <div class="calendar-weekdays" aria-hidden="true">
-                    <span>Lun</span>
-                    <span>Mar</span>
-                    <span>Mer</span>
-                    <span>Jeu</span>
-                    <span>Ven</span>
-                    <span>Sam</span>
-                    <span>Dim</span>
+                    <span data-i18n="calendarWeekdayMon">Lun</span>
+                    <span data-i18n="calendarWeekdayTue">Mar</span>
+                    <span data-i18n="calendarWeekdayWed">Mer</span>
+                    <span data-i18n="calendarWeekdayThu">Jeu</span>
+                    <span data-i18n="calendarWeekdayFri">Ven</span>
+                    <span data-i18n="calendarWeekdaySat">Sam</span>
+                    <span data-i18n="calendarWeekdaySun">Dim</span>
                 </div>
                 <div class="calendar-days">
                     {% for week in month.weeks %}
@@ -193,13 +210,14 @@
                                                 {% for event in cell.events %}
                                                     <div class="calendar-tooltip-event {{ event.type }}">
                                                         <span class="calendar-tooltip-label">
-                                                            {% if event.type == "leave" %}🟢 Congé{% elif event.type == "absence" %}🔴 Absence{% elif event.type == "recovery" %}🔵 Récupération{% endif %}
+                                                            {% if event.type == "leave" %}🟢{% elif event.type == "absence" %}🔴{% elif event.type == "recovery" %}🔵{% elif event.type == "family_event" %}🟣{% elif event.type == "medical_leave" %}🟠{% elif event.type == "sick_absence" %}⚫{% else %}📌{% endif %}
+                                                            <span data-i18n="{{ event.type }}">{{ event.type_label|default:event.type }}</span>
                                                         </span>
-                                                        <span class="badge {% if event.status == "approved" %}approved{% else %}submitted{% endif %}">{{ event.status_label }}</span>
+                                                        <span class="badge {% if event.status == "approved" or event.status == "active" %}approved{% elif event.status == "cancelled" %}cancelled{% elif event.status == "rejected" %}rejected{% elif event.status == "draft" %}draft{% else %}submitted{% endif %}">{{ event.status_label }}</span>
                                                         {% if event.total_days and event.total_days != "0" %}
-                                                            <span class="calendar-tooltip-duration">{{ event.total_days }} jour(s)</span>
+                                                            <span class="calendar-tooltip-duration">{{ event.total_days }} <span data-i18n="days">jour(s)</span></span>
                                                         {% elif event.recovery_duration_hours %}
-                                                            <span class="calendar-tooltip-duration">{{ event.recovery_duration_hours }} heure(s)</span>
+                                                            <span class="calendar-tooltip-duration">{{ event.recovery_duration_hours }} <span data-i18n="hours">heure(s)</span></span>
                                                         {% endif %}
                                                     </div>
                                                 {% endfor %}
@@ -210,7 +228,7 @@
                                     {% if cell.events %}
                                         <span class="calendar-day-events">
                                             {% for event in cell.events %}
-                                                <span class="calendar-day-event-badge {{ event.type }}" title="{% if event.type == "leave" %}Congé{% elif event.type == "absence" %}Absence{% else %}Récupération{% endif %}"></span>
+                                                <span class="calendar-day-event-badge {{ event.type }}" data-i18n-title="{{ event.type }}" title="{% if event.type == "leave" %}Congé{% elif event.type == "absence" %}Absence{% elif event.type == "recovery" %}Récupération{% elif event.type == "family_event" %}Événement familial{% elif event.type == "medical_leave" %}Repos médical{% elif event.type == "sick_absence" %}Absence maladie{% else %}Événement{% endif %}"></span>
                                             {% endfor %}
                                         </span>
                                     {% endif %}
@@ -224,6 +242,7 @@
             </article>
         {% endfor %}
     </div>
+    {% endif %}
 </section>
 
 <div class="modal fade" id="calendarEventModal" tabindex="-1" aria-hidden="true">
@@ -231,20 +250,20 @@
         <div class="modal-content">
             <div class="modal-header border-0 pb-0">
                 <div>
-                    <span class="eyebrow" id="calendarEventEyebrow">Événement</span>
+                    <span class="eyebrow" id="calendarEventEyebrow" data-i18n="calendarEventModalEyebrow">Événement</span>
                     <h5 class="modal-title mt-2" id="calendarEventTitle"></h5>
                 </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer" data-i18n-aria-label="close"></button>
             </div>
             <div class="modal-body" id="calendarEventBody"></div>
             <div class="modal-footer border-0">
-                <button type="button" class="btn-secondary" data-bs-dismiss="modal">Fermer</button>
+                <button type="button" class="btn-secondary" data-bs-dismiss="modal" data-i18n="calendarEventModalClose">Fermer</button>
             </div>
         </div>
     </div>
 </div>
 
-<script src="https://cdn.jsdelivr.net/npm/tom-select@2.3.1/dist/js/tom-select.complete.min.js"></script>
+<script src="{% static 'js/tom-select.complete.min.js' %}"></script>
 <script>
 document.addEventListener("DOMContentLoaded", function() {
     "use strict";
@@ -254,20 +273,41 @@ document.addEventListener("DOMContentLoaded", function() {
     const eventModal = document.getElementById("calendarEventModal");
     const eventModalInstance = eventModal ? bootstrap.Modal.getOrCreateInstance(eventModal) : null;
 
+    // Translation helper
+    const translate = window.traeI18n?.translateText || function(v) { return v; };
+    const formatTranslated = window.traeI18n?.formatTranslated || function(template, params) {
+        let result = template;
+        if (params) {
+            Object.keys(params).forEach(function(key) {
+                result = result.replace('{' + key + '}', params[key]);
+            });
+        }
+        return result;
+    };
+
     const TYPE_LABELS = {
-        leave: "Congé",
-        absence: "Absence",
-        recovery: "Récupération"
+        leave: translate("leave"),
+        absence: translate("absence"),
+        recovery: translate("recovery"),
+        family_event: translate("familyEvent"),
+        medical_leave: translate("medicalLeave"),
+        sick_absence: translate("sickAbsence")
     };
     const TYPE_ICONS = {
         leave: "🟢",
         absence: "🔴",
-        recovery: "🔵"
+        recovery: "🔵",
+        family_event: "🟣",
+        medical_leave: "🟠",
+        sick_absence: "⚫"
     };
     const TYPE_CSS = {
         leave: "leave",
         absence: "absence",
-        recovery: "recovery"
+        recovery: "recovery",
+        family_event: "family-event",
+        medical_leave: "medical-leave",
+        sick_absence: "sick-absence"
     };
 
     function formatDisplayDate(isoDate) {
@@ -279,8 +319,18 @@ document.addEventListener("DOMContentLoaded", function() {
     //  Event detail modal (client-side from server-rendered data)
     // ----------------------------------------------------------------
     function eventStatusBadge(event) {
-        const statusClass = event.status === "approved" ? "approved" : "submitted";
-        return '<span class="badge ' + statusClass + '">' + (event.status_label || event.status) + "</span>";
+        const status = event.status || "";
+        let statusClass = "submitted";
+        if (status === "approved" || status === "active") {
+            statusClass = "approved";
+        } else if (status === "cancelled") {
+            statusClass = "cancelled";
+        } else if (status === "rejected") {
+            statusClass = "rejected";
+        } else if (status === "draft") {
+            statusClass = "draft";
+        }
+        return '<span class="badge ' + statusClass + '">' + (event.status_label || status) + "</span>";
     }
 
     function buildEventDetail(event) {
@@ -288,44 +338,46 @@ document.addEventListener("DOMContentLoaded", function() {
         const label = TYPE_LABELS[event.type] || event.type;
         const cssClass = TYPE_CSS[event.type] || "other";
         const dateLabel = event.recovery_work_date || event.date || event.start_date;
+        const daysUnit = translate("days");
+        const hoursUnit = translate("hours");
 
         let rows = "";
         if (event.employee_name && event.employee_id) {
-            rows += '<div class="calendar-event-row"><span>Employé</span><strong>' + event.employee_name + "</strong></div>";
+            rows += '<div class="calendar-event-row"><span>' + translate("employee") + '</span><strong>' + event.employee_name + "</strong></div>";
         }
         if (event.request_type_label) {
-            rows += '<div class="calendar-event-row"><span>Type</span><strong>' + event.request_type_label + "</strong></div>";
+            rows += '<div class="calendar-event-row"><span>' + translate("type") + '</span><strong>' + event.request_type_label + "</strong></div>";
         }
         if (event.status_label) {
-            rows += '<div class="calendar-event-row"><span>Statut</span>' + eventStatusBadge(event) + "</div>";
+            rows += '<div class="calendar-event-row"><span>' + translate("status") + '</span>' + eventStatusBadge(event) + "</div>";
         }
         if (dateLabel) {
-            rows += '<div class="calendar-event-row"><span>Date</span><strong>' + dateLabel + "</strong></div>";
+            rows += '<div class="calendar-event-row"><span>' + translate("date") + '</span><strong>' + dateLabel + "</strong></div>";
         }
         if (event.start_date && event.end_date && event.start_date !== event.end_date) {
-            rows += '<div class="calendar-event-row"><span>Période</span><strong>' + event.start_date + " → " + event.end_date + "</strong></div>";
+            rows += '<div class="calendar-event-row"><span>' + translate("period") + '</span><strong>' + event.start_date + " → " + event.end_date + "</strong></div>";
         }
         if (event.total_days && event.total_days !== "0") {
-            const unit = event.type === "recovery" ? "heure(s)" : "jour(s)";
-            rows += '<div class="calendar-event-row"><span>Durée</span><strong>' + event.total_days + " " + unit + "</strong></div>";
+            const unit = event.type === "recovery" ? hoursUnit : daysUnit;
+            rows += '<div class="calendar-event-row"><span>' + translate("duration") + '</span><strong>' + event.total_days + " " + unit + "</strong></div>";
         }
         if (event.recovery_start_time && event.recovery_end_time) {
-            rows += '<div class="calendar-event-row"><span>Heures</span><strong>' + event.recovery_start_time + " → " + event.recovery_end_time + "</strong></div>";
+            rows += '<div class="calendar-event-row"><span>' + translate("hours") + '</span><strong>' + event.recovery_start_time + " → " + event.recovery_end_time + "</strong></div>";
         }
         if (event.recovery_duration_hours && event.recovery_duration_hours !== "0") {
-            rows += '<div class="calendar-event-row"><span>Durée récupération</span><strong>' + event.recovery_duration_hours + " heure(s)</strong></div>";
+            rows += '<div class="calendar-event-row"><span>' + translate("duration") + ' (' + translate("recovery") + ')</span><strong>' + event.recovery_duration_hours + " " + hoursUnit + "</strong></div>";
         }
         if (event.is_holiday) {
-            rows += '<div class="calendar-event-row"><span>Férié</span><strong>Oui</strong></div>';
+            rows += '<div class="calendar-event-row"><span>' + translate("holiday") + '</span><strong>' + translate("yes") + '</strong></div>';
         }
         if (event.reason) {
-            rows += '<div class="calendar-event-row"><span>Motif</span><strong>' + event.reason + "</strong></div>";
+            rows += '<div class="calendar-event-row"><span>' + translate("reason") + '</span><strong>' + event.reason + "</strong></div>";
         }
         if (event.project_name) {
-            rows += '<div class="calendar-event-row"><span>Projet</span><strong>' + event.project_name + "</strong></div>";
+            rows += '<div class="calendar-event-row"><span>' + translate("project") + '</span><strong>' + event.project_name + "</strong></div>";
         }
         if (event.label) {
-            rows += '<div class="calendar-event-row"><span>Détail</span><strong>' + event.label + "</strong></div>";
+            rows += '<div class="calendar-event-row"><span>' + translate("detail") + '</span><strong>' + event.label + "</strong></div>";
         }
 
         return (
@@ -338,7 +390,6 @@ document.addEventListener("DOMContentLoaded", function() {
             "</div>"
         );
     }
-
     function openEventModal(dateKey, dayCell) {
         if (!eventModalInstance) return;
         const events = eventsByDate[dateKey] || [];
@@ -346,8 +397,8 @@ document.addEventListener("DOMContentLoaded", function() {
         const title = document.getElementById("calendarEventTitle");
         const eyebrow = document.getElementById("calendarEventEyebrow");
         const body = document.getElementById("calendarEventBody");
-        if (title) title.textContent = "📅 " + formatDisplayDate(dateKey);
-        if (eyebrow) eyebrow.textContent = events.length + " événement(s)";
+        if (title) title.textContent = (translate("calendarEventDatePrefix") || "📅") + " " + formatDisplayDate(dateKey);
+        if (eyebrow) eyebrow.textContent = formatTranslated(translate("calendarEventCount"), { n: events.length });
         if (body) {
             body.innerHTML = events.map(buildEventDetail).join('<hr class="calendar-event-divider">');
         }
@@ -379,12 +430,12 @@ document.addEventListener("DOMContentLoaded", function() {
         if (!label) return;
         const seconds = Math.max(0, Math.floor((Date.now() - lastSyncTime) / 1000));
         if (seconds < 5) {
-            label.textContent = "Synchronisé à l'instant";
+            label.textContent = translate("synchronizedJustNow");
         } else if (seconds < 60) {
-            label.textContent = "Synchronisé il y a " + seconds + " s";
+            label.textContent = formatTranslated(translate("synchronizedSecondsAgo"), { n: seconds });
         } else {
             const minutes = Math.floor(seconds / 60);
-            label.textContent = "Synchronisé il y a " + minutes + " min";
+            label.textContent = formatTranslated(translate("synchronizedMinutesAgo"), { n: minutes });
         }
     }
     window.setInterval(updateSyncLabel, 1000);
@@ -397,40 +448,90 @@ document.addEventListener("DOMContentLoaded", function() {
     const yearSelect = document.getElementById("calendarYearSelect");
 
     if (employeeSelect && typeof TomSelect !== "undefined") {
-        new TomSelect(employeeSelect, {
-            maxOptions: 300,
-            sortField: [
-                { field: "$order" },
-                { field: "$score" }
-            ],
-            searchField: ["text"],
-            placeholder: "Rechercher un employé...",
-            allowEmptyOption: true,
-            onChange: function(value) {
-                const params = new URLSearchParams(window.location.search);
-                params.set("year", yearSelect ? String(yearSelect.value) : String(selectedYear));
-                if (value) {
-                    params.set("employee", value);
-                } else {
-                    params.delete("employee");
-                }
-                window.location.href = window.location.pathname + "?" + params.toString();
-            },
-            render: {
-                option: function(data, escape) {
-                    const text = data.text;
-                    const parts = text.split(" | ");
-                    if (parts.length >= 2) {
-                        const name = parts[0];
-                        const extra = parts.slice(1).join(" | ");
-                        return '<div class="ts-option-custom">' +
-                            '<span class="ts-option-name">' + escape(name) + "</span>" +
-                            '<span class="ts-option-extra">' + escape(extra) + "</span>" +
-                            "</div>";
+        try {
+            new TomSelect(employeeSelect, {
+                maxOptions: 300,
+                shouldLoad: function(query) { return true; },
+                preload: "focus",
+                sortField: [
+                    { field: "$order" },
+                    { field: "$score" }
+                ],
+                searchField: ["text"],
+                placeholder: translate("employeeSearchPlaceholder"),
+                valueField: "id",
+                labelField: "text",
+                noResults: translate("noSearchResults") || "",
+                load: function(query, callback) {
+                    const params = new URLSearchParams();
+                    params.set("term", query);
+                    params.set("year", yearSelect ? String(yearSelect.value) : String(selectedYear));
+                    fetch("{% url 'administration:calendar_employee_search' %}?" + params.toString(), {
+                        headers: { "X-Requested-With": "fetch" }
+                    })
+                    .then(response => response.json())
+                    .then(data => {
+                        const results = (data.results || []).map(function(item) {
+                            return {
+                                id: item.id,
+                                text: [item.display_name, item.position, item.department].filter(Boolean).join(" | "),
+                                order: item.display_name,
+                                score: 0
+                            };
+                        });
+                        callback(results);
+                    })
+                    .catch(() => callback());
+                },
+                onItemAdd: function(value) {
+                    const params = new URLSearchParams(window.location.search);
+                    params.set("year", yearSelect ? String(yearSelect.value) : String(selectedYear));
+                    if (value) {
+                        params.set("employee", value);
+                    } else {
+                        params.delete("employee");
                     }
-                    return "<div>" + escape(text) + "</div>";
+                    window.location.href = window.location.pathname + "?" + params.toString();
+                },
+                onItemRemove: function() {
+                    const params = new URLSearchParams(window.location.search);
+                    params.set("year", yearSelect ? String(yearSelect.value) : String(selectedYear));
+                    params.delete("employee");
+                    window.location.href = window.location.pathname + "?" + params.toString();
+                },
+                render: {
+                    option: function(data, escape) {
+                        const text = data.text;
+                        const parts = text.split(" | ");
+                        if (parts.length >= 2) {
+                            const name = parts[0];
+                            const extra = parts.slice(1).join(" | ");
+                            return '<div class="ts-option-custom">' +
+                                '<span class="ts-option-name">' + escape(name) + "</span>" +
+                                '<span class="ts-option-extra">' + escape(extra) + "</span>" +
+                                "</div>";
+                        }
+                        return "<div>" + escape(text) + "</div>";
+                    }
                 }
+            });
+        } catch (error) {
+            console.error("Tom Select initialization failed:", error);
+        }
+    }
+
+    // Fallback: native change handler in case Tom Select is unavailable or fails
+    if (employeeSelect && !employeeSelect.dataset.tsInitialized) {
+        employeeSelect.addEventListener("change", function() {
+            const params = new URLSearchParams(window.location.search);
+            params.set("year", yearSelect ? String(yearSelect.value) : String(selectedYear));
+            const value = employeeSelect.value;
+            if (value) {
+                params.set("employee", value);
+            } else {
+                params.delete("employee");
             }
+            window.location.href = window.location.pathname + "?" + params.toString();
         });
     }
 
@@ -472,6 +573,7 @@ document.addEventListener("DOMContentLoaded", function() {
     const filterLeave = document.getElementById("calendarFilterLeave");
     const filterAbsence = document.getElementById("calendarFilterAbsence");
     const filterRecovery = document.getElementById("calendarFilterRecovery");
+    const filterHREvents = document.getElementById("calendarFilterHREvents");
 
     function applyFilters() {
         const params = new URLSearchParams(window.location.search);
@@ -479,10 +581,11 @@ document.addEventListener("DOMContentLoaded", function() {
         if (filterLeave) params.set("leave", filterLeave.checked ? "1" : "0");
         if (filterAbsence) params.set("absence", filterAbsence.checked ? "1" : "0");
         if (filterRecovery) params.set("recovery", filterRecovery.checked ? "1" : "0");
+        if (filterHREvents) params.set("hr_events", filterHREvents.checked ? "1" : "0");
         window.location.href = window.location.pathname + "?" + params.toString();
     }
 
-    [filterLeave, filterAbsence, filterRecovery].forEach(function(checkbox) {
+    [filterLeave, filterAbsence, filterRecovery, filterHREvents].forEach(function(checkbox) {
         if (checkbox) checkbox.addEventListener("change", applyFilters);
     });
 });
@@ -654,6 +757,10 @@ document.addEventListener("DOMContentLoaded", function() {
     .calendar-filter-dot.leave { background: #2e7d32; }
     .calendar-filter-dot.absence { background: #c62828; }
     .calendar-filter-dot.recovery { background: #1565c0; }
+    .calendar-filter-dot.hr-events { background: #7b1fa2; }
+    .calendar-filter-dot.family-event { background: #7b1fa2; }
+    .calendar-filter-dot.medical-leave { background: #e65100; }
+    .calendar-filter-dot.sick-absence { background: #424242; }
     .calendar-filter-dot.holiday { background: #f9a825; }
     .calendar-filter-dot.weekend { background: #bdbdbd; }
 
@@ -811,6 +918,9 @@ document.addEventListener("DOMContentLoaded", function() {
     .calendar-summary-stat strong.stat-leave { color: #2e7d32; }
     .calendar-summary-stat strong.stat-absence { color: #c62828; }
     .calendar-summary-stat strong.stat-recovery { color: #1565c0; }
+    .calendar-summary-stat strong.stat-family-event { color: #7b1fa2; }
+    .calendar-summary-stat strong.stat-medical-leave { color: #e65100; }
+    .calendar-summary-stat strong.stat-sick-absence { color: #424242; }
 
     /* ================================================================
        Month cards
@@ -947,6 +1057,9 @@ document.addEventListener("DOMContentLoaded", function() {
     .calendar-day-event-badge.leave { background: #2e7d32; }
     .calendar-day-event-badge.absence { background: #c62828; }
     .calendar-day-event-badge.recovery { background: #1565c0; }
+    .calendar-day-event-badge.family_event { background: #7b1fa2; }
+    .calendar-day-event-badge.medical_leave { background: #e65100; }
+    .calendar-day-event-badge.sick_absence { background: #424242; }
 
     /* Tooltip on hover */
     .calendar-day-tooltip {
@@ -1020,6 +1133,9 @@ document.addEventListener("DOMContentLoaded", function() {
     .calendar-event-detail-header.leave { background: rgba(46, 125, 50, 0.12); color: #2e7d32; }
     .calendar-event-detail-header.absence { background: rgba(198, 40, 40, 0.12); color: #c62828; }
     .calendar-event-detail-header.recovery { background: rgba(21, 101, 192, 0.12); color: #1565c0; }
+    .calendar-event-detail-header.family-event { background: rgba(123, 31, 162, 0.12); color: #7b1fa2; }
+    .calendar-event-detail-header.medical-leave { background: rgba(230, 81, 0, 0.12); color: #e65100; }
+    .calendar-event-detail-header.sick-absence { background: rgba(66, 66, 66, 0.12); color: #424242; }
     .calendar-event-icon { font-size: 1rem; }
     .calendar-event-rows {
         display: flex;

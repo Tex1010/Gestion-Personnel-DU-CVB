@@ -1,25 +1,51 @@
+{% load i18n %}
 {% for notification in notifications %}
-    <a href="{% if notification.link_url %}{{ notification.link_url }}{% else %}#{% endif %}" class="notification-item {% if not notification.is_read %}unread{% endif %} {% if notification.priority == 'important' %}priority-important{% elif notification.priority == 'warning' %}priority-warning{% else %}priority-info{% endif %}" data-notification-id="{{ notification.id }}" data-mark-read-url="{% url 'administration:notification_mark_read' notification.id %}">
-        <div class="notification-icon">
-            {% if notification.priority == 'important' %}
-                <i class="bi bi-exclamation-circle"></i>
-            {% elif notification.priority == 'warning' %}
-                <i class="bi bi-exclamation-triangle"></i>
-            {% else %}
-                <i class="bi bi-info-circle"></i>
+<a href="{% if notification.link_url %}{{ notification.link_url }}{% else %}#{% endif %}"
+   class="notification-item {% if not notification.is_read %}unread{% endif %}"
+   data-notification-id="{{ notification.id }}"
+   data-mark-read-url="{% url 'administration:notification_mark_read' notification.id %}">
+    <div class="notification-item-icon {% if notification.priority == 'important' %}priority-important{% elif notification.priority == 'warning' %}priority-warning{% else %}priority-info{% endif %}">
+        {% if notification.priority == 'important' %}
+            <i class="bi bi-exclamation-circle-fill"></i>
+        {% elif notification.priority == 'warning' %}
+            <i class="bi bi-exclamation-triangle-fill"></i>
+        {% else %}
+            <i class="bi bi-info-circle-fill"></i>
+        {% endif %}
+    </div>
+    <div class="notification-item-content">
+        <div class="notification-item-header">
+            <strong class="notification-item-title">{{ notification.title }}</strong>
+            {% if not notification.is_read %}
+                <span class="notification-unread-dot"></span>
             {% endif %}
         </div>
-        <div class="notification-content">
-            <strong>{{ notification.title }}</strong>
-            <p>{{ notification.message }}</p>
-            <small>{{ notification.created_at|timesince }}</small>
+        <p class="notification-item-message">{{ notification.message }}</p>
+        <div class="notification-item-meta">
+            <span class="notification-item-time">
+                <i class="bi bi-clock"></i>
+                {{ notification.created_at|timesince }}
+            </span>
+            <span class="notification-item-type">
+                {% if notification.notification_type == 'request_created' %}
+                    <i class="bi bi-bell-fill"></i>
+                {% elif notification.notification_type == 'request_approved' %}
+                    <i class="bi bi-check-circle-fill"></i>
+                {% elif notification.notification_type == 'request_rejected' %}
+                    <i class="bi bi-x-circle-fill"></i>
+                {% elif notification.notification_type == 'request_cancelled' %}
+                    <i class="bi bi-slash-circle-fill"></i>
+                {% endif %}
+            </span>
         </div>
-        {% if not notification.is_read %}
-            <span class="notification-dot"></span>
-        {% endif %}
-    </a>
-{% empty %}
-    <div class="notification-empty">
-        <p>Aucune notification.</p>
     </div>
+</a>
+{% empty %}
+<div class="notification-empty">
+    <div class="notification-empty-icon">
+        <i class="bi bi-bell-slash"></i>
+    </div>
+    <p class="notification-empty-title">Aucune nouvelle notification</p>
+    <p class="notification-empty-text">Vous serez notifié lorsqu'une nouvelle demande nécessitera votre validation.</p>
+</div>
 {% endfor %}

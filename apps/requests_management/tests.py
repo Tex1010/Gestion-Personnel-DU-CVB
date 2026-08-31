@@ -5,7 +5,9 @@ from django.test import TestCase
 from django.urls import reverse
 
 from apps.administration.models import LoginBranding
-from apps.personnel.models import Department, EmployeeProfile, Role
+from apps.personnel.models import Department, EmployeeProfile, Role, AnnualLeave, AnnualRecovery
+from apps.personnel.leave_service import ensure_leave_window
+from apps.personnel.recovery_service import ensure_recovery_window
 from apps.requests_management.models import StaffRequest
 
 
@@ -35,8 +37,6 @@ class RequestsTests(TestCase):
             last_name="Agent",
         )
         self.user.profile.role = self.employee_role
-        self.user.profile.leave_balance = 10
-        self.user.profile.recovery_balance = 4
         self.user.profile.save()
         self.client.login(username="agent", password="TestPass123!")
 
@@ -223,8 +223,9 @@ class RequestsTests(TestCase):
             remaining_days_for_reason=8,
             reason="Conge approuve",
         )
-        self.user.profile.leave_balance = 8
         self.user.profile.save()
+        ensure_leave_window(self.user.profile)
+        AnnualLeave.objects.filter(employee=self.user.profile).update(consumed=Decimal("2.0"))
 
         response = self.client.post(
             reverse("requests_management:delete", args=[request_item.id]),
@@ -234,7 +235,8 @@ class RequestsTests(TestCase):
         self.user.profile.refresh_from_db()
         self.assertEqual(response.status_code, 200)
         self.assertFalse(StaffRequest.objects.filter(id=request_item.id).exists())
-        self.assertEqual(self.user.profile.leave_balance, 10)
+        from apps.personnel.leave_service import get_leave_balance
+        self.assertEqual(get_leave_balance(self.user.profile), Decimal("56.0"))
 
     def test_hierarchical_approval_advances_request_to_next_stage(self):
         department = Department.objects.create(name="Informatique")
@@ -278,6 +280,8 @@ class RequestsTests(TestCase):
             remaining_days_for_reason=0,
             reason="Recuperation test",
         )
+        ensure_recovery_window(self.user.profile)
+        AnnualRecovery.objects.filter(employee=self.user.profile).update(balance=Decimal("4.0"))
         direction_user = User.objects.create_user(username="direction", password="TestPass123!")
         direction_profile = direction_user.profile
         direction_profile.role = self.direction_role
@@ -290,12 +294,13 @@ class RequestsTests(TestCase):
             follow=True,
         )
 
-        self.assertEqual(response.status_code, 200)
         request_item.refresh_from_db()
         self.user.profile.refresh_from_db()
+        from apps.personnel.recovery_service import get_recovery_balance
+        self.assertEqual(response.status_code, 200)
         self.assertEqual(request_item.status, StaffRequest.STATUS_APPROVED)
         self.assertEqual(request_item.approval_stage, StaffRequest.APPROVAL_COMPLETED)
-        self.assertEqual(self.user.profile.recovery_balance, 6)
+        self.assertEqual(get_recovery_balance(self.user.profile), Decimal("14.0"))
 
     def test_employee_can_open_printable_request(self):
         request_item = StaffRequest.objects.create(
@@ -408,3 +413,79 @@ class RequestsTests(TestCase):
         self.assertContains(response, 'id="employee-cancelled-count">1</strong>', html=False)
         self.assertEqual(refresh_response.status_code, 200)
         self.assertEqual(refresh_response.json()["cancelled_count"], 1)
+
+    def test_full_direction_approval_flow_creates_notification_and_updates_status(self):
+        request_item = StaffRequest.objects.create(
+            employee=self.user.profile,
+            request_type=StaffRequest.TYPE_ABSENCE,
+            status=StaffRequest.STATUS_SUBMITTED,
+            approval_stage=StaffRequest.APPROVAL_DIRECTION,
+            total_days=Decimal("1.0"),
+            reason="Absence test direction",
+            hierarchical_signature="chef",
+            administration_signature="admin",
+        )
+        ensure_recovery_window(self.user.profile)
+        AnnualRecovery.objects.filter(employee=self.user.profile).update(balance=Decimal("4.0"))
+
+        direction_user = User.objects.create_user(username="direction", password="TestPass123!")
+        direction_profile = direction_user.profile
+        direction_profile.role = self.direction_role
+        direction_profile.save()
+
+        self.client.logout()
+        self.client.login(username="direction", password="TestPass123!")
+
+        response = self.client.post(
+            reverse("administration:request_action", args=[request_item.id, "approve"]),
+            {"admin_comment": "Accepte par la direction."},
+            follow=True,
+        )
+
+        request_item.refresh_from_db()
+        self.user.profile.refresh_from_db()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(request_item.status, StaffRequest.STATUS_APPROVED)
+        self.assertEqual(request_item.approval_stage, StaffRequest.APPROVAL_COMPLETED)
+        self.assertEqual(request_item.direction_signature, "direction")
+
+        from apps.administration.models import Notification
+        notification = Notification.objects.filter(
+            recipient=self.user,
+            notification_type=Notification.TYPE_REQUEST_APPROVED,
+            request=request_item,
+        ).first()
+        self.assertIsNotNone(notification)
+        self.assertIn("accept", notification.title.lower())
+
+        self.client.logout()
+        self.client.login(username="agent", password="TestPass123!")
+        dashboard_response = self.client.get(reverse("personnel:dashboard"))
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertContains(dashboard_response, "Approuvee")
+        self.assertContains(dashboard_response, str(request_item.id))
+
+    def test_employee_can_access_notifications_page(self):
+        from apps.administration.models import Notification
+
+        Notification.objects.create(
+            recipient=self.user,
+            notification_type=Notification.TYPE_REQUEST_APPROVED,
+            title="Demande approuvee",
+            message="Votre demande a ete approuvee.",
+            request=StaffRequest.objects.create(
+                employee=self.user.profile,
+                request_type=StaffRequest.TYPE_LEAVE,
+                status=StaffRequest.STATUS_APPROVED,
+                approval_stage=StaffRequest.APPROVAL_COMPLETED,
+                total_days=1,
+                remaining_days_for_reason=9,
+                reason="Conge teste",
+            ),
+        )
+
+        response = self.client.get(reverse("administration:notifications"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Demande approuvee")
+        self.assertContains(response, "Votre demande a ete approuvee.")

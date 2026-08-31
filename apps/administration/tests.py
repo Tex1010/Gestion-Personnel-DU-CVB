@@ -10,7 +10,9 @@ from openpyxl import load_workbook
 
 from apps.accounts.utils import get_role_by_code
 from apps.administration.models import AccountActionHistory, LoginBranding, RequestActionHistory
-from apps.personnel.models import Department, EmployeeProfile
+from apps.personnel.leave_service import ensure_leave_window
+from apps.personnel.recovery_service import ensure_recovery_window
+from apps.personnel.models import Department, EmployeeProfile, Role, AnnualLeave, AnnualRecovery
 from apps.requests_management.models import StaffRequest
 
 
@@ -36,18 +38,25 @@ class AdministrationViewsTests(TestCase):
         )
         self.employee.profile.role = user_role
         self.employee.profile.position = "Technicien"
-        self.employee.profile.leave_balance = Decimal("10.0")
-        self.employee.profile.recovery_balance = Decimal("6.0")
         self.employee.profile.save()
+        from apps.personnel.leave_service import ensure_leave_window
+        from apps.personnel.recovery_service import ensure_recovery_window
+        from apps.personnel.models import AnnualLeave, AnnualRecovery
+        ensure_leave_window(self.employee.profile)
+        ensure_recovery_window(self.employee.profile)
+        AnnualLeave.objects.filter(employee=self.employee.profile).update(consumed=Decimal("0"))
+        AnnualRecovery.objects.filter(employee=self.employee.profile).update(balance=Decimal("6.0"), consumed=Decimal("0"))
 
         self.employee_to_delete = User.objects.create_user(
             username="agent_delete",
             password="TestPass123!",
         )
         self.employee_to_delete.profile.role = user_role
-        self.employee_to_delete.profile.leave_balance = Decimal("4.0")
-        self.employee_to_delete.profile.recovery_balance = Decimal("4.0")
         self.employee_to_delete.profile.save()
+        ensure_leave_window(self.employee_to_delete.profile)
+        ensure_recovery_window(self.employee_to_delete.profile)
+        AnnualLeave.objects.filter(employee=self.employee_to_delete.profile).update(consumed=Decimal("0"))
+        AnnualRecovery.objects.filter(employee=self.employee_to_delete.profile).update(balance=Decimal("4.0"), consumed=Decimal("0"))
 
         self.direction = User.objects.create_user(
             username="direction",
@@ -81,9 +90,11 @@ class AdministrationViewsTests(TestCase):
             last_name="Petit",
         )
         low_balance_user.profile.role = user_role
-        low_balance_user.profile.leave_balance = Decimal("1.5")
-        low_balance_user.profile.recovery_balance = Decimal("1.0")
         low_balance_user.profile.save()
+        ensure_leave_window(low_balance_user.profile)
+        ensure_recovery_window(low_balance_user.profile)
+        AnnualLeave.objects.filter(employee=low_balance_user.profile).update(consumed=Decimal("28.5"))
+        AnnualRecovery.objects.filter(employee=low_balance_user.profile).update(balance=Decimal("1.0"), consumed=Decimal("0"))
 
         StaffRequest.objects.create(
             employee=low_balance_user.profile,
@@ -112,9 +123,11 @@ class AdministrationViewsTests(TestCase):
             last_name="Cache",
         )
         hidden_admin.profile.role = admin_role
-        hidden_admin.profile.leave_balance = Decimal("0.0")
-        hidden_admin.profile.recovery_balance = Decimal("0.0")
         hidden_admin.profile.save()
+        ensure_leave_window(hidden_admin.profile)
+        ensure_recovery_window(hidden_admin.profile)
+        AnnualLeave.objects.filter(employee=hidden_admin.profile).update(consumed=Decimal("30.0"))
+        AnnualRecovery.objects.filter(employee=hidden_admin.profile).update(balance=Decimal("0.0"), consumed=Decimal("0"))
 
         response = self.client.get(reverse("administration:dashboard"))
 
@@ -144,7 +157,7 @@ class AdministrationViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(staff_request.status, StaffRequest.STATUS_SUBMITTED)
         self.assertEqual(staff_request.approval_stage, StaffRequest.APPROVAL_DIRECTION)
-        self.assertEqual(self.employee.profile.leave_balance, Decimal("10.0"))
+        self.assertEqual(self.employee.profile.leave_balance, Decimal("60.0"))
         self.assertTrue(
             RequestActionHistory.objects.filter(
                 request=staff_request,
@@ -162,6 +175,8 @@ class AdministrationViewsTests(TestCase):
             total_days=Decimal("2.0"),
             reason="Absence terrain",
         )
+        ensure_recovery_window(self.employee.profile)
+        AnnualRecovery.objects.filter(employee=self.employee.profile).update(balance=Decimal("2.0"))
 
         response = self.client.post(
             reverse("administration:request_action", args=[staff_request.id, "approve"]),
@@ -175,7 +190,8 @@ class AdministrationViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(staff_request.status, StaffRequest.STATUS_SUBMITTED)
         self.assertEqual(staff_request.approval_stage, StaffRequest.APPROVAL_DIRECTION)
-        self.assertEqual(self.employee.profile.recovery_balance, Decimal("6.0"))
+        from apps.personnel.recovery_service import get_recovery_balance
+        self.assertEqual(get_recovery_balance(self.employee.profile), Decimal("6.0"))
 
     def test_admin_transmits_recovery_request_to_direction(self):
         staff_request = StaffRequest.objects.create(
@@ -186,6 +202,8 @@ class AdministrationViewsTests(TestCase):
             total_days=Decimal("3.0"),
             project_name="Mission",
         )
+        ensure_recovery_window(self.employee.profile)
+        AnnualRecovery.objects.filter(employee=self.employee.profile).update(balance=Decimal("3.0"))
 
         response = self.client.post(
             reverse("administration:request_action", args=[staff_request.id, "approve"]),
@@ -199,7 +217,8 @@ class AdministrationViewsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(staff_request.status, StaffRequest.STATUS_SUBMITTED)
         self.assertEqual(staff_request.approval_stage, StaffRequest.APPROVAL_DIRECTION)
-        self.assertEqual(self.employee.profile.recovery_balance, Decimal("6.0"))
+        from apps.personnel.recovery_service import get_recovery_balance
+        self.assertEqual(get_recovery_balance(self.employee.profile), Decimal("9.0"))
 
     def test_admin_can_cancel_approved_request_and_restore_balance(self):
         staff_request = StaffRequest.objects.create(
@@ -211,8 +230,8 @@ class AdministrationViewsTests(TestCase):
             reason="Conge annuel",
             admin_comment="Deja approuvee.",
         )
-        self.employee.profile.leave_balance = Decimal("8.0")
-        self.employee.profile.save(update_fields=["leave_balance", "updated_at"])
+        ensure_leave_window(self.employee.profile)
+        AnnualLeave.objects.filter(employee=self.employee.profile).update(consumed=Decimal("2.0"))
 
         response = self.client.post(
             reverse("administration:request_action", args=[staff_request.id, "cancel"]),
@@ -224,7 +243,8 @@ class AdministrationViewsTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(staff_request.status, StaffRequest.STATUS_CANCELLED)
-        self.assertEqual(self.employee.profile.leave_balance, Decimal("10.0"))
+        from apps.personnel.leave_service import get_leave_balance
+        self.assertEqual(get_leave_balance(self.employee.profile), Decimal("56.0"))
 
     def test_requests_history_shows_cancel_action_for_admin_in_page_and_ajax_rows(self):
         staff_request = StaffRequest.objects.create(
@@ -632,3 +652,73 @@ class AdministrationViewsTests(TestCase):
 
         self.assertFalse(result)
         mocked_send_mail.assert_not_called()
+
+    def test_calendar_view_allows_employee_selection_for_admin(self):
+        admin_role, _ = Role.objects.get_or_create(
+            code=EmployeeProfile.ROLE_ADMIN,
+            defaults={
+                "label_fr": "Administrateur",
+                "portal": Role.PORTAL_ADMIN,
+                "can_manage_settings": True,
+            },
+        )
+        admin_user = User.objects.create_user(username="calendar_admin", password="TestPass123!")
+        admin_user.profile.role = admin_role
+        admin_user.profile.save()
+
+        employee_role, _ = Role.objects.get_or_create(
+            code=EmployeeProfile.ROLE_USER,
+            defaults={
+                "label_fr": "Employe",
+                "portal": Role.PORTAL_EMPLOYEE,
+            },
+        )
+        employee_user = User.objects.create_user(username="calendar_emp", password="TestPass123!")
+        employee_user.profile.role = employee_role
+        employee_user.profile.save()
+
+        self.client.logout()
+        self.client.login(username="calendar_admin", password="TestPass123!")
+
+        response = self.client.get(
+            reverse("administration:calendar") + f"?year=2026&employee={employee_user.profile.id}"
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, employee_user.profile.display_name)
+        self.assertContains(response, "calendarEmployeeSelect")
+
+    def test_calendar_employee_search_returns_visible_employees(self):
+        admin_role, _ = Role.objects.get_or_create(
+            code=EmployeeProfile.ROLE_ADMIN,
+            defaults={
+                "label_fr": "Administrateur",
+                "portal": Role.PORTAL_ADMIN,
+                "can_manage_settings": True,
+            },
+        )
+        admin_user = User.objects.create_user(username="calendar_admin2", password="TestPass123!")
+        admin_user.profile.role = admin_role
+        admin_user.profile.save()
+
+        employee_role, _ = Role.objects.get_or_create(
+            code=EmployeeProfile.ROLE_USER,
+            defaults={
+                "label_fr": "Employe",
+                "portal": Role.PORTAL_EMPLOYEE,
+            },
+        )
+        employee_user = User.objects.create_user(username="calendar_emp2", password="TestPass123!")
+        employee_user.profile.role = employee_role
+        employee_user.profile.save()
+
+        self.client.logout()
+        self.client.login(username="calendar_admin2", password="TestPass123!")
+
+        response = self.client.get(
+            reverse("administration:calendar_employee_search") + "?term=" + employee_user.profile.display_name[:5]
+        )
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertIn("results", data)
+        matched_ids = [item["id"] for item in data["results"]]
+        self.assertIn(employee_user.profile.id, matched_ids)

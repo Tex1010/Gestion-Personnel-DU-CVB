@@ -1036,12 +1036,6 @@
                             {% if hr_params_form.leave_window_size.help_text %}<small class="helper">{{ hr_params_form.leave_window_size.help_text }}</small>{% endif %}
                             {% for error in hr_params_form.leave_window_size.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
                         </div>
-                        <div style="grid-column: 1 / -1;">
-                            {{ hr_params_form.leave_rules.label_tag }}
-                            {{ hr_params_form.leave_rules }}
-                            {% if hr_params_form.leave_rules.help_text %}<small class="helper">{{ hr_params_form.leave_rules.help_text }}</small>{% endif %}
-                            {% for error in hr_params_form.leave_rules.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
-                        </div>
                     </div>
                 </div>
                 <div class="settings-form-block">

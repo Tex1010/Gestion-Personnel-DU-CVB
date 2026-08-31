@@ -13,6 +13,7 @@ la sélection est toujours volontaire.
 
 import calendar as cal
 import json
+import unicodedata
 from datetime import date
 
 from django.contrib.auth.decorators import login_required
@@ -28,6 +29,7 @@ from apps.administration.calendar_service import (
     serialize_event,
 )
 from apps.administration.views import _visible_employee_queryset
+from apps.hr_events.models import HREvent
 from apps.personnel.models import EmployeeProfile
 
 MONTH_NAMES = [
@@ -43,6 +45,13 @@ MONTH_NAMES = [
     "Octobre",
     "Novembre",
     "Décembre",
+]
+
+# Types d'événements RH spéciaux (HREVENT)
+HR_EVENT_TYPES = [
+    HREvent.TYPE_FAMILY_EVENT,
+    HREvent.TYPE_MEDICAL_LEAVE,
+    HREvent.TYPE_SICK_ABSENCE,
 ]
 
 
@@ -96,27 +105,12 @@ def _resolve_calendar_employee(request, employee_id=None):
     return employee
 
 
-def _build_calendar_months(
-    year,
-    employee,
-    include_leave=True,
-    include_absence=True,
-    include_recovery=True,
-):
+def _build_calendar_months_from_events(year, employee, events_by_date):
     """
-    Construit la grille complète des 12 mois (rendu côté serveur).
-
-    Chaque mois contient :
-    - name : nom du mois.
-    - weeks : liste de semaines ; chaque semaine est une liste de 7 cellules.
-      Une cellule est soit {"day": None} (jour hors mois), soit :
-        day         : numéro du jour
-        date_key    : date ISO (YYYY-MM-DD)
-        is_weekend  : samedi/dimanche
-        is_holiday  : jour férié connu par l'application
-        events      : liste d'événements sérialisés pour ce jour
+    Construit la grille des 12 mois à partir des événements déjà chargés.
+    Évite de re-interroger la base de données.
     """
-    calendar_obj = cal.Calendar(firstweekday=0)  # Lundi = premier jour
+    calendar_obj = cal.Calendar(firstweekday=0)
     months = []
 
     if employee is None:
@@ -124,13 +118,6 @@ def _build_calendar_months(
             months.append({"name": name, "weeks": []})
         return months
 
-    events_by_date = get_calendar_events_for_employee(
-        employee,
-        year,
-        include_leave=include_leave,
-        include_absence=include_absence,
-        include_recovery=include_recovery,
-    )
     holiday_dates = get_calendar_holiday_dates(employee, year)
 
     for month_index, name in enumerate(MONTH_NAMES):
@@ -159,42 +146,39 @@ def _build_calendar_months(
     return months
 
 
-def _build_summary_stats(employee, year):
+def _build_summary_stats(events_by_date):
     """
-    Calcule les totaux affichés dans la carte résumé (données existantes uniquement).
+    Calcule les totaux affichés dans la carte résumé à partir des événements déjà chargés.
     - Congés / Absences : somme des total_days des événements de l'année.
     - Récupérations : somme des recovery_duration_hours.
+    - Événements RH : somme des jours pour familiaux, repos médical, absences maladie.
     """
-    stats = {"leave": 0, "absence": 0, "recovery": 0}
-    if employee is None:
-        return stats
-
-    events_by_date = get_calendar_events_for_employee(
-        employee,
-        year,
-        include_leave=True,
-        include_absence=True,
-        include_recovery=True,
-    )
+    stats = {
+        "leave": 0,
+        "absence": 0,
+        "recovery": 0,
+        "family_event": 0,
+        "medical_leave": 0,
+        "sick_absence": 0,
+    }
     for day_events in events_by_date.values():
         for event in day_events:
-            if event["type"] == "leave":
-                try:
+            event_type = event.get("type")
+            try:
+                if event_type == "leave":
                     stats["leave"] += float(event.get("total_days") or 0)
-                except (TypeError, ValueError):
-                    pass
-            elif event["type"] == "absence":
-                try:
+                elif event_type == "absence":
                     stats["absence"] += float(event.get("total_days") or 0)
-                except (TypeError, ValueError):
-                    pass
-            elif event["type"] == "recovery":
-                try:
-                    stats["recovery"] += float(
-                        event.get("recovery_duration_hours") or 0
-                    )
-                except (TypeError, ValueError):
-                    pass
+                elif event_type == "recovery":
+                    stats["recovery"] += float(event.get("recovery_duration_hours") or 0)
+                elif event_type == HREvent.TYPE_FAMILY_EVENT:
+                    stats["family_event"] += float(event.get("total_days") or 0)
+                elif event_type == HREvent.TYPE_MEDICAL_LEAVE:
+                    stats["medical_leave"] += float(event.get("total_days") or 0)
+                elif event_type == HREvent.TYPE_SICK_ABSENCE:
+                    stats["sick_absence"] += float(event.get("total_days") or 0)
+            except (TypeError, ValueError):
+                pass
     return stats
 
 
@@ -203,7 +187,7 @@ def _format_stat(value, unit):
     return f"{formatted or '0'} {unit}"
 
 
-def _build_calendar_page_context(request, year, employee, include_leave, include_absence, include_recovery):
+def _build_calendar_page_context(request, year, employee, include_leave, include_absence, include_recovery, include_hr_events=True):
     """Construit le contexte partagé de la page calendrier."""
     profile = get_user_profile(request.user)
     is_staff_viewer = bool(
@@ -234,18 +218,8 @@ def _build_calendar_page_context(request, year, employee, include_leave, include
             for emp in visible_employees
         ]
 
-    # Grille complète rendue côté serveur (jours toujours visibles).
-    months = _build_calendar_months(
-        year,
-        employee,
-        include_leave=include_leave,
-        include_absence=include_absence,
-        include_recovery=include_recovery,
-    )
-    summary = _build_summary_stats(employee, year)
-
-    # Événements par date pour les interactions JS (tooltips + modal).
-    events_json = "{}"
+    # Charger les événements une seule fois pour toutes les utilisations
+    events_by_date = {}
     if employee is not None:
         events_by_date = get_calendar_events_for_employee(
             employee,
@@ -253,7 +227,18 @@ def _build_calendar_page_context(request, year, employee, include_leave, include
             include_leave=include_leave,
             include_absence=include_absence,
             include_recovery=include_recovery,
+            include_hr_events=include_hr_events,
         )
+
+    # Grille complète rendue côté serveur (jours toujours visibles).
+    months = _build_calendar_months_from_events(year, employee, events_by_date)
+
+    # Statistiques résumées (calculées à partir des événements déjà chargés)
+    summary = _build_summary_stats(events_by_date)
+
+    # Événements par date pour les interactions JS (tooltips + modal).
+    events_json = "{}"
+    if employee is not None:
         serialized_dates = {}
         for day, day_events in events_by_date.items():
             serialized_dates[day.isoformat()] = [
@@ -274,6 +259,9 @@ def _build_calendar_page_context(request, year, employee, include_leave, include
         "summary_leave": _format_stat(summary["leave"], "jour(s)"),
         "summary_absence": _format_stat(summary["absence"], "jour(s)"),
         "summary_recovery": _format_stat(summary["recovery"], "heure(s)"),
+        "summary_family_event": _format_stat(summary["family_event"], "jour(s)"),
+        "summary_medical_leave": _format_stat(summary["medical_leave"], "jour(s)"),
+        "summary_sick_absence": _format_stat(summary["sick_absence"], "jour(s)"),
         "page_title": (
             f"Calendrier du personnel - {employee.display_name}"
             if employee
@@ -303,6 +291,7 @@ def calendar_view(request):
     include_leave = request.GET.get("leave", "1") != "0"
     include_absence = request.GET.get("absence", "1") != "0"
     include_recovery = request.GET.get("recovery", "1") != "0"
+    include_hr_events = request.GET.get("hr_events", "1") != "0"
 
     context = _build_calendar_page_context(
         request,
@@ -311,12 +300,14 @@ def calendar_view(request):
         include_leave,
         include_absence,
         include_recovery,
+        include_hr_events=include_hr_events,
     )
     context.update(
         {
             "include_leave": include_leave,
             "include_absence": include_absence,
             "include_recovery": include_recovery,
+            "include_hr_events": include_hr_events,
         }
     )
 
@@ -358,8 +349,6 @@ def calendar_employee_search_view(request):
     employees = _visible_employee_queryset(profile).select_related("user", "department")
 
     if search_term:
-        import unicodedata
-
         def normalize(value):
             normalized_value = unicodedata.normalize(
                 "NFD", str(value or "").strip().lower()

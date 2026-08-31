@@ -233,7 +233,7 @@ def consume_leave(profile, amount):
             consume_from_this = min(available, remaining_to_consume)
             al.consumed += consume_from_this
             al.save(update_fields=["consumed", "updated_at"])
-            breakdown[str(al.year)] = consume_from_this
+            breakdown[str(al.year)] = float(consume_from_this)
             remaining_to_consume -= consume_from_this
 
     return breakdown

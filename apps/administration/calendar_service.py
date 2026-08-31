@@ -3,24 +3,29 @@ Service centralisé de lecture des événements du calendrier.
 
 Ce service est la SEULE source de vérité pour la lecture des événements
 affichés dans le calendrier. Il lit UNIQUEMENT les données existantes
-(StaffRequest et RecoveryLine) et ne crée aucune donnée.
+(StaffRequest, RecoveryLine, HREvent) et ne crée aucune donnée.
 
 Principes :
 - Congés et absences : plage start_date -> end_date des StaffRequest.
 - Récupérations : lignes RecoveryLine (work_date) rattachées aux StaffRequest.
-- Seuls les statuts "submitted" et "approved" sont affichés (respect des
-  validations, annulations et suppressions existantes).
+- Événements RH : familiaux, repos médical, absences maladie (HREvent).
+- Seuls les statuts "submitted" et "approved" sont affichés pour les demandes.
+- Les événements RH actifs sont toujours affichés.
 - Les jours fériés connus par l'application (RecoveryLine.is_holiday=True)
   sont mis en évidence.
 """
 
 from datetime import date, timedelta
 
+from apps.hr_events.models import HREvent
 from apps.requests_management.models import RecoveryLine, StaffRequest
 
 EVENT_TYPE_LEAVE = "leave"
 EVENT_TYPE_ABSENCE = "absence"
 EVENT_TYPE_RECOVERY = "recovery"
+EVENT_TYPE_FAMILY_EVENT = "family_event"
+EVENT_TYPE_MEDICAL_LEAVE = "medical_leave"
+EVENT_TYPE_SICK_ABSENCE = "sick_absence"
 
 
 def _iter_date_range(start_date, end_date):
@@ -72,12 +77,13 @@ def get_calendar_events_for_employee(
     include_leave=True,
     include_absence=True,
     include_recovery=True,
+    include_hr_events=True,
 ):
     """
     Retourne un dictionnaire {date: [événements]} pour un employé et une année.
 
-    Lit UNIQUEMENT les StaffRequest et RecoveryLine existants.
-    Respecte les statuts (seuls submitted et approved sont visibles).
+    Lit UNIQUEMENT les StaffRequest, RecoveryLine et HREvent existants.
+    Respecte les statuts (seuls submitted et approved sont visibles pour les demandes).
     """
     year_start = date(year, 1, 1)
     year_end = date(year, 12, 31)
@@ -138,6 +144,46 @@ def get_calendar_events_for_employee(
                 recovery_line=line,
             )
 
+    # Événements RH : familiaux, repos médical, absences maladie
+    if include_hr_events:
+        hr_events = (
+            HREvent.objects.filter(
+                employee=employee,
+                status=HREvent.STATUS_ACTIVE,
+            )
+            .exclude(start_date__isnull=True)
+        )
+        for event in hr_events:
+            end_date = event.end_date or event.start_date
+            range_start = max(event.start_date, year_start)
+            range_end = min(end_date, year_end)
+            if range_start > range_end:
+                continue
+            for day in _iter_date_range(range_start, range_end):
+                events = events_by_date.setdefault(day, [])
+                events.append({
+                    "date": day,
+                    "hr_event_id": event.id,
+                    "type": event.event_type,
+                    "status": event.status,
+                    "status_label": event.status_label,
+                    "employee_id": event.employee_id,
+                    "employee_name": event.employee.display_name,
+                    "start_date": event.start_date,
+                    "end_date": event.end_date,
+                    "total_days": event.days,
+                    "reason": event.reason or "",
+                    "project_name": "",
+                    "label": event.get_event_type_display(),
+                    "request_type_label": event.get_event_type_display(),
+                    "is_holiday": False,
+                    "recovery_line_id": None,
+                    "recovery_work_date": None,
+                    "recovery_start_time": None,
+                    "recovery_end_time": None,
+                    "recovery_duration_hours": None,
+                })
+
     return events_by_date
 
 
@@ -181,25 +227,26 @@ def serialize_event(event):
         return formatted or "0"
 
     return {
-        "request_id": event["request_id"],
+        "request_id": event.get("request_id"),
+        "hr_event_id": event.get("hr_event_id"),
         "type": event["type"],
         "status": event["status"],
         "status_label": event["status_label"],
         "employee_id": event["employee_id"],
         "employee_name": event["employee_name"],
-        "start_date": fmt_date(event["start_date"]),
-        "end_date": fmt_date(event["end_date"]),
-        "total_days": fmt_decimal(event["total_days"]),
-        "reason": event["reason"],
-        "project_name": event["project_name"],
-        "label": event["label"],
-        "request_type_label": event["request_type_label"],
-        "approval_stage": event["approval_stage"],
-        "recovery_line_id": event["recovery_line_id"],
-        "recovery_work_date": fmt_date(event["recovery_work_date"]),
-        "recovery_start_time": fmt_time(event["recovery_start_time"]),
-        "recovery_end_time": fmt_time(event["recovery_end_time"]),
-        "recovery_duration_hours": fmt_decimal(event["recovery_duration_hours"]),
-        "is_holiday": bool(event["is_holiday"]),
+        "start_date": fmt_date(event.get("start_date")),
+        "end_date": fmt_date(event.get("end_date")),
+        "total_days": fmt_decimal(event.get("total_days")),
+        "reason": event.get("reason", ""),
+        "project_name": event.get("project_name", ""),
+        "label": event.get("label", ""),
+        "request_type_label": event.get("request_type_label", ""),
+        "approval_stage": event.get("approval_stage"),
+        "recovery_line_id": event.get("recovery_line_id"),
+        "recovery_work_date": fmt_date(event.get("recovery_work_date")),
+        "recovery_start_time": fmt_time(event.get("recovery_start_time")),
+        "recovery_end_time": fmt_time(event.get("recovery_end_time")),
+        "recovery_duration_hours": fmt_decimal(event.get("recovery_duration_hours")),
+        "is_holiday": bool(event.get("is_holiday")),
         "date": fmt_date(event.get("date")),
     }

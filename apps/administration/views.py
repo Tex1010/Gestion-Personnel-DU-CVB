@@ -98,6 +98,40 @@ def _requests_redirect(show_history=False):
     return url
 
 
+def _notify_next_validator(request_item):
+    """
+    Notifie le validateur suivant lorsqu'une demande avance d'étape.
+    - Si la demande passe à l'étape RH, notifier les validateurs RH.
+    - Si la demande passe à l'étape Direction, validateurs Direction.
+    """
+    if not request_item:
+        return
+
+    from apps.administration.notifications_service import notify_request_stage_advanced
+
+    current_stage = request_item.approval_stage
+
+    # Déterminer les validateurs en fonction de l'étape actuelle
+    if current_stage == StaffRequest.APPROVAL_ADMINISTRATION:
+        # Notifier les validateurs RH
+        validators = EmployeeProfile.objects.filter(
+            role__can_validate_administration=True,
+            user__is_active=True,
+        ).select_related("user")
+        for validator in validators:
+            if validator.user_id != request_item.employee.user_id:
+                notify_request_stage_advanced(request_item, validator.user)
+    elif current_stage == StaffRequest.APPROVAL_DIRECTION:
+        # Notifier les validateurs Direction
+        validators = EmployeeProfile.objects.filter(
+            role__can_validate_direction=True,
+            user__is_active=True,
+        ).select_related("user")
+        for validator in validators:
+            if validator.user_id != request_item.employee.user_id:
+                notify_request_stage_advanced(request_item, validator.user)
+
+
 def _visible_employee_queryset(profile):
     employees = EmployeeProfile.objects.select_related("user").exclude(
         user__username="cvbadmin"
@@ -1424,12 +1458,17 @@ def request_action_view(request, request_id, action):
     from apps.administration.notifications_service import (
         notify_request_approved,
         notify_request_rejected,
+        notify_request_stage_advanced,
     )
 
     if request_item.status == StaffRequest.STATUS_APPROVED:
         notify_request_approved(request_item)
     elif request_item.status == StaffRequest.STATUS_REJECTED:
         notify_request_rejected(request_item, comment=comment)
+
+    # Notifier le validateur suivant lorsque la demande avance d'étape
+    if action == "approve" and request_item.approval_stage != StaffRequest.APPROVAL_COMPLETED:
+        _notify_next_validator(request_item)
 
     messages.success(
         request,

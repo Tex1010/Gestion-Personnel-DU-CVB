@@ -296,7 +296,7 @@ def consume_recovery(profile, amount):
             consume_from_this = min(available, remaining_to_consume)
             ar.consumed += consume_from_this
             ar.save(update_fields=["consumed", "updated_at"])
-            breakdown[str(ar.year)] = consume_from_this
+            breakdown[str(ar.year)] = float(consume_from_this)
             remaining_to_consume -= consume_from_this
 
     return breakdown

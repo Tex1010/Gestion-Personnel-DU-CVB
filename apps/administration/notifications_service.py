@@ -76,6 +76,66 @@ def _get_request_type_label(request_item):
     return request_item.type_label.lower()
 
 
+def _get_indefinite_article(request_type):
+    """
+    Retourne l'article indéf approprié en français.
+    - "d'" pour les mots commençant par une voyelle (absence, etc.)
+    - "de " pour les autres (congé, récupération, etc.)
+    """
+    if not request_type:
+        return "de "
+    vowels = "aeiouy"
+    # Cas spéciaux avec h muet ou élision
+    if request_type[0] in vowels:
+        return "d'"
+    # Cas de "congé" et "récupération" - utiliser "de "
+    return "de "
+
+
+def _format_request_title(request_type, action="new"):
+    """
+    Formate le titre d'une notification de demande.
+    
+    action: "new", "approved", "rejected", "cancelled", "stage_advanced"
+    """
+    article = _get_indefinite_article(request_type)
+    if action == "new":
+        return f"Nouvelle demande {article}{request_type}"
+    elif action == "approved":
+        return f"Demande {article}{request_type} acceptée"
+    elif action == "rejected":
+        return f"Demande {article}{request_type} refusée"
+    elif action == "cancelled":
+        return f"Demande {article}{request_type} annulée"
+    elif action == "stage_advanced":
+        return f"Demande {article}{request_type} nécessitant votre validation"
+    return f"Demande {article}{request_type}"
+
+
+def _format_request_message(request_type, employee_name, period, action="new"):
+    """
+    Formate le message d'une notification de demande.
+    """
+    article = _get_indefinite_article(request_type)
+    if action == "new":
+        return (
+            f"{employee_name} a soumis une demande {article}{request_type} "
+            f"nécessitant votre validation.\n📅 {period}"
+        )
+    elif action == "approved":
+        return f"Votre demande {article}{request_type} {period} a été acceptée."
+    elif action == "rejected":
+        return f"Votre demande {article}{request_type} {period} a été refusée."
+    elif action == "cancelled":
+        return f"Votre demande {article}{request_type} {period} a été annulée."
+    elif action == "stage_advanced":
+        return (
+            f"{employee_name} a soumis une demande {article}{request_type} "
+            f"nécessitant votre validation.\n📅 {period}"
+        )
+    return f"Demande {article}{request_type} {period}"
+
+
 def notify_request_created(request_item, validators):
     """
     Notifie les validateurs concernés qu'une nouvelle demande nécessite leur validation.
@@ -89,17 +149,16 @@ def notify_request_created(request_item, validators):
     request_type = _get_request_type_label(request_item)
     period = _get_request_period_label(request_item)
     link = _get_request_link(request_item)
+    title = _format_request_title(request_type, action="new")
+    message = _format_request_message(request_type, employee_name, period, action="new")
 
     for validator in validators:
         if not validator or validator.id == request_item.employee.user_id:
             continue
         _create_notification(
             recipient=validator,
-            title=f"Nouvelle demande de {request_type}",
-            message=(
-                f"Une nouvelle demande de {request_type} de {employee_name} "
-                f"{period} nécessite votre validation."
-            ),
+            title=title,
+            message=message,
             notification_type=Notification.TYPE_REQUEST_CREATED,
             priority=Notification.PRIORITY_IMPORTANT,
             link_url=link,
@@ -117,11 +176,13 @@ def notify_request_approved(request_item):
     request_type = _get_request_type_label(request_item)
     period = _get_request_period_label(request_item)
     link = _get_request_link(request_item)
+    title = _format_request_title(request_type, action="approved")
+    message = _format_request_message(request_type, "", period, action="approved")
 
     _create_notification(
         recipient=employee,
-        title=f"Demande de {request_type} acceptée",
-        message=f"Votre demande de {request_type} {period} a été acceptée.",
+        title=title,
+        message=message,
         notification_type=Notification.TYPE_REQUEST_APPROVED,
         priority=Notification.PRIORITY_INFO,
         link_url=link,
@@ -139,14 +200,14 @@ def notify_request_rejected(request_item, comment=""):
     request_type = _get_request_type_label(request_item)
     period = _get_request_period_label(request_item)
     link = _get_request_link(request_item)
-
-    message = f"Votre demande de {request_type} {period} a été refusée."
+    title = _format_request_title(request_type, action="rejected")
+    message = _format_request_message(request_type, "", period, action="rejected")
     if comment:
         message += f" Motif : {comment}"
 
     _create_notification(
         recipient=employee,
-        title=f"Demande de {request_type} refusée",
+        title=title,
         message=message,
         notification_type=Notification.TYPE_REQUEST_REJECTED,
         priority=Notification.PRIORITY_IMPORTANT,
@@ -165,11 +226,13 @@ def notify_request_cancelled(request_item):
     request_type = _get_request_type_label(request_item)
     period = _get_request_period_label(request_item)
     link = _get_request_link(request_item)
+    title = _format_request_title(request_type, action="cancelled")
+    message = _format_request_message(request_type, "", period, action="cancelled")
 
     _create_notification(
         recipient=employee,
-        title=f"Demande de {request_type} annulée",
-        message=f"Votre demande de {request_type} {period} a été annulée.",
+        title=title,
+        message=message,
         notification_type=Notification.TYPE_REQUEST_CANCELLED,
         priority=Notification.PRIORITY_INFO,
         link_url=link,
@@ -191,14 +254,13 @@ def notify_request_stage_advanced(request_item, next_validator):
     request_type = _get_request_type_label(request_item)
     period = _get_request_period_label(request_item)
     link = _get_request_link(request_item)
+    title = _format_request_title(request_type, action="stage_advanced")
+    message = _format_request_message(request_type, employee_name, period, action="stage_advanced")
 
     _create_notification(
         recipient=next_validator,
-        title=f"Demande de {request_type} nécessitant votre validation",
-        message=(
-            f"Une demande de {request_type} de {employee_name} {period} "
-            f"nécessite votre validation."
-        ),
+        title=title,
+        message=message,
         notification_type=Notification.TYPE_REQUEST_STAGE_ADVANCED,
         priority=Notification.PRIORITY_IMPORTANT,
         link_url=link,
