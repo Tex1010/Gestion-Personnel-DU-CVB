@@ -17,6 +17,10 @@ from apps.accounts.utils import get_user_profile
 from apps.administration.models import LoginBranding
 from apps.administration.views import _queue_floating_notification, _send_request_email_alert
 from apps.personnel.models import EmployeeProfile
+from apps.personnel.recovery_service import (
+    check_recovery_request_limit,
+    group_recovery_lines_by_year,
+)
 from apps.requests_management.forms import (
     AbsenceRequestForm,
     BaseRecoveryValidationMixin,
@@ -425,6 +429,33 @@ def recovery_request_view(request):
                     "is_edit_mode": False,
                 },
             )
+        ok, limit = check_recovery_request_limit(
+            profile,
+            group_recovery_lines_by_year(
+                [
+                    {
+                        "work_date": cleaned.get("work_date"),
+                        "duration_hours": cleaned.get("duration_hours"),
+                    }
+                    for cleaned in formset.cleaned_data
+                    if not cleaned.get("DELETE")
+                ]
+            ),
+        )
+        if not ok:
+            return render(
+                request,
+                "requests_management/recovery_form.html",
+                {
+                    "form": form,
+                    "formset": formset,
+                    "profile": profile,
+                    "branding": branding,
+                    "is_edit_mode": False,
+                    "recovery_limit_blocked": True,
+                    "recovery_limit_value": str(limit).rstrip("0").rstrip("."),
+                },
+            )
         recovery_request = form.save(commit=False)
         recovery_request.employee = profile
         recovery_request.request_type = StaffRequest.TYPE_RECOVERY
@@ -560,6 +591,33 @@ def edit_request_view(request, request_id):
                     "Ajoutez au moins une ligne de travail dans la fiche de recuperation.",
                 )
             else:
+                ok, limit = check_recovery_request_limit(
+                    profile,
+                    group_recovery_lines_by_year(
+                        [
+                            {
+                                "work_date": cleaned.get("work_date"),
+                                "duration_hours": cleaned.get("duration_hours"),
+                            }
+                            for cleaned in formset.cleaned_data
+                            if not cleaned.get("DELETE")
+                        ]
+                    ),
+                )
+                if not ok:
+                    return render(
+                        request,
+                        "requests_management/recovery_form.html",
+                        {
+                            "form": form,
+                            "formset": formset,
+                            "profile": profile,
+                            "branding": branding,
+                            "is_edit_mode": True,
+                            "recovery_limit_blocked": True,
+                            "recovery_limit_value": str(limit).rstrip("0").rstrip("."),
+                        },
+                    )
                 recovery_request = form.save(commit=False)
                 recovery_request.employee = profile
                 recovery_request.request_type = StaffRequest.TYPE_RECOVERY

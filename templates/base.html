@@ -402,6 +402,14 @@
                     month9: "Octobre",
                     month10: "Novembre",
                     month11: "Décembre",
+                    recoveryLimitTitle: "Limite de récupération atteinte",
+                    recoveryLimitAbsenceButton: "Faire une demande d'absence",
+                    recoverySettingsTitle: "Paramètres des récupérations",
+                    recoverySettingsHelper: "Définissez la limite annuelle de récupération et activez ou désactivez cette règle pour tous les employés.",
+                    recoveryLimitEnabledLabel: "Activer la limite annuelle des récupérations",
+                    recoveryLimitEnabledHelper: "Active ou désactive la limite annuelle de récupération pour tous les employés.",
+                    recoveryLimitMaxLabel: "Limite annuelle de récupération",
+                    recoveryLimitMaxHelper: "Nombre maximum de jours de récupération qu'un employé peut accumuler par année.",
                 },
                 en: {
                     personnelManagement: "Personnel management",
@@ -543,6 +551,14 @@
                     month9: "October",
                     month10: "November",
                     month11: "December",
+                    recoveryLimitTitle: "Recovery limit reached",
+                    recoveryLimitAbsenceButton: "Submit a leave request",
+                    recoverySettingsTitle: "Recovery settings",
+                    recoverySettingsHelper: "Define the annual recovery limit and enable or disable this rule for all employees.",
+                    recoveryLimitEnabledLabel: "Enable the annual recovery limit",
+                    recoveryLimitEnabledHelper: "Enables or disables the annual recovery limit for all employees.",
+                    recoveryLimitMaxLabel: "Annual recovery limit",
+                    recoveryLimitMaxHelper: "Maximum number of recovery days an employee can accumulate per year.",
                 },
                 mg: {
                     personnelManagement: "Fitantanana ny mpiasa",
@@ -684,6 +700,14 @@
                     month9: "Oktobra",
                     month10: "Novambra",
                     month11: "Desambra",
+                    recoveryLimitTitle: "Efa nahatongotra ny fetranon'ny fanarenana",
+                    recoveryLimitAbsenceButton: "Alefaso fangatahana alina",
+                    recoverySettingsTitle: "Fikirana momba ny fanarenana",
+                    recoverySettingsHelper: "Farito ny fetranon'ny fanarenana isan-taona ary alefaso na esory ity lalana ity ho an'ny mpiasa rehetra.",
+                    recoveryLimitEnabledLabel: "Alefaso ny fetranon'ny fanarenana isan-taona",
+                    recoveryLimitEnabledHelper: "Mampiasa na manala ny fetranon'ny fanarenana isan-taona ho an'ny mpiasa rehetra.",
+                    recoveryLimitMaxLabel: "Fetranon'ny fanarenana isan-taona",
+                    recoveryLimitMaxHelper: "Isan'ny andro fanarenana ampiainana iainana hateraky ny mpiasa isaky ny taona.",
                 },
             };
             const literalTranslations = {
@@ -1561,6 +1585,7 @@
                     { pattern: /^Calendrier du personnel$/, replace: () => `Personnel calendar` },
                     { pattern: /^Calendrier du personnel - (.+)$/, replace: (_, name) => `Personnel calendar - ${translateTextValue(name)}` },
                     { pattern: /^Mon calendrier$/, replace: () => `My calendar` },
+                    { pattern: /^Vous avez atteint votre limite maximale de recuperation de (.+) jours\. Pour toute nouvelle indisponibilite, veuillez effectuer une demande d'absence\.$/, replace: (_, limit) => `You have reached your maximum recovery limit of ${limit} days. For any new unavailability, please submit a leave request.` },
                 ],
                 mg: [
                     { pattern: /^Bonjour (.+)$/, replace: (_, name) => `Salama ${name}` },
@@ -1583,6 +1608,7 @@
                     { pattern: /^Calendrier du personnel$/, replace: () => `Kalandria ny mpiasa` },
                     { pattern: /^Calendrier du personnel - (.+)$/, replace: (_, name) => `Kalandria ny mpiasa - ${translateTextValue(name)}` },
                     { pattern: /^Mon calendrier$/, replace: () => `Ny kalandrieko` },
+                    { pattern: /^Vous avez atteint votre limite maximale de recuperation de (.+) jours\. Pour toute nouvelle indisponibilite, veuillez effectuer une demande d'absence\.$/, replace: (_, limit) => `Efa nahatongotra ny fetranon'ny fanarenana ${limit} andro ianao. Ho an'ny tsy fahatongavana vaovao dia alefaso azafady fangatahana alina.` },
                 ],
             };
             const fallbackTranslations = translations.fr;

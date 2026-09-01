@@ -489,3 +489,212 @@ class RequestsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Demande approuvee")
         self.assertContains(response, "Votre demande a ete approuvee.")
+
+
+class RecoveryLimitTests(TestCase):
+    """Tests de la limite annuelle configurable de recuperation par employe."""
+
+    def setUp(self):
+        self.employee_role = Role.objects.create(
+            code=EmployeeProfile.ROLE_USER,
+            label_fr="Employe",
+            portal=Role.PORTAL_EMPLOYEE,
+        )
+        self.admin_role = Role.objects.create(
+            code=EmployeeProfile.ROLE_ADMIN,
+            label_fr="Administrateur",
+            portal=Role.PORTAL_ADMIN,
+            can_manage_settings=True,
+        )
+        self.user = User.objects.create_user(
+            username="recov_agent",
+            password="TestPass123!",
+            first_name="Soa",
+            last_name="Agent",
+        )
+        self.user.profile.role = self.employee_role
+        self.user.profile.save()
+        self.client.login(username="recov_agent", password="TestPass123!")
+        self._set_branding(Decimal("15"), enabled=True)
+
+    # --- Helpers ---
+    def _set_branding(self, limit=Decimal("15"), enabled=True):
+        branding = LoginBranding.objects.first()
+        if not branding:
+            branding = LoginBranding.objects.create()
+        branding.recovery_limit_enabled = enabled
+        branding.recovery_annual_limit = limit
+        branding.save()
+
+    def _set_balance(self, amount, year=2026):
+        ensure_recovery_window(self.user.profile)
+        ar, _ = AnnualRecovery.objects.get_or_create(
+            employee=self.user.profile,
+            year=year,
+            defaults={"balance": Decimal("0"), "consumed": Decimal("0")},
+        )
+        ar.balance = amount
+        ar.save(update_fields=["balance"])
+
+    def _recovery_post(self, line_count, year=2026, start_day=2):
+        data = {
+            "project_name": "",
+            "reason": "test recuperation",
+            "recovery_lines-TOTAL_FORMS": str(line_count),
+            "recovery_lines-INITIAL_FORMS": "0",
+            "recovery_lines-MIN_NUM_FORMS": "0",
+            "recovery_lines-MAX_NUM_FORMS": "1000",
+        }
+        for i in range(line_count):
+            day = start_day + i
+            data[f"recovery_lines-{i}-work_date"] = f"{year}-03-{day:02d}"
+            data[f"recovery_lines-{i}-work_description"] = "travaux"
+            data[f"recovery_lines-{i}-start_time"] = "08:00"
+            data[f"recovery_lines-{i}-end_time"] = "17:00"
+            data[f"recovery_lines-{i}-is_holiday"] = "false"
+        return data
+
+    def _count_recovery_requests(self):
+        return StaffRequest.objects.filter(
+            employee=self.user.profile, request_type=StaffRequest.TYPE_RECOVERY
+        ).count()
+
+    @staticmethod
+    def _url():
+        return reverse("requests_management:recovery_create")
+
+    # --- Service (calcul) ---
+    def test_service_per_year_and_boundary(self):
+        from apps.personnel.recovery_service import check_recovery_request_limit
+
+        # Sous la limite : autorise
+        ok, limit = check_recovery_request_limit(self.user.profile, {2026: Decimal("14")})
+        self.assertTrue(ok)
+        self.assertEqual(limit, Decimal("15"))
+        # Atteindre exactement la limite via une soumission : autorise (CAP inclusif)
+        ok2, _ = check_recovery_request_limit(self.user.profile, {2026: Decimal("15")})
+        self.assertTrue(ok2)
+        # Depasser la limite : bloque
+        ok3, _ = check_recovery_request_limit(self.user.profile, {2026: Decimal("15.1")})
+        self.assertFalse(ok3)
+        # Solde deja a la limite : toute nouvelle soumission bloquee
+        self._set_balance(Decimal("15"), year=2026)
+        ok4, _ = check_recovery_request_limit(self.user.profile, {2026: Decimal("0.1")})
+        self.assertFalse(ok4)
+        # Respect de l'annee : 2026 plein, 2027 libre
+        ok5, _ = check_recovery_request_limit(
+            self.user.profile, {2026: Decimal("1"), 2027: Decimal("10")}
+        )
+        self.assertFalse(ok5)
+
+    def test_service_disabled_allows_any(self):
+        from apps.personnel.recovery_service import check_recovery_request_limit
+
+        self._set_branding(Decimal("15"), enabled=False)
+        self._set_balance(Decimal("15"), year=2026)
+        ok, limit = check_recovery_request_limit(self.user.profile, {2026: Decimal("100")})
+        self.assertTrue(ok)
+        self.assertEqual(limit, Decimal("15"))
+
+    # --- Backend (soumission) ---
+    def test_balance_below_limit_allowed(self):
+        self._set_balance(Decimal("0"))
+        before = self._count_recovery_requests()
+        response = self.client.post(self._url(), self._recovery_post(5))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._count_recovery_requests(), before + 1)
+
+    def test_balance_at_limit_blocked(self):
+        self._set_balance(Decimal("15"))
+        before = self._count_recovery_requests()
+        response = self.client.post(self._url(), self._recovery_post(1))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._count_recovery_requests(), before)
+        self.assertContains(response, "limite maximale de recuperation")
+
+    def test_exceeding_limit_blocked(self):
+        self._set_balance(Decimal("0"))
+        before = self._count_recovery_requests()
+        response = self.client.post(self._url(), self._recovery_post(20))
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(self._count_recovery_requests(), before)
+        self.assertContains(response, "limite maximale de recuperation")
+
+    def test_limit_disabled_allows_any(self):
+        self._set_branding(Decimal("15"), enabled=False)
+        self._set_balance(Decimal("15"))
+        before = self._count_recovery_requests()
+        response = self.client.post(self._url(), self._recovery_post(10))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(self._count_recovery_requests(), before + 1)
+
+    def test_limit_changed_to_other_value(self):
+        self._set_branding(Decimal("20"), enabled=True)
+        # 15 sur 20 : autorise
+        self._set_balance(Decimal("15"))
+        before = self._count_recovery_requests()
+        resp_ok = self.client.post(self._url(), self._recovery_post(5))
+        self.assertEqual(resp_ok.status_code, 302)
+        self.assertEqual(self._count_recovery_requests(), before + 1)
+        # 20 atteint : bloque
+        self._set_balance(Decimal("20"))
+        resp_block = self.client.post(self._url(), self._recovery_post(1))
+        self.assertEqual(resp_block.status_code, 200)
+        self.assertEqual(self._count_recovery_requests(), before + 1)
+
+    def test_per_year_isolation_2026_vs_2027(self):
+        self._set_balance(Decimal("15"), year=2026)
+        self._set_balance(Decimal("0"), year=2027)
+        # 2027 encore libre : autorise
+        before = self._count_recovery_requests()
+        resp_2027 = self.client.post(self._url(), self._recovery_post(3, year=2027))
+        self.assertEqual(resp_2027.status_code, 302)
+        self.assertEqual(self._count_recovery_requests(), before + 1)
+        # 2026 deja plein : bloque
+        resp_2026 = self.client.post(self._url(), self._recovery_post(1, year=2026))
+        self.assertEqual(resp_2026.status_code, 200)
+        self.assertEqual(self._count_recovery_requests(), before + 1)
+
+    def test_existing_recoveries_not_modified(self):
+        self._set_balance(Decimal("15"))
+        self.client.post(self._url(), self._recovery_post(1))
+        # Le solde existe toujours et n'a pas ete supprime/reduit par le blocage
+        ar = AnnualRecovery.objects.get(employee=self.user.profile, year=2026)
+        self.assertEqual(ar.balance, Decimal("15"))
+        self.assertTrue(AnnualRecovery.objects.filter(employee=self.user.profile).exists())
+
+    # --- Audit (parametres RH) ---
+    def test_hr_params_limit_change_audited(self):
+        from apps.administration.models import AccountActionHistory
+
+        admin_user = User.objects.create_user(
+            username="recov_rh", password="TestPass123!"
+        )
+        admin_user.profile.role = self.admin_role
+        admin_user.profile.save()
+        self.client.login(username="recov_rh", password="TestPass123!")
+
+        branding = LoginBranding.objects.first()
+        if not branding:
+            branding = LoginBranding.objects.create()
+        branding.recovery_limit_enabled = True
+        branding.recovery_annual_limit = Decimal("15")
+        branding.save()
+
+        before = AccountActionHistory.objects.count()
+        response = self.client.post(
+            reverse("administration:settings") + "?panel=human_resources",
+            {
+                "save-hr-params": "1",
+                "panel": "human_resources",
+                "annual_leave_quota": "30",
+                "leave_window_size": "3",
+                "recovery_limit_enabled": "on",
+                "recovery_annual_limit": "20",
+            },
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(AccountActionHistory.objects.count(), before + 1)
+        entry = AccountActionHistory.objects.latest("created_at")
+        self.assertIn("20", entry.details)
+        self.assertIn("15", entry.details)

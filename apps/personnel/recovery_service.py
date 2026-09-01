@@ -163,6 +163,44 @@ def get_recovery_balance_for_year(profile, year):
         return Decimal("0")
 
 
+def group_recovery_lines_by_year(line_specs):
+    """
+    Regroupe des lignes de recuperation par annee civile.
+
+    `line_specs` : iterable de dicts ayant `work_date` et `duration_hours`.
+    Retourne {annee: total_jours} (uniquement les annees ayant des jours).
+    """
+    from collections import defaultdict
+
+    year_amounts = defaultdict(lambda: Decimal("0"))
+    for spec in line_specs:
+        work_date = spec.get("work_date")
+        duration = spec.get("duration_hours")
+        if not work_date or duration is None:
+            continue
+        year_amounts[work_date.year] += Decimal(str(duration))
+    return dict(year_amounts)
+
+
+def check_recovery_request_limit(profile, year_amounts):
+    """
+    Verifie la limite annuelle de recuperation pour un ensemble de lignes.
+
+    `year_amounts` : dict {annee: montant_jours}.
+    Retourne (ok, limit) :
+    - ok=False si l'une des annees depasserait la limite configuree.
+    - limit : la limite annuelle configuree (meme si desactivee).
+    """
+    if not is_recovery_limit_enabled():
+        return True, get_recovery_limit()
+    limit = get_recovery_limit()
+    for year, amount in year_amounts.items():
+        ok, _message, _remaining = check_recovery_limit(profile, year, amount)
+        if not ok:
+            return False, limit
+    return True, limit
+
+
 def check_recovery_limit(profile, year, amount):
     """
     Vérifie si l'ajout de `amount` jours de récupération pour `year`

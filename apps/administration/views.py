@@ -1613,12 +1613,32 @@ def settings_view(request):
                 return redirect(_settings_redirect(panel="branding"))
 
         elif "save-hr-params" in request.POST:
+            old_recovery_limit_enabled = branding.recovery_limit_enabled
+            old_recovery_annual_limit = branding.recovery_annual_limit
             hr_params_form = HRParamsForm(
                 request.POST,
                 instance=branding,
             )
             if hr_params_form.is_valid():
                 hr_params_form.save()
+                limit_details = []
+                if old_recovery_limit_enabled != branding.recovery_limit_enabled:
+                    limit_details.append(
+                        "Limite annuelle de recuperation %s"
+                        % ("activee" if branding.recovery_limit_enabled else "desactivee")
+                    )
+                if old_recovery_annual_limit != branding.recovery_annual_limit:
+                    limit_details.append(
+                        "Limite maximale de recuperation passee de %s a %s jours"
+                        % (old_recovery_annual_limit, branding.recovery_annual_limit)
+                    )
+                if limit_details:
+                    _record_account_history(
+                        request.user,
+                        request.user,
+                        AccountActionHistory.ACTION_UPDATED,
+                        "Parametres RH - " + " ; ".join(limit_details),
+                    )
                 messages.success(request, "Les parametres globaux des conges ont ete mis a jour.")
                 return redirect(_settings_redirect(panel="human_resources"))
 

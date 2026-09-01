@@ -40,6 +40,18 @@
                     </div>
                 </div>
             {% endif %}
+            {% if recovery_limit_blocked %}
+                <div class="message error recovery-limit-banner" role="alert">
+                    <div class="message-body">
+                        <span class="message-icon" aria-hidden="true"></span>
+                        <div>
+                            <strong data-i18n="recoveryLimitTitle">Limite de recuperation atteinte</strong>
+                            <p>Vous avez atteint votre limite maximale de recuperation de {{ recovery_limit_value }} jours. Pour toute nouvelle indisponibilite, veuillez effectuer une demande d'absence.</p>
+                            <a class="btn-secondary" href="{% url 'requests_management:absence_create' %}" data-i18n="recoveryLimitAbsenceButton">Faire une demande d'absence</a>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
             <div class="form-grid two">
                 <div>
                     {{ form.project_name.label_tag }}
