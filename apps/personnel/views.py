@@ -5,6 +5,7 @@ from django.db.models import Count
 from django.http import JsonResponse
 from django.shortcuts import redirect, render
 from django.template.loader import render_to_string
+from django.utils import timezone
 
 from apps.accounts.utils import get_user_profile, normalize_portal_role
 from apps.administration.models import LoginBranding
@@ -183,6 +184,26 @@ def dashboard_view(request):
             round(min(100.0, (approved_absence_days_float / absence_limit_float) * 100.0))
         )
 
+    # Limite de récupération annuelle configurée par la RH.
+    recovery_limit_enabled = is_recovery_limit_enabled()
+    recovery_limit = get_recovery_limit()
+    current_year = timezone.localdate().year
+    recovery_balance_current_year = Dec("0.0")
+    for item in profile.recovery_window_data:
+        if item["year"] == current_year:
+            recovery_balance_current_year = item["balance"]
+            break
+    recovery_balance_current_year_float = float(recovery_balance_current_year)
+    recovery_limit_float = float(recovery_limit)
+    recovery_remaining = max(
+        Dec("0.0"), Dec(str(recovery_limit_float - recovery_balance_current_year_float))
+    )
+    recovery_percent_used = 0
+    if recovery_limit_enabled and recovery_limit_float > 0:
+        recovery_percent_used = int(
+            round(min(100.0, (recovery_balance_current_year_float / recovery_limit_float) * 100.0))
+        )
+
     def fmt_decimal(value):
         formatted = format(value, "f").rstrip("0").rstrip(".")
         return formatted or "0"
@@ -209,6 +230,11 @@ def dashboard_view(request):
         "absence_limit": fmt_decimal(absence_limit),
         "remaining_absence_days": fmt_decimal(remaining_absence_days),
         "absence_percent_used": percent_used,
+        "recovery_limit_enabled": recovery_limit_enabled,
+        "recovery_limit": fmt_decimal(recovery_limit),
+        "recovery_balance_current_year": fmt_decimal(recovery_balance_current_year),
+        "recovery_remaining": fmt_decimal(recovery_remaining),
+        "recovery_percent_used": recovery_percent_used,
         "hr_events_data": get_hr_events_dashboard_data(profile),
     }
     return render(request, "personnel/dashboard.html", context)

@@ -73,6 +73,75 @@
             </article>
         </div>
 
+        {% if recovery_limit_enabled %}
+        <article class="card recovery-limit-card">
+            <div class="card-head">
+                <div>
+                    <h2><i class="bi bi-arrow-repeat"></i> Mes recuperations</h2>
+                    <p class="helper">Suivi de vos jours de recuperation pour l'annee en cours.</p>
+                </div>
+            </div>
+            <div class="recovery-limit-hero">
+                <div class="recovery-limit-count">
+                    <strong id="employee-recovery-limit">{{ recovery_balance_current_year }} / {{ recovery_limit }} jours</strong>
+                    <span class="recovery-limit-count-label">Jours de recuperation</span>
+                </div>
+                <div class="recovery-limit-hero-badge">
+                    {% if recovery_percent_used >= 100 %}
+                    <span class="badge rejected"><i class="bi bi-exclamation-triangle-fill"></i> Limite atteinte</span>
+                    {% else %}
+                    <span class="badge approved"><i class="bi bi-check-circle-fill"></i> Disponible</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="recovery-limit-block">
+                <div class="recovery-limit-row">
+                    <span class="recovery-limit-used">{{ recovery_balance_current_year }} / {{ recovery_limit }} jours</span>
+                    <span class="recovery-limit-percent">{{ recovery_percent_used }}%</span>
+                </div>
+                <div class="recovery-limit-progress">
+                    <div class="recovery-limit-progress-fill" data-percent="{{ recovery_percent_used }}"></div>
+                </div>
+                <div class="recovery-limit-footer">
+                    {% if recovery_percent_used >= 100 %}
+                    <span class="recovery-limit-reached"><i class="bi bi-exclamation-triangle-fill"></i> Limite atteinte</span>
+                    {% else %}
+                    <span><strong>{{ recovery_remaining }}</strong> jours restants</span>
+                    {% endif %}
+                    <span>Limite annuelle : {{ recovery_limit }} jours</span>
+                </div>
+            </div>
+
+            {% if recovery_percent_used >= 100 %}
+            <div class="recovery-limit-disabled">
+                <i class="bi bi-info-circle"></i>
+                <span data-i18n="recoveryLimitReached">Vous avez atteint votre limite annuelle de recuperation. Pour toute nouvelle indisponibilite, veuillez effectuer une demande d'absence.</span>
+                <a href="{% url 'requests_management:absence_create' %}" class="btn-secondary btn-sm" data-i18n="recoveryLimitAbsenceButton">Faire une demande d'absence</a>
+            </div>
+            {% endif %}
+        </article>
+        {% else %}
+        <article class="card recovery-limit-card">
+            <div class="card-head">
+                <div>
+                    <h2><i class="bi bi-arrow-repeat"></i> Mes recuperations</h2>
+                    <p class="helper">Suivi de vos jours de recuperation pour l'annee en cours.</p>
+                </div>
+            </div>
+            <div class="recovery-limit-hero">
+                <div class="recovery-limit-count">
+                    <strong id="employee-recovery-total">{{ profile.recovery_total_balance }} jours</strong>
+                    <span class="recovery-limit-count-label">Jours de recuperation</span>
+                </div>
+            </div>
+            <div class="recovery-limit-disabled">
+                <i class="bi bi-info-circle"></i>
+                <span data-i18n="recoveryLimitDisabled">Limite annuelle de recuperation desactivee</span>
+            </div>
+        </article>
+        {% endif %}
+
         <div class="employee-hero-row employee-hero-row-stats">
             <article class="card employee-stat-card employee-stat-card-rose">
                 <span>Evenement familial</span>
@@ -612,6 +681,142 @@
             gap: 16px;
         }
     }
+    /* Recovery limit card (modern UI, mirrors approved absences card) */
+    .recovery-limit-card {
+        border: 1px solid rgba(183, 108, 28, 0.25);
+        background: linear-gradient(135deg, var(--card) 0%, rgba(183, 108, 28, 0.06) 100%);
+    }
+    .recovery-limit-card .card-head h2 {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #b76c1c;
+    }
+    .recovery-limit-hero {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: center;
+        gap: 24px;
+        padding: 28px 20px;
+        text-align: center;
+        background: rgba(183, 108, 28, 0.07);
+        border-radius: var(--radius-md);
+        margin-bottom: 20px;
+        border: 1px dashed rgba(183, 108, 28, 0.25);
+    }
+    .recovery-limit-count {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2px;
+    }
+    .recovery-limit-count strong {
+        font-size: 5rem;
+        font-weight: 900;
+        line-height: 1;
+        color: #b76c1c;
+        letter-spacing: -0.03em;
+        text-shadow: 0 4px 18px rgba(183, 108, 28, 0.18);
+    }
+    .recovery-limit-count-label {
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+    }
+    .recovery-limit-hero-badge .badge {
+        font-size: 0.85rem;
+        padding: 8px 16px;
+        border-radius: 999px;
+        white-space: nowrap;
+    }
+    .recovery-limit-hero-badge .badge i {
+        margin-right: 5px;
+    }
+    /* Limit / progress block */
+    .recovery-limit-block {
+        background: rgba(183, 108, 28, 0.06);
+        border: 1px solid rgba(183, 108, 28, 0.2);
+        border-radius: var(--radius-md);
+        padding: 18px 20px;
+        margin-bottom: 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+    }
+    .recovery-limit-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--text);
+    }
+    .recovery-limit-used {
+        color: #b76c1c;
+    }
+    .recovery-limit-percent {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: var(--muted);
+    }
+    .recovery-limit-progress {
+        height: 12px;
+        border-radius: 999px;
+        background: rgba(183, 108, 28, 0.12);
+        overflow: hidden;
+    }
+    .recovery-limit-progress-fill {
+        height: 100%;
+        width: 0;
+        background: linear-gradient(90deg, #b76c1c, #d4881a);
+        border-radius: 999px;
+        transition: width 0.6s ease;
+    }
+    .recovery-limit-footer {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        font-size: 0.85rem;
+        color: var(--muted);
+    }
+    .recovery-limit-footer strong {
+        color: #b76c1c;
+    }
+    .recovery-limit-reached {
+        color: #c62828;
+        font-weight: 700;
+    }
+    .recovery-limit-disabled {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 10px 14px;
+        border-radius: 12px;
+        background: rgba(0, 0, 0, 0.03);
+        border: 1px dashed var(--border);
+        font-size: 0.88rem;
+        color: var(--muted);
+        margin-bottom: 20px;
+        flex-wrap: wrap;
+    }
+    .recovery-limit-disabled .btn-sm {
+        margin-left: auto;
+    }
+    @media (max-width: 600px) {
+        .recovery-limit-count strong {
+            font-size: 3.5rem;
+        }
+        .recovery-limit-hero {
+            padding: 20px 16px;
+            gap: 16px;
+        }
+    }
     .photo-preview-container { display: flex; justify-content: center; align-items: center; padding: 16px; }
     .photo-preview { width: 120px; height: 120px; border-radius: 50%; object-fit: cover; border: 3px solid #e8f0e8; }
     .photo-preview-fallback { width: 120px; height: 120px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 2.5rem; }
@@ -946,6 +1151,13 @@
         });
 
         document.querySelectorAll(".approved-absences-progress-fill").forEach((fill) => {
+            const percent = parseFloat(fill.dataset.percent) || 0;
+            window.requestAnimationFrame(() => {
+                fill.style.width = Math.min(100, percent) + "%";
+            });
+        });
+
+        document.querySelectorAll(".recovery-limit-progress-fill").forEach((fill) => {
             const percent = parseFloat(fill.dataset.percent) || 0;
             window.requestAnimationFrame(() => {
                 fill.style.width = Math.min(100, percent) + "%";

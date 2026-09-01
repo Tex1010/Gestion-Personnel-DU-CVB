@@ -704,6 +704,54 @@ h3 {
     background: linear-gradient(145deg, rgba(61, 77, 95, 0.96), rgba(86, 106, 129, 0.9));
 }
 
+.recovery-progress-block {
+    margin-top: 10px;
+    display: grid;
+    gap: 6px;
+}
+
+.recovery-progress-bar {
+    height: 8px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.18);
+    overflow: hidden;
+}
+
+.recovery-progress-fill {
+    height: 100%;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.9);
+    transition: width 0.3s ease;
+}
+
+.recovery-progress-full {
+    background: #ff4d4f;
+}
+
+.recovery-progress-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.72rem;
+    color: rgba(255, 255, 255, 0.78);
+}
+
+.recovery-limit-warning {
+    margin-top: 10px;
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: rgba(255, 77, 79, 0.14);
+    border: 1px solid rgba(255, 77, 79, 0.35);
+    color: #ff4d4f;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: grid;
+    gap: 6px;
+}
+
+.recovery-limit-warning i {
+    font-size: 1rem;
+}
+
 .center-stats {
     justify-content: center;
 }
