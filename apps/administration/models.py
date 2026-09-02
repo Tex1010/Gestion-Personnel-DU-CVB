@@ -40,6 +40,18 @@ class LoginBranding(models.Model):
         default="Les droits de l'annee en cours (N) sont bloques jusqu'a l'annee suivante. La consommation s'effectue oldest-first (N-2 avant N-1).",
         help_text="Regles generales affichees dans l'interface de gestion des conges.",
     )
+    absence_limit_enabled = models.BooleanField(
+        "Activer la limite annuelle des absences",
+        default=False,
+        help_text="Active ou desactive la limite annuelle d'absence pour tous les employes.",
+    )
+    absence_annual_limit = models.DecimalField(
+        "Limite annuelle des absences",
+        max_digits=6,
+        decimal_places=1,
+        default=15,
+        help_text="Nombre maximum de jours d'absence qu'un employe peut accumuler par annee.",
+    )
     recovery_limit_enabled = models.BooleanField(
         "Activer la limite annuelle des recuperations",
         default=True,
@@ -56,6 +68,53 @@ class LoginBranding(models.Model):
         "Modification de la photo de profil par l'employe",
         default=True,
         help_text="Active ou desactive la possibilite pour les employes de modifier leur photo de profil depuis leur interface.",
+    )
+    contact_enabled = models.BooleanField(
+        "Activer les moyens de contact sur la page de connexion",
+        default=True,
+        help_text="Affiche ou masque les moyens de contact (WhatsApp, email, Telegram, etc.) sur la page de connexion.",
+    )
+    whatsapp_enabled = models.BooleanField(
+        "Afficher WhatsApp sur la page de connexion",
+        default=True,
+        help_text="Affiche le bouton de contact WhatsApp sur la page de connexion.",
+    )
+    whatsapp_number = models.CharField(
+        "Numero WhatsApp",
+        max_length=20,
+        default="+261347794791",
+        help_text="Numero WhatsApp au format international (ex: +261 34 77 947 91).",
+    )
+    email_contact_enabled = models.BooleanField(
+        "Afficher Email sur la page de connexion",
+        default=False,
+        help_text="Affiche le bouton de contact par email sur la page de connexion.",
+    )
+    email_contact = models.EmailField(
+        "Adresse email de contact",
+        blank=True,
+        help_text="Adresse email utilisee pour le contact sur la page de connexion.",
+    )
+    telegram_enabled = models.BooleanField(
+        "Afficher Telegram sur la page de connexion",
+        default=False,
+        help_text="Affiche le bouton de contact Telegram sur la page de connexion.",
+    )
+    telegram_id = models.CharField(
+        "Identifiant ou lien Telegram",
+        max_length=100,
+        blank=True,
+        help_text="Identifiant Telegram (ex: @centrevalbio) ou lien complet.",
+    )
+    twitter_enabled = models.BooleanField(
+        "Afficher Twitter / X sur la page de connexion",
+        default=False,
+        help_text="Affiche le bouton Twitter / X sur la page de connexion.",
+    )
+    twitter_url = models.URLField(
+        "Lien du profil Twitter / X",
+        blank=True,
+        help_text="URL du profil Twitter / X (ex: https://x.com/centrevalbio).",
     )
     logo_image = models.FileField(upload_to="branding/logos/", blank=True, null=True)
     hero_image = models.FileField(upload_to="branding/", blank=True, null=True)

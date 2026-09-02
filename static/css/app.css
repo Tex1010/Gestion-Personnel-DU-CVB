@@ -1814,6 +1814,28 @@ th {
     accent-color: var(--green);
 }
 
+.settings-contact-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-top: 14px;
+}
+
+.settings-contact-card {
+    padding: 16px 18px;
+    border-radius: 18px;
+    border: 1px solid rgba(37, 92, 58, 0.12);
+    background: rgba(255, 255, 255, 0.86);
+    display: grid;
+    gap: 12px;
+}
+
+@media (max-width: 768px) {
+    .settings-contact-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
 .inline-action-form {
     margin: 0;
 }
@@ -2924,7 +2946,24 @@ th {
 
 .login-support {
     display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+}
+
+.login-support-title {
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+}
+
+.login-support-links {
+    display: flex;
+    flex-wrap: wrap;
     justify-content: center;
+    gap: 10px;
 }
 
 .login-support-link {
@@ -2951,6 +2990,50 @@ th {
     font-size: 1.15rem;
 }
 
+.login-support-link-whatsapp {
+    background: #e8f8ee;
+    border-color: #25d366;
+    color: #075e54;
+}
+
+.login-support-link-whatsapp:hover {
+    border-color: #25d366;
+    box-shadow: 0 16px 34px rgba(37, 211, 102, 0.18);
+}
+
+.login-support-link-email {
+    background: #eef3ff;
+    border-color: #4f6ef6;
+    color: #1e40af;
+}
+
+.login-support-link-email:hover {
+    border-color: #4f6ef6;
+    box-shadow: 0 16px 34px rgba(79, 110, 246, 0.18);
+}
+
+.login-support-link-telegram {
+    background: #e6f7ff;
+    border-color: #2aabee;
+    color: #0088cc;
+}
+
+.login-support-link-telegram:hover {
+    border-color: #2aabee;
+    box-shadow: 0 16px 34px rgba(42, 171, 238, 0.18);
+}
+
+.login-support-link-twitter {
+    background: #f3f4f6;
+    border-color: #6b7280;
+    color: #111827;
+}
+
+.login-support-link-twitter:hover {
+    border-color: #111827;
+    box-shadow: 0 16px 34px rgba(17, 24, 39, 0.18);
+}
+
 [data-theme="dark"] .login-support-link {
     background: rgba(16, 23, 19, 0.78);
     border-color: rgba(158, 215, 175, 0.14);
@@ -2960,6 +3043,30 @@ th {
 [data-theme="dark"] .login-support-link:hover {
     border-color: rgba(158, 215, 175, 0.24);
     box-shadow: 0 16px 34px rgba(0, 0, 0, 0.34);
+}
+
+[data-theme="dark"] .login-support-link-whatsapp {
+    background: rgba(37, 211, 102, 0.12);
+    border-color: #25d366;
+    color: #a3f5c0;
+}
+
+[data-theme="dark"] .login-support-link-email {
+    background: rgba(79, 110, 246, 0.12);
+    border-color: #4f6ef6;
+    color: #c5caff;
+}
+
+[data-theme="dark"] .login-support-link-telegram {
+    background: rgba(42, 171, 238, 0.12);
+    border-color: #2aabee;
+    color: #a3dfff;
+}
+
+[data-theme="dark"] .login-support-link-twitter {
+    background: rgba(229, 231, 235, 0.08);
+    border-color: #9ca3af;
+    color: #e5e7eb;
 }
 
 [data-theme="dark"] .login-page {

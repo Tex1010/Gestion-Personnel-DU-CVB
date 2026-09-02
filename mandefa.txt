@@ -11,7 +11,7 @@ git push
 git reset --hard HEAD
 git pull
 
-git clone https://github.com/Tex1010/Gestion-Personnel-DU-CVB.git
+git clone https://github.com/Tex1010/Gestion-Personnel-DU-CVB.gitl
 cd Gestion-Personnel-DU-CVB
 
 

@@ -1613,8 +1613,19 @@ def settings_view(request):
                 return redirect(_settings_redirect(panel="branding"))
 
         elif "save-hr-params" in request.POST:
+            old_absence_limit_enabled = branding.absence_limit_enabled
+            old_absence_annual_limit = branding.absence_annual_limit
             old_recovery_limit_enabled = branding.recovery_limit_enabled
             old_recovery_annual_limit = branding.recovery_annual_limit
+            old_contact_enabled = branding.contact_enabled
+            old_whatsapp_enabled = branding.whatsapp_enabled
+            old_whatsapp_number = branding.whatsapp_number
+            old_email_contact_enabled = branding.email_contact_enabled
+            old_email_contact = branding.email_contact
+            old_telegram_enabled = branding.telegram_enabled
+            old_telegram_id = branding.telegram_id
+            old_twitter_enabled = branding.twitter_enabled
+            old_twitter_url = branding.twitter_url
             hr_params_form = HRParamsForm(
                 request.POST,
                 instance=branding,
@@ -1622,6 +1633,16 @@ def settings_view(request):
             if hr_params_form.is_valid():
                 hr_params_form.save()
                 limit_details = []
+                if old_absence_limit_enabled != branding.absence_limit_enabled:
+                    limit_details.append(
+                        "Limite annuelle des absences %s"
+                        % ("activee" if branding.absence_limit_enabled else "desactivee")
+                    )
+                if old_absence_annual_limit != branding.absence_annual_limit:
+                    limit_details.append(
+                        "Limite maximale des absences passee de %s a %s jours"
+                        % (old_absence_annual_limit, branding.absence_annual_limit)
+                    )
                 if old_recovery_limit_enabled != branding.recovery_limit_enabled:
                     limit_details.append(
                         "Limite annuelle de recuperation %s"
@@ -1631,6 +1652,39 @@ def settings_view(request):
                     limit_details.append(
                         "Limite maximale de recuperation passee de %s a %s jours"
                         % (old_recovery_annual_limit, branding.recovery_annual_limit)
+                    )
+                if old_contact_enabled != branding.contact_enabled:
+                    limit_details.append(
+                        "Moyens de contact sur la page de connexion %s"
+                        % ("actives" if branding.contact_enabled else "desactives")
+                    )
+                if old_whatsapp_enabled != branding.whatsapp_enabled:
+                    limit_details.append(
+                        "WhatsApp %s"
+                        % ("active" if branding.whatsapp_enabled else "desactive")
+                    )
+                if old_whatsapp_number != branding.whatsapp_number:
+                    limit_details.append(
+                        "Numero WhatsApp mis a jour"
+                    )
+                if old_email_contact_enabled != branding.email_contact_enabled:
+                    limit_details.append(
+                        "Email de contact %s"
+                        % ("active" if branding.email_contact_enabled else "desactive")
+                    )
+                if old_email_contact != branding.email_contact:
+                    limit_details.append(
+                        "Adresse email de contact mise a jour"
+                    )
+                if old_telegram_enabled != branding.telegram_enabled:
+                    limit_details.append(
+                        "Telegram %s"
+                        % ("active" if branding.telegram_enabled else "desactive")
+                    )
+                if old_twitter_enabled != branding.twitter_enabled:
+                    limit_details.append(
+                        "Twitter / X %s"
+                        % ("active" if branding.twitter_enabled else "desactive")
                     )
                 if limit_details:
                     _record_account_history(

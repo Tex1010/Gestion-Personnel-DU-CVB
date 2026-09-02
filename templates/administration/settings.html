@@ -1040,6 +1040,30 @@
                 </div>
                 <div class="settings-form-block">
                     <div class="settings-form-heading">
+                        <h3 data-i18n="absenceSettingsTitle">Parametres des absences</h3>
+                        <p class="helper" data-i18n="absenceSettingsHelper">Definissez la limite annuelle des absences et activez ou desactivez cette regle pour tous les employes.</p>
+                    </div>
+                    <div class="form-grid two">
+                        <div class="toggle-setting-card">
+                            <label class="toggle-setting-label" for="{{ hr_params_form.absence_limit_enabled.id_for_label }}">
+                                <span>
+                                    <strong data-i18n="absenceLimitEnabledLabel">{{ hr_params_form.absence_limit_enabled.label }}</strong>
+                                    <small class="helper" data-i18n="absenceLimitEnabledHelper">{{ hr_params_form.absence_limit_enabled.help_text }}</small>
+                                </span>
+                                {{ hr_params_form.absence_limit_enabled }}
+                            </label>
+                            {% for error in hr_params_form.absence_limit_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                        <div>
+                            {{ hr_params_form.absence_annual_limit.label_tag }}
+                            {{ hr_params_form.absence_annual_limit }}
+                            {% if hr_params_form.absence_annual_limit.help_text %}<small class="helper" data-i18n="absenceLimitMaxHelper">{{ hr_params_form.absence_annual_limit.help_text }}</small>{% endif %}
+                            {% for error in hr_params_form.absence_annual_limit.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
                         <h3 data-i18n="recoverySettingsTitle">Parametres des recuperations</h3>
                         <p class="helper" data-i18n="recoverySettingsHelper">Definissez la limite annuelle de recuperation et activez ou desactivez cette regle pour tous les employes.</p>
                     </div>
@@ -1059,6 +1083,98 @@
                             {{ hr_params_form.recovery_annual_limit }}
                             {% if hr_params_form.recovery_annual_limit.help_text %}<small class="helper" data-i18n="recoveryLimitMaxHelper">{{ hr_params_form.recovery_annual_limit.help_text }}</small>{% endif %}
                             {% for error in hr_params_form.recovery_annual_limit.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                </div>
+                <div class="settings-form-block">
+                    <div class="settings-form-heading">
+                        <h3 data-i18n="contactSettingsTitle">Moyens de contact sur la page de connexion</h3>
+                        <p class="helper" data-i18n="contactSettingsHelper">Configurez les moyens de contact affiches sur la page de connexion pour les employes.</p>
+                    </div>
+                    <div class="form-grid two">
+                        <div class="toggle-setting-card">
+                            <label class="toggle-setting-label" for="{{ hr_params_form.contact_enabled.id_for_label }}">
+                                <span>
+                                    <strong data-i18n="contactEnabledLabel">{{ hr_params_form.contact_enabled.label }}</strong>
+                                    <small class="helper" data-i18n="contactEnabledHelper">{{ hr_params_form.contact_enabled.help_text }}</small>
+                                </span>
+                                {{ hr_params_form.contact_enabled }}
+                            </label>
+                            {% for error in hr_params_form.contact_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                        </div>
+                    </div>
+                    <div class="settings-contact-grid">
+                        <div class="settings-contact-card">
+                            <div class="toggle-setting-card">
+                                <label class="toggle-setting-label" for="{{ hr_params_form.whatsapp_enabled.id_for_label }}">
+                                    <span>
+                                        <strong data-i18n="whatsappEnabledLabel">{{ hr_params_form.whatsapp_enabled.label }}</strong>
+                                        <small class="helper" data-i18n="whatsappEnabledHelper">{{ hr_params_form.whatsapp_enabled.help_text }}</small>
+                                    </span>
+                                    {{ hr_params_form.whatsapp_enabled }}
+                                </label>
+                                {% for error in hr_params_form.whatsapp_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            </div>
+                            <div>
+                                {{ hr_params_form.whatsapp_number.label_tag }}
+                                {{ hr_params_form.whatsapp_number }}
+                                {% if hr_params_form.whatsapp_number.help_text %}<small class="helper" data-i18n="whatsappNumberHelper">{{ hr_params_form.whatsapp_number.help_text }}</small>{% endif %}
+                                {% for error in hr_params_form.whatsapp_number.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            </div>
+                        </div>
+                        <div class="settings-contact-card">
+                            <div class="toggle-setting-card">
+                                <label class="toggle-setting-label" for="{{ hr_params_form.email_contact_enabled.id_for_label }}">
+                                    <span>
+                                        <strong data-i18n="emailContactEnabledLabel">{{ hr_params_form.email_contact_enabled.label }}</strong>
+                                        <small class="helper" data-i18n="emailContactEnabledHelper">{{ hr_params_form.email_contact_enabled.help_text }}</small>
+                                    </span>
+                                    {{ hr_params_form.email_contact_enabled }}
+                                </label>
+                                {% for error in hr_params_form.email_contact_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            </div>
+                            <div>
+                                {{ hr_params_form.email_contact.label_tag }}
+                                {{ hr_params_form.email_contact }}
+                                {% if hr_params_form.email_contact.help_text %}<small class="helper" data-i18n="emailContactHelper">{{ hr_params_form.email_contact.help_text }}</small>{% endif %}
+                                {% for error in hr_params_form.email_contact.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            </div>
+                        </div>
+                        <div class="settings-contact-card">
+                            <div class="toggle-setting-card">
+                                <label class="toggle-setting-label" for="{{ hr_params_form.telegram_enabled.id_for_label }}">
+                                    <span>
+                                        <strong data-i18n="telegramEnabledLabel">{{ hr_params_form.telegram_enabled.label }}</strong>
+                                        <small class="helper" data-i18n="telegramEnabledHelper">{{ hr_params_form.telegram_enabled.help_text }}</small>
+                                    </span>
+                                    {{ hr_params_form.telegram_enabled }}
+                                </label>
+                                {% for error in hr_params_form.telegram_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            </div>
+                            <div>
+                                {{ hr_params_form.telegram_id.label_tag }}
+                                {{ hr_params_form.telegram_id }}
+                                {% if hr_params_form.telegram_id.help_text %}<small class="helper" data-i18n="telegramIdHelper">{{ hr_params_form.telegram_id.help_text }}</small>{% endif %}
+                                {% for error in hr_params_form.telegram_id.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            </div>
+                        </div>
+                        <div class="settings-contact-card">
+                            <div class="toggle-setting-card">
+                                <label class="toggle-setting-label" for="{{ hr_params_form.twitter_enabled.id_for_label }}">
+                                    <span>
+                                        <strong data-i18n="twitterEnabledLabel">{{ hr_params_form.twitter_enabled.label }}</strong>
+                                        <small class="helper" data-i18n="twitterEnabledHelper">{{ hr_params_form.twitter_enabled.help_text }}</small>
+                                    </span>
+                                    {{ hr_params_form.twitter_enabled }}
+                                </label>
+                                {% for error in hr_params_form.twitter_enabled.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            </div>
+                            <div>
+                                {{ hr_params_form.twitter_url.label_tag }}
+                                {{ hr_params_form.twitter_url }}
+                                {% if hr_params_form.twitter_url.help_text %}<small class="helper" data-i18n="twitterUrlHelper">{{ hr_params_form.twitter_url.help_text }}</small>{% endif %}
+                                {% for error in hr_params_form.twitter_url.errors %}<small class="error-text">{{ error }}</small>{% endfor %}
+                            </div>
                         </div>
                     </div>
                 </div>

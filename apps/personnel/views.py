@@ -168,10 +168,15 @@ def dashboard_view(request):
         approved_absence_days += (absence.total_days or Dec("0.0"))
 
     # Limite d'absence configurée par la RH (absences financées par le solde de récupération).
-    from apps.personnel.recovery_service import get_recovery_limit, is_recovery_limit_enabled
+    from apps.personnel.recovery_service import (
+        get_absence_limit,
+        get_recovery_limit,
+        is_absence_limit_enabled,
+        is_recovery_limit_enabled,
+    )
 
-    absence_limit_enabled = is_recovery_limit_enabled()
-    absence_limit = get_recovery_limit()
+    absence_limit_enabled = is_absence_limit_enabled()
+    absence_limit = get_absence_limit()
 
     approved_absence_days_float = float(approved_absence_days)
     absence_limit_float = float(absence_limit)

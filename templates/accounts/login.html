@@ -90,7 +90,7 @@
                 {% csrf_token %}
                 <div class="login-select-shell">
                     <div class="login-select-head">
-                        <span class="login-select-caption" data-i18n="methodToSelect">Méthode à sélectionner</span>
+                        <span class="login-select-caption" data-i18n="methodToSelect">Methode à sélectionner</span>
                         <strong data-i18n="signInAs">{{ form.role.label }}</strong>
                     </div>
                     <div class="login-select-control" data-custom-select>
@@ -127,12 +127,44 @@
                 </div>
                 <button type="submit" class="btn-primary full login-submit-button"><i class="bi bi-box-arrow-in-right"></i><span data-i18n="signIn">Se connecter</span></button>
             </form>
+            {% if branding and branding.contact_enabled %}
             <div class="login-support">
-                <a href="https://wa.me/261347794791" target="_blank" class="login-support-link">
-                    <i class="bi bi-whatsapp"></i>
-                    <span data-i18n="contactWhatsApp">Contacter sur WhatsApp</span>
-                </a>
+                <span class="login-support-title" data-i18n="needHelp">Besoin d'aide ?</span>
+                <div class="login-support-links">
+                    {% if branding.whatsapp_enabled and branding.whatsapp_number %}
+                        <a href="https://wa.me/{{ branding.whatsapp_number|cut:' '|cut:'+'|cut:'-'|cut:'('|cut:')' }}" target="_blank" rel="noopener" class="login-support-link login-support-link-whatsapp">
+                            <i class="bi bi-whatsapp"></i>
+                            <span data-i18n="contactWhatsApp">Contacter sur WhatsApp</span>
+                        </a>
+                    {% endif %}
+                    {% if branding.email_contact_enabled and branding.email_contact %}
+                        <a href="mailto:{{ branding.email_contact }}" class="login-support-link login-support-link-email">
+                            <i class="bi bi-envelope"></i>
+                            <span data-i18n="contactEmail">Contacter par email</span>
+                        </a>
+                    {% endif %}
+                    {% if branding.telegram_enabled and branding.telegram_id %}
+                        {% if branding.telegram_id|slice:":1" == "@" %}
+                            <a href="https://t.me/{{ branding.telegram_id|slice:"1:" }}" target="_blank" rel="noopener" class="login-support-link login-support-link-telegram">
+                                <i class="bi bi-telegram"></i>
+                                <span data-i18n="contactTelegram">Contacter sur Telegram</span>
+                            </a>
+                        {% else %}
+                            <a href="{{ branding.telegram_id }}" target="_blank" rel="noopener" class="login-support-link login-support-link-telegram">
+                                <i class="bi bi-telegram"></i>
+                                <span data-i18n="contactTelegram">Contacter sur Telegram</span>
+                            </a>
+                        {% endif %}
+                    {% endif %}
+                    {% if branding.twitter_enabled and branding.twitter_url %}
+                        <a href="{{ branding.twitter_url }}" target="_blank" rel="noopener" class="login-support-link login-support-link-twitter">
+                            <i class="bi bi-twitter-x"></i>
+                            <span data-i18n="contactTwitter">Suivre sur Twitter / X</span>
+                        </a>
+                    {% endif %}
+                </div>
             </div>
+            {% endif %}
         </div>
     </div>
 </section>

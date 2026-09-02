@@ -18,6 +18,8 @@ from apps.personnel.models import AnnualRecovery
 
 DEFAULT_RECOVERY_LIMIT = Decimal("15")
 DEFAULT_RECOVERY_LIMIT_ENABLED = True
+DEFAULT_ABSENCE_LIMIT = Decimal("15")
+DEFAULT_ABSENCE_LIMIT_ENABLED = False
 
 
 def get_current_year():
@@ -61,6 +63,44 @@ def is_recovery_limit_enabled():
     except Exception:
         pass
     return DEFAULT_RECOVERY_LIMIT_ENABLED
+
+
+def get_absence_limit():
+    """
+    Retourne la limite annuelle des absences configurable.
+
+    Priorité :
+    1. LoginBranding.absence_annual_limit (paramètre RH)
+    2. DEFAULT_ABSENCE_LIMIT (15) en fallback
+    """
+    try:
+        from apps.administration.models import LoginBranding
+
+        branding = LoginBranding.objects.first()
+        if branding and branding.absence_annual_limit is not None:
+            return branding.absence_annual_limit
+    except Exception:
+        pass
+    return DEFAULT_ABSENCE_LIMIT
+
+
+def is_absence_limit_enabled():
+    """
+    Retourne si la limite annuelle des absences est activée.
+
+    Priorité :
+    1. LoginBranding.absence_limit_enabled (paramètre RH)
+    2. DEFAULT_ABSENCE_LIMIT_ENABLED (False) en fallback
+    """
+    try:
+        from apps.administration.models import LoginBranding
+
+        branding = LoginBranding.objects.first()
+        if branding is not None:
+            return branding.absence_limit_enabled
+    except Exception:
+        pass
+    return DEFAULT_ABSENCE_LIMIT_ENABLED
 
 
 def get_recovery_window_years(year=None):

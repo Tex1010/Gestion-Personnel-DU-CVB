@@ -247,16 +247,38 @@ class HRParamsForm(forms.ModelForm):
         labels = {
             "annual_leave_quota": "Quota annuel de conge",
             "leave_window_size": "Taille de la fenetre de conges",
+            "absence_limit_enabled": "Activer la limite annuelle des absences",
+            "absence_annual_limit": "Limite annuelle des absences",
             "recovery_limit_enabled": "Activer la limite annuelle des recuperations",
             "recovery_annual_limit": "Limite annuelle de recuperation",
             "profile_photo_editing_enabled": "Modification de la photo de profil par l'employe",
+            "contact_enabled": "Activer les moyens de contact sur la page de connexion",
+            "whatsapp_enabled": "Afficher WhatsApp sur la page de connexion",
+            "whatsapp_number": "Numero WhatsApp",
+            "email_contact_enabled": "Afficher Email sur la page de connexion",
+            "email_contact": "Adresse email de contact",
+            "telegram_enabled": "Afficher Telegram sur la page de connexion",
+            "telegram_id": "Identifiant ou lien Telegram",
+            "twitter_enabled": "Afficher Twitter / X sur la page de connexion",
+            "twitter_url": "Lien du profil Twitter / X",
         }
         help_texts = {
             "annual_leave_quota": "Nombre de jours de conge acquis chaque annee civile. Les droits de l'annee en cours sont bloques jusqu'a l'annee suivante.",
             "leave_window_size": "Nombre d'annees conservees dans la fenetre glissante (ex: 3 = N-2, N-1, N).",
+            "absence_limit_enabled": "Active ou desactive la limite annuelle d'absence pour tous les employes.",
+            "absence_annual_limit": "Nombre maximum de jours d'absence qu'un employe peut accumuler par annee.",
             "recovery_limit_enabled": "Active ou desactive la limite annuelle de recuperation pour tous les employes.",
             "recovery_annual_limit": "Nombre maximum de jours de recuperation qu'un employe peut accumuler par annee.",
             "profile_photo_editing_enabled": "Active ou desactive la possibilite pour les employes de modifier leur photo de profil depuis leur interface.",
+            "contact_enabled": "Affiche ou masque les moyens de contact (WhatsApp, email, Telegram, etc.) sur la page de connexion.",
+            "whatsapp_enabled": "Affiche le bouton de contact WhatsApp sur la page de connexion.",
+            "whatsapp_number": "Numero WhatsApp au format international (ex: +261 34 77 947 91).",
+            "email_contact_enabled": "Affiche le bouton de contact par email sur la page de connexion.",
+            "email_contact": "Adresse email utilisee pour le contact sur la page de connexion.",
+            "telegram_enabled": "Affiche le bouton de contact Telegram sur la page de connexion.",
+            "telegram_id": "Identifiant Telegram (ex: @centrevalbio) ou lien complet.",
+            "twitter_enabled": "Affiche le bouton Twitter / X sur la page de connexion.",
+            "twitter_url": "URL du profil Twitter / X (ex: https://x.com/centrevalbio).",
         }
         for field_name, label in labels.items():
             if field_name in self.fields:
@@ -270,9 +292,20 @@ class HRParamsForm(forms.ModelForm):
         fields = [
             "annual_leave_quota",
             "leave_window_size",
+            "absence_limit_enabled",
+            "absence_annual_limit",
             "recovery_limit_enabled",
             "recovery_annual_limit",
             "profile_photo_editing_enabled",
+            "contact_enabled",
+            "whatsapp_enabled",
+            "whatsapp_number",
+            "email_contact_enabled",
+            "email_contact",
+            "telegram_enabled",
+            "telegram_id",
+            "twitter_enabled",
+            "twitter_url",
         ]
 
 
