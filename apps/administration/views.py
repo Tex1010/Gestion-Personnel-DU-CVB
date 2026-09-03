@@ -1,11 +1,13 @@
 import io
 import json
+import logging
 import unicodedata
 from decimal import Decimal
 
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.mail import send_mail
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.db import transaction
 from django.db.models import Count, Q
 from django.http import HttpResponse, JsonResponse
@@ -28,12 +30,15 @@ from apps.administration.forms import (
 )
 from apps.administration.models import (
     AccountActionHistory,
+    LogEntry,
     LoginBranding,
     Notification,
     RequestActionHistory,
 )
 from apps.personnel.models import ContractType, Department, EmployeeProfile, Project, Role
 from apps.requests_management.models import StaffRequest
+
+logger = logging.getLogger("application")
 
 
 def _format_balance_label(value, unit):
@@ -971,6 +976,10 @@ def _apply_request_balance(request_item):
     profile = request_item.employee
     amount = request_item.total_days or Decimal("0.0")
 
+    # Exceptional absence with salary deduction - do NOT touch any balance counter.
+    if getattr(request_item, "is_exceptional_absence", False):
+        return True, "Absence exceptionnelle avec retenue salariale - solde inchange."
+
     if request_item.request_type == StaffRequest.TYPE_LEAVE:
         if get_leave_balance(profile) < amount:
             return (
@@ -1028,6 +1037,10 @@ def _restore_request_balance_for_cancellation(request_item):
 
     profile = request_item.employee
     amount = request_item.total_days or Decimal("0.0")
+
+    # Exceptional absence with salary deduction - nothing to restore, balance was untouched.
+    if getattr(request_item, "is_exceptional_absence", False):
+        return True, "Absence exceptionnelle : aucun solde a restaurer."
 
     if request_item.request_type == StaffRequest.TYPE_LEAVE:
         restore_leave(profile, request_item.leave_consumption or {})
@@ -1189,6 +1202,276 @@ def requests_overview_data_view(request):
     )
 
 
+def _build_exceptional_absences_queryset(current_profile):
+    requests = StaffRequest.objects.select_related(
+        "employee", "employee__user", "employee__department"
+    ).filter(is_exceptional_absence=True)
+    if current_profile:
+        if current_profile.can_validate_hierarchy:
+            requests = requests.filter(employee__department=current_profile.department)
+        elif not (current_profile.can_manage_settings or current_profile.can_validate_administration):
+            if current_profile.can_validate_direction:
+                pass
+            else:
+                requests = requests.none()
+    return requests
+
+
+def _exceptional_absence_search_values(item):
+    profile = item.employee
+    return [
+        profile.display_name,
+        profile.user.first_name,
+        profile.user.last_name,
+        profile.employee_number or "",
+    ]
+
+
+def _build_exceptional_absences_context(current_profile, search_term="", status_filter="", year_filter="", deduction_filter="", page=1):
+    requests = _build_exceptional_absences_queryset(current_profile)
+
+    if status_filter:
+        requests = requests.filter(status=status_filter)
+
+    if year_filter:
+        requests = requests.filter(created_at__year=year_filter)
+
+    if deduction_filter == "pending":
+        requests = requests.filter(
+            salary_deduction_status=StaffRequest.DEDUCTION_STATUS_PENDING
+        )
+    elif deduction_filter == "withdrawn":
+        requests = requests.filter(
+            salary_deduction_status=StaffRequest.DEDUCTION_STATUS_WITHDRAWN
+        )
+
+    requests = requests.order_by("-created_at")
+
+    requests = _filter_items_for_search(requests, search_term, _exceptional_absence_search_values)
+
+    paginator = Paginator(requests, 20)
+    try:
+        page_obj = paginator.get_page(page)
+    except (EmptyPage, PageNotAnInteger):
+        page_obj = paginator.get_page(1)
+
+    exceptional_requests = list(page_obj)
+
+    all_requests = list(requests)
+    total_count = paginator.count
+    pending_count = sum(1 for r in all_requests if r.status == StaffRequest.STATUS_SUBMITTED)
+    approved_count = sum(1 for r in all_requests if r.status == StaffRequest.STATUS_APPROVED)
+    total_exceptional_days = sum(
+        float(r.exceptional_days or Decimal("0")) for r in all_requests
+    )
+    deduction_pending_count = sum(
+        1 for r in all_requests
+        if r.salary_deduction_status == StaffRequest.DEDUCTION_STATUS_PENDING
+        and r.status == StaffRequest.STATUS_APPROVED
+    )
+    deduction_withdrawn_count = sum(
+        1 for r in all_requests
+        if r.salary_deduction_status == StaffRequest.DEDUCTION_STATUS_WITHDRAWN
+        and r.status == StaffRequest.STATUS_APPROVED
+    )
+
+    current_year = timezone.localdate().year
+    year_range = list(range(current_year, current_year - 5, -1))
+
+    is_admin = bool(
+        current_profile
+        and (current_profile.can_manage_settings or current_profile.can_validate_administration)
+    )
+
+    return {
+        "requests": exceptional_requests,
+        "search_term": search_term,
+        "status_filter": status_filter,
+        "year_filter": year_filter,
+        "deduction_filter": deduction_filter,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "total_count": total_count,
+        "pending_count": pending_count,
+        "approved_count": approved_count,
+        "total_exceptional_days": round(total_exceptional_days, 1),
+        "deduction_pending_count": deduction_pending_count,
+        "deduction_withdrawn_count": deduction_withdrawn_count,
+        "status_choices": StaffRequest.STATUS_CHOICES,
+        "deduction_status_choices": StaffRequest.DEDUCTION_STATUS_CHOICES,
+        "current_year": current_year,
+        "year_range": year_range,
+        "can_approve": is_admin,
+        "can_manage_deduction": is_admin,
+    }
+
+
+@login_required
+@approval_required
+def exceptional_absences_view(request):
+    current_profile = getattr(request.user, "profile", None)
+    search_term = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    year_filter = request.GET.get("year", "").strip()
+    deduction_filter = request.GET.get("deduction", "").strip()
+    page = request.GET.get("page", "1")
+    context = _build_exceptional_absences_context(
+        current_profile,
+        search_term=search_term,
+        status_filter=status_filter,
+        year_filter=year_filter,
+        deduction_filter=deduction_filter,
+        page=page,
+    )
+    if request.headers.get("x-requested-with") == "fetch":
+        context["_partial_rows"] = True
+    return render(request, "administration/exceptional_absences.html", context)
+
+
+@login_required
+@approval_required
+def exceptional_absences_data_view(request):
+    current_profile = getattr(request.user, "profile", None)
+    search_term = request.GET.get("q", "").strip()
+    status_filter = request.GET.get("status", "").strip()
+    year_filter = request.GET.get("year", "").strip()
+    deduction_filter = request.GET.get("deduction", "").strip()
+    page = request.GET.get("page", "1")
+    context = _build_exceptional_absences_context(
+        current_profile,
+        search_term=search_term,
+        status_filter=status_filter,
+        year_filter=year_filter,
+        deduction_filter=deduction_filter,
+        page=page,
+    )
+    return JsonResponse(
+        {
+            "total_count": context["total_count"],
+            "pending_count": context["pending_count"],
+            "approved_count": context["approved_count"],
+            "total_exceptional_days": context["total_exceptional_days"],
+            "deduction_pending_count": context["deduction_pending_count"],
+            "deduction_withdrawn_count": context["deduction_withdrawn_count"],
+            "rows_html": render_to_string(
+                "administration/includes/exceptional_absence_rows.html",
+                context,
+                request=request,
+            ),
+            "pagination_html": render_to_string(
+                "administration/includes/exceptional_absence_pagination.html",
+                context,
+                request=request,
+            ),
+        }
+    )
+
+
+@login_required
+@approval_required
+def exceptional_absence_detail_view(request, request_id):
+    current_profile = getattr(request.user, "profile", None)
+    request_item = get_object_or_404(
+        StaffRequest.objects.select_related(
+            "employee", "employee__user", "employee__department"
+        ),
+        pk=request_id,
+        is_exceptional_absence=True,
+    )
+    history = RequestActionHistory.objects.filter(
+        request=request_item
+    ).select_related("actor").order_by("-created_at")
+    stage_statuses = _build_history_stage_statuses(request_item)
+    return render(
+        request,
+        "administration/exceptional_absence_detail.html",
+        {
+            "request_item": request_item,
+            "stage_statuses": stage_statuses,
+            "history": history,
+            "is_admin": bool(
+                current_profile
+                and (current_profile.can_manage_settings or current_profile.can_validate_administration)
+            ),
+            "is_direction": bool(current_profile and current_profile.can_validate_direction),
+            "can_approve": _is_request_in_scope(request_item, current_profile)
+            and request_item.status == StaffRequest.STATUS_SUBMITTED,
+        },
+    )
+
+
+@login_required
+@approval_required
+def exceptional_absence_print_view(request, request_id):
+    current_profile = getattr(request.user, "profile", None)
+    request_item = get_object_or_404(
+        StaffRequest.objects.select_related(
+            "employee", "employee__user", "employee__department"
+        ),
+        pk=request_id,
+        is_exceptional_absence=True,
+    )
+    history = RequestActionHistory.objects.filter(
+        request=request_item
+    ).select_related("actor").order_by("-created_at")
+    stage_statuses = _build_history_stage_statuses(request_item)
+    return render(
+        request,
+        "administration/exceptional_absence_print.html",
+        {
+            "request_item": request_item,
+            "stage_statuses": stage_statuses,
+            "history": history,
+        },
+    )
+
+
+@login_required
+@approval_required
+def mark_salary_deduction_view(request, request_id):
+    if request.method != "POST":
+        return redirect("administration:exceptional_absences")
+    current_profile = getattr(request.user, "profile", None)
+    request_item = get_object_or_404(
+        StaffRequest.objects.select_related("employee", "employee__user"),
+        pk=request_id,
+        is_exceptional_absence=True,
+    )
+    previous_status = request_item.salary_deduction_status
+    if request_item.status != StaffRequest.STATUS_APPROVED:
+        messages.error(
+            request,
+            "Impossible : la retenue salariale ne peut etre marquee que sur une demande approuvee.",
+        )
+        return redirect("administration:exceptional_absences")
+    if request_item.salary_deduction_status != StaffRequest.DEDUCTION_STATUS_PENDING:
+        messages.error(request, "Cette retenue salariale est deja marquee comme effectuee.")
+        return redirect("administration:exceptional_absences")
+
+    RequestActionHistory.objects.create(
+        request=request_item,
+        actor=request.user,
+        action=RequestActionHistory.ACTION_APPROVED,
+        previous_status=previous_status,
+        new_status=request_item.salary_deduction_status,
+        comment=f"Retenue salariale effectuee pour {request_item.exceptional_days} jour(s).",
+    )
+    request_item.salary_deduction_status = StaffRequest.DEDUCTION_STATUS_WITHDRAWN
+    request_item.save(update_fields=["salary_deduction_status", "updated_at"])
+    messages.success(request, "La retenue salariale a ete marquee comme effectuee.")
+    logger.info(
+        "Retenue salariale de la demande #%s marquee comme effectuee par '%s'.",
+        request_item.id,
+        request.user.username,
+        extra={"extra_data": {
+            "event": "salary_deduction_withdrawn",
+            "request_id": request_item.id,
+            "actor": request.user.username,
+        }},
+    )
+    return redirect("administration:exceptional_absences")
+
+
 @login_required
 @approval_required
 def presence_overview_view(request):
@@ -1297,9 +1580,11 @@ def request_action_view(request, request_id, action):
         StaffRequest.objects.select_related("employee", "employee__user"),
         pk=request_id,
     )
+    redirect_target = request.POST.get("next") or _requests_redirect(show_history=True)
+
     if action != "cancel" and request_item.status != StaffRequest.STATUS_SUBMITTED:
         messages.error(request, "Cette demande a deja ete traitee.")
-        return redirect(_requests_redirect(show_history=True))
+        return redirect(redirect_target)
 
     comment = request.POST.get("admin_comment", "").strip()
     previous_status = request_item.status
@@ -1313,14 +1598,14 @@ def request_action_view(request, request_id, action):
     if action == "cancel":
         if not is_admin:
             messages.error(request, "Impossible : seule la Ressource Humain (RH) peut annuler cette demande.")
-            return redirect(_requests_redirect(show_history=True))
+            return redirect(redirect_target)
         if request_item.status != StaffRequest.STATUS_APPROVED:
             messages.error(request, "Cette demande n'est pas approuvee et ne peut pas etre annulee.")
-            return redirect(_requests_redirect(show_history=True))
+            return redirect(redirect_target)
         success, balance_message = _restore_request_balance_for_cancellation(request_item)
         if not success:
             messages.error(request, balance_message)
-            return redirect(_requests_redirect(show_history=True))
+            return redirect(redirect_target)
         request_item.status = StaffRequest.STATUS_CANCELLED
         request_item.approval_stage = StaffRequest.APPROVAL_COMPLETED
         request_item.admin_comment = comment or request_item.admin_comment
@@ -1338,20 +1623,31 @@ def request_action_view(request, request_id, action):
             new_status=request_item.status,
             comment=comment or "Annulation par la Ressource Humain (RH)",
         )
+        logger.info(
+            "Demande #%s annulee par '%s'.",
+            request_item.id,
+            request.user.username,
+            extra={"extra_data": {
+                "event": "request_cancelled",
+                "request_id": request_item.id,
+                "actor": request.user.username,
+                "previous_status": previous_status,
+            }},
+        )
         from apps.administration.notifications_service import notify_request_cancelled
 
         notify_request_cancelled(request_item)
         messages.success(request, "La demande a ete annulee." + (f" {balance_message}" if balance_message else ""))
-        return redirect(_requests_redirect(show_history=True))
+        return redirect(redirect_target)
 
     if not _is_request_in_scope(request_item, current_profile):
         messages.error(request, "Cette demande n'est pas disponible dans votre perimetre de validation.")
-        return redirect(_requests_redirect(show_history=True))
+        return redirect(redirect_target)
 
     if action == "reject":
         if not (is_hierarchical or is_admin or is_direction):
             messages.error(request, "Impossible : seuls les validateurs autorises peuvent traiter cette demande.")
-            return redirect(_requests_redirect(show_history=True))
+            return redirect(redirect_target)
         request_item.status = StaffRequest.STATUS_REJECTED
         history_action = RequestActionHistory.ACTION_REJECTED
         confirmation_message = "La demande a ete rejetee."
@@ -1364,7 +1660,7 @@ def request_action_view(request, request_id, action):
     elif action == "approve":
         if not (is_hierarchical or is_admin or is_direction):
             messages.error(request, "Impossible : seuls les validateurs autorises peuvent traiter cette demande.")
-            return redirect(_requests_redirect(show_history=True))
+            return redirect(redirect_target)
 
         if is_hierarchical:
             if request_item.approval_stage != StaffRequest.APPROVAL_HIERARCHY:
@@ -1372,7 +1668,7 @@ def request_action_view(request, request_id, action):
                     request,
                     "Impossible : cette demande n'est pas encore disponible pour le chef hierarchique.",
                 )
-                return redirect(_requests_redirect(show_history=True))
+                return redirect(redirect_target)
             request_item.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
             request_item.hierarchical_signature = request.user.get_username()
             confirmation_message = "La demande a ete transmise a la Ressource Humain (RH)."
@@ -1383,19 +1679,19 @@ def request_action_view(request, request_id, action):
                     request,
                     "Impossible : le chef hierarchique doit d'abord valider cette demande.",
                 )
-                return redirect(_requests_redirect(show_history=True))
+                return redirect(redirect_target)
             if request_item.approval_stage == StaffRequest.APPROVAL_DIRECTION:
                 messages.error(
                     request,
                     "Impossible : la demande a deja ete transmise a la direction.",
                 )
-                return redirect(_requests_redirect(show_history=True))
+                return redirect(redirect_target)
             if request_item.approval_stage != StaffRequest.APPROVAL_ADMINISTRATION:
                 messages.error(
                     request,
                     "Impossible : cette demande ne correspond pas a votre etape de validation.",
                 )
-                return redirect(_requests_redirect(show_history=True))
+                return redirect(redirect_target)
             request_item.approval_stage = StaffRequest.APPROVAL_DIRECTION
             request_item.administration_signature = request.user.get_username()
             confirmation_message = "La demande a ete transmise a la direction."
@@ -1406,23 +1702,23 @@ def request_action_view(request, request_id, action):
                     request,
                     "Impossible : le chef hierarchique doit d'abord valider cette demande.",
                 )
-                return redirect(_requests_redirect(show_history=True))
+                return redirect(redirect_target)
             if request_item.approval_stage == StaffRequest.APPROVAL_ADMINISTRATION:
                 messages.error(
                     request,
                     "Impossible : la Ressource Humain (RH) doit d'abord valider cette demande.",
                 )
-                return redirect(_requests_redirect(show_history=True))
+                return redirect(redirect_target)
             if request_item.approval_stage != StaffRequest.APPROVAL_DIRECTION:
                 messages.error(
                     request,
                     "Impossible : cette demande n'est pas a l'etape de validation de la direction.",
                 )
-                return redirect(_requests_redirect(show_history=True))
+                return redirect(redirect_target)
             success, balance_message = _apply_request_balance(request_item)
             if not success:
                 messages.error(request, balance_message)
-                return redirect(_requests_redirect(show_history=True))
+                return redirect(redirect_target)
             request_item.status = StaffRequest.STATUS_APPROVED
             request_item.approval_stage = StaffRequest.APPROVAL_COMPLETED
             request_item.direction_signature = request.user.get_username()
@@ -1430,10 +1726,10 @@ def request_action_view(request, request_id, action):
             history_action = RequestActionHistory.ACTION_APPROVED
         else:
             messages.error(request, "Impossible : action invalide.")
-            return redirect(_requests_redirect(show_history=True))
+            return redirect(redirect_target)
     else:
         messages.error(request, "Action invalide.")
-        return redirect("administration:requests")
+        return redirect(redirect_target)
 
     request_item.admin_comment = comment
     request_item.save(update_fields=[
@@ -1466,6 +1762,22 @@ def request_action_view(request, request_id, action):
     elif request_item.status == StaffRequest.STATUS_REJECTED:
         notify_request_rejected(request_item, comment=comment)
 
+    logger.info(
+        "Demande #%s %s par '%s' (statut: %s -> %s).",
+        request_item.id,
+        "approuvee" if action == "approve" else "rejetee",
+        request.user.username,
+        previous_status,
+        request_item.status,
+        extra={"extra_data": {
+            "event": "request_approved" if action == "approve" else "request_rejected",
+            "request_id": request_item.id,
+            "actor": request.user.username,
+            "previous_status": previous_status,
+            "new_status": request_item.status,
+        }},
+    )
+
     # Notifier le validateur suivant lorsque la demande avance d'étape
     if action == "approve" and request_item.approval_stage != StaffRequest.APPROVAL_COMPLETED:
         _notify_next_validator(request_item)
@@ -1478,7 +1790,7 @@ def request_action_view(request, request_id, action):
             if item
         ),
     )
-    return redirect(_requests_redirect(show_history=True))
+    return redirect(redirect_target)
 
 
 @login_required
@@ -1555,6 +1867,12 @@ def settings_view(request):
                     AccountActionHistory.ACTION_CREATED,
                     "Compte cree depuis les parametres.",
                 )
+                logger.info(
+                    "Compte utilisateur cree par '%s': %s",
+                    request.user.username,
+                    user.username,
+                    extra={"extra_data": {"event": "account_created", "actor": request.user.username, "target": user.username}},
+                )
                 messages.success(request, "Le compte employe a ete cree.")
                 return redirect(_settings_redirect(panel="create"))
 
@@ -1579,6 +1897,12 @@ def settings_view(request):
                     AccountActionHistory.ACTION_UPDATED,
                     "Compte modifie depuis les parametres.",
                 )
+                logger.info(
+                    "Compte utilisateur modifie par '%s': %s",
+                    request.user.username,
+                    user.username,
+                    extra={"extra_data": {"event": "account_updated", "actor": request.user.username, "target": user.username}},
+                )
                 messages.success(request, "Le compte a ete modifie.")
                 return redirect(_settings_redirect(panel="accounts", show_history=True))
 
@@ -1597,6 +1921,12 @@ def settings_view(request):
                 AccountActionHistory.ACTION_DELETED,
                 "Compte supprime depuis les parametres.",
             )
+            logger.warning(
+                "Compte utilisateur supprime par '%s': %s",
+                request.user.username,
+                target_user.username,
+                extra={"extra_data": {"event": "account_deleted", "actor": request.user.username, "target": target_user.username}},
+            )
             target_user.delete()
             messages.success(request, "Le compte a ete supprime.")
             return redirect(_settings_redirect(panel="accounts", show_history=True))
@@ -1609,6 +1939,11 @@ def settings_view(request):
             )
             if branding_form.is_valid():
                 branding_form.save()
+                logger.info(
+                    "Identite visuelle/modalites de contact mises a jour par '%s'.",
+                    request.user.username,
+                    extra={"extra_data": {"event": "branding_updated", "actor": request.user.username}},
+                )
                 messages.success(request, "L'identite visuelle et les preferences d'alerte email ont ete mises a jour.")
                 return redirect(_settings_redirect(panel="branding"))
 
@@ -1687,12 +2022,18 @@ def settings_view(request):
                         % ("active" if branding.twitter_enabled else "desactive")
                     )
                 if limit_details:
-                    _record_account_history(
-                        request.user,
-                        request.user,
-                        AccountActionHistory.ACTION_UPDATED,
-                        "Parametres RH - " + " ; ".join(limit_details),
-                    )
+                 _record_account_history(
+                    request.user,
+                    request.user,
+                    AccountActionHistory.ACTION_UPDATED,
+                    "Parametres RH - " + " ; ".join(limit_details),
+                )
+                logger.info(
+                    "Parametres RH mis a jour par '%s': %s",
+                    request.user.username,
+                    "; ".join(limit_details),
+                    extra={"extra_data": {"event": "settings_updated", "actor": request.user.username}},
+                )
                 messages.success(request, "Les parametres globaux des conges ont ete mis a jour.")
                 return redirect(_settings_redirect(panel="human_resources"))
 
@@ -1851,5 +2192,329 @@ def settings_view(request):
             "edit_profile": edit_profile,
         },
     )
+
+
+# ---------------------------------------------------------------------------
+# Logs console
+# ---------------------------------------------------------------------------
+
+LOGS_PAGE_SIZE = 30
+
+LOG_LEVEL_FILTER_MAP = {
+    "info": "info",
+    "warning": "warning",
+    "error": "error",
+    "critical": "critical",
+}
+
+LOG_PERIOD_DAYS = {
+    "today": 1,
+    "7d": 7,
+    "30d": 30,
+}
+
+
+def _has_log_permission(profile):
+    """Only RH admins (can_manage_settings) can access logs."""
+    return bool(profile and profile.can_manage_settings)
+
+
+@login_required
+@approval_required
+def logs_view(request):
+    """Main logs console page — lists log entries with filtering and pagination."""
+    current_profile = getattr(request.user, "profile", None)
+    if not _has_log_permission(current_profile):
+        messages.error(request, "Vous n'avez pas acces a cette page.")
+        return redirect("personnel:dashboard")
+
+    search_term = request.GET.get("q", "").strip()
+    level_filter = request.GET.get("level", "").strip()
+    user_filter = request.GET.get("user", "").strip()
+    method_filter = request.GET.get("method", "").strip()
+    period_filter = request.GET.get("period", "").strip()
+    sort = request.GET.get("sort", "-created_at")
+    page = request.GET.get("page", "1")
+
+    allowed_sort_fields = {
+        "created_at": "created_at",
+        "-created_at": "-created_at",
+        "level": "level",
+        "-level": "-level",
+        "user_display": "user_display",
+        "-user_display": "-user_display",
+        "request_method": "request_method",
+        "-request_method": "-request_method",
+        "request_path": "request_path",
+        "-request_path": "-request_path",
+    }
+    sort_field = allowed_sort_fields.get(sort, "-created_at")
+
+    logs = LogEntry.objects.all()
+
+    if search_term:
+        logs = logs.filter(
+            Q(message__icontains=search_term)
+            | Q(user_display__icontains=search_term)
+            | Q(request_path__icontains=search_term)
+            | Q(error_id__icontains=search_term)
+            | Q(exception_type__icontains=search_term)
+            | Q(traceback_data__icontains=search_term)
+            | Q(logger_name__icontains=search_term)
+        )
+
+    if level_filter in LOG_LEVEL_FILTER_MAP:
+        logs = logs.filter(level=LOG_LEVEL_FILTER_MAP[level_filter])
+
+    if user_filter:
+        logs = logs.filter(user_id=user_filter)
+
+    if method_filter:
+        logs = logs.filter(request_method__iexact=method_filter)
+
+    if period_filter in LOG_PERIOD_DAYS:
+        days = LOG_PERIOD_DAYS[period_filter]
+        cutoff = timezone.now() - timezone.timedelta(days=days)
+        logs = logs.filter(created_at__gte=cutoff)
+
+    logs = logs.order_by(sort_field)
+
+    paginator = Paginator(logs, LOGS_PAGE_SIZE)
+    try:
+        page_obj = paginator.get_page(page)
+    except (EmptyPage, PageNotAnInteger):
+        page_obj = paginator.get_page(1)
+
+    all_logs = list(logs)
+    total_count = paginator.count
+    info_count = sum(1 for r in all_logs if r.level == LogEntry.LEVEL_INFO)
+    warning_count = sum(1 for r in all_logs if r.level == LogEntry.LEVEL_WARNING)
+    error_count = sum(1 for r in all_logs if r.level == LogEntry.LEVEL_ERROR)
+    critical_count = sum(1 for r in all_logs if r.level == LogEntry.LEVEL_CRITICAL)
+
+    users_with_logs = (
+        LogEntry.objects.exclude(user__isnull=True)
+        .exclude(user_id__isnull=True)
+        .select_related("user")
+        .order_by("user__username")
+        .values_list("user_id", "user__username", "user__first_name", "user__last_name")
+        .distinct()
+    )
+
+    context = {
+        "logs": page_obj,
+        "page_obj": page_obj,
+        "paginator": paginator,
+        "search_term": search_term,
+        "level_filter": level_filter,
+        "user_filter": user_filter,
+        "method_filter": method_filter,
+        "period_filter": period_filter,
+        "sort": sort,
+        "total_count": total_count,
+        "info_count": info_count,
+        "warning_count": warning_count,
+        "error_count": error_count,
+        "critical_count": critical_count,
+        "users_with_logs": users_with_logs,
+        "level_choices": LogEntry.LEVEL_CHOICES,
+        "methods": [("GET", "GET"), ("POST", "POST"), ("PUT", "PUT"), ("PATCH", "PATCH"), ("DELETE", "DELETE")],
+        "period_choices": [("today", "Aujourd'hui"), ("7d", "7 derniers jours"), ("30d", "30 derniers jours"), ("", "Toutes")],
+    }
+    return render(request, "administration/logs.html", context)
+
+
+@login_required
+@approval_required
+def logs_data_view(request):
+    """AJAX data endpoint for logs — returns filtered/paginated rows as HTML."""
+    current_profile = getattr(request.user, "profile", None)
+    if not _has_log_permission(current_profile):
+        return JsonResponse({"error": "Unauthorized"}, status=403)
+
+    search_term = request.GET.get("q", "").strip()
+    level_filter = request.GET.get("level", "").strip()
+    user_filter = request.GET.get("user", "").strip()
+    method_filter = request.GET.get("method", "").strip()
+    period_filter = request.GET.get("period", "").strip()
+    sort = request.GET.get("sort", "-created_at")
+    page = request.GET.get("page", "1")
+
+    allowed_sort_fields = {
+        "created_at": "created_at",
+        "-created_at": "-created_at",
+        "level": "level",
+        "-level": "-level",
+        "user_display": "user_display",
+        "-user_display": "-user_display",
+        "request_method": "request_method",
+        "-request_method": "-request_method",
+        "request_path": "request_path",
+        "-request_path": "-request_path",
+    }
+    sort_field = allowed_sort_fields.get(sort, "-created_at")
+
+    logs = LogEntry.objects.all()
+
+    if search_term:
+        logs = logs.filter(
+            Q(message__icontains=search_term)
+            | Q(user_display__icontains=search_term)
+            | Q(request_path__icontains=search_term)
+            | Q(error_id__icontains=search_term)
+            | Q(exception_type__icontains=search_term)
+            | Q(traceback_data__icontains=search_term)
+            | Q(logger_name__icontains=search_term)
+        )
+
+    if level_filter in LOG_LEVEL_FILTER_MAP:
+        logs = logs.filter(level=LOG_LEVEL_FILTER_MAP[level_filter])
+
+    if user_filter:
+        logs = logs.filter(user_id=user_filter)
+
+    if method_filter:
+        logs = logs.filter(request_method__iexact=method_filter)
+
+    if period_filter in LOG_PERIOD_DAYS:
+        days = LOG_PERIOD_DAYS[period_filter]
+        cutoff = timezone.now() - timezone.timedelta(days=days)
+        logs = logs.filter(created_at__gte=cutoff)
+
+    logs = logs.order_by(sort_field)
+
+    paginator = Paginator(logs, LOGS_PAGE_SIZE)
+    try:
+        page_obj = paginator.get_page(page)
+    except (EmptyPage, PageNotAnInteger):
+        page_obj = paginator.get_page(1)
+
+    all_logs = list(logs)
+    summary = {
+        "total_count": paginator.count,
+        "info_count": sum(1 for r in all_logs if r.level == LogEntry.LEVEL_INFO),
+        "warning_count": sum(1 for r in all_logs if r.level == LogEntry.LEVEL_WARNING),
+        "error_count": sum(1 for r in all_logs if r.level == LogEntry.LEVEL_ERROR),
+        "critical_count": sum(1 for r in all_logs if r.level == LogEntry.LEVEL_CRITICAL),
+    }
+
+    return JsonResponse(
+        {
+            "summary": summary,
+            "rows_html": render_to_string(
+                "administration/includes/log_rows.html",
+                {"logs": page_obj},
+                request=request,
+            ),
+            "pagination_html": render_to_string(
+                "administration/includes/log_pagination.html",
+                {"page_obj": page_obj, "paginator": paginator,
+                 "search_term": search_term, "level_filter": level_filter,
+                 "user_filter": user_filter, "method_filter": method_filter,
+                 "period_filter": period_filter, "sort": sort},
+                request=request,
+            ),
+        }
+    )
+
+
+@login_required
+@approval_required
+def log_detail_view(request, log_id):
+    """Detailed view of a single log entry."""
+    current_profile = getattr(request.user, "profile", None)
+    if not _has_log_permission(current_profile):
+        messages.error(request, "Vous n'avez pas acces a cette page.")
+        return redirect("personnel:dashboard")
+
+    log_entry = get_object_or_404(LogEntry.objects.select_related("user"), pk=log_id)
+
+    return render(request, "administration/log_detail.html", {"log": log_entry})
+
+
+@login_required
+@approval_required
+def log_clear_old_view(request):
+    """Clear log entries older than 90 days (admin action)."""
+    current_profile = getattr(request.user, "profile", None)
+    if not _has_log_permission(current_profile):
+        messages.error(request, "Vous n'avez pas acces a cette page.")
+        return redirect("personnel:dashboard")
+
+    cutoff = timezone.now() - timezone.timedelta(days=90)
+    deleted, counts = LogEntry.objects.filter(created_at__lt=cutoff).delete()
+    messages.success(
+        request,
+        f"Logs supprimes : {counts.get('administration.LogEntry', 0)} entree(s) deplus de 90 jours.",
+    )
+    logger.info(
+        "Effacement automatique des logs: %d entree(s) supprimee(s) deplus de 90 jours.",
+        extra={
+            "extra_data": {"deleted_count": counts.get("administration.LogEntry", 0)},
+        },
+    )
+    return redirect("administration:logs")
+
+
+@login_required
+@approval_required
+def logs_clear_view(request):
+    """Clear log entries by strategy (all / older_than).
+
+    Protected by _has_log_permission — only RH admins can call this.
+    The deletion itself is recorded in the audit trail via AccountActionHistory
+    so it survives the log purge.
+    """
+    current_profile = getattr(request.user, "profile", None)
+    if not _has_log_permission(current_profile):
+        messages.error(request, "Vous n'avez pas acces a cette page.")
+        return redirect("personnel:dashboard")
+
+    if request.method != "POST":
+        return JsonResponse({"error": "Méthode non autorisée."}, status=405)
+
+    strategy = request.POST.get("strategy", "").strip()
+    days = request.POST.get("days", "").strip()
+
+    if strategy == "all":
+        total_before = LogEntry.objects.count()
+        LogEntry.objects.all().delete()
+        AccountActionHistory.objects.create(
+            actor=request.user,
+            target_user=None,
+            target_username=request.user.username,
+            target_display_name=request.user.get_full_name() or request.user.username,
+            target_role="",
+            action=AccountActionHistory.ACTION_UPDATED,
+            details=f"Effacement complet des logs: {total_before} entree(s) supprimee(s).",
+        )
+        return JsonResponse(
+            {"success": True, "deleted": total_before, "message": "Tous les logs ont ete supprimes."}
+        )
+
+    elif strategy == "older_than":
+        if not days or not days.isdigit():
+            return JsonResponse({"error": "Parametre 'days' invalide."}, status=400)
+        cutoff = timezone.now() - timezone.timedelta(days=int(days))
+        deleted_count = LogEntry.objects.filter(created_at__lt=cutoff).count()
+        LogEntry.objects.filter(created_at__lt=cutoff).delete()
+        AccountActionHistory.objects.create(
+            actor=request.user,
+            target_user=None,
+            target_username=request.user.username,
+            target_display_name=request.user.get_full_name() or request.user.username,
+            target_role="",
+            action=AccountActionHistory.ACTION_UPDATED,
+            details=f"Effacement des logs ancien de plus de {days} jours: {deleted_count} entree(s) supprimee(s).",
+        )
+        return JsonResponse(
+            {
+                "success": True,
+                "deleted": deleted_count,
+                "message": f"{deleted_count} log(s) ancien(s) de plus de {days} jours ont ete supprimes.",
+            }
+        )
+
+    return JsonResponse({"error": "Strategie inconnue."}, status=400)
 
 

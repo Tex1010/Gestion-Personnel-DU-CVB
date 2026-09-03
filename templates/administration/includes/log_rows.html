@@ -1,0 +1,31 @@
+{% load i18n custom_filters %}
+{% for log in logs %}
+<tr class="log-row log-level-{{ log.level }}">
+    <td data-label="{% trans 'Date/heure' %}">{{ log.created_at|date:"d/m/Y H:i:s" }}</td>
+    <td data-label="{% trans 'Niveau' %}">
+        <span class="log-badge {{ log.level_class }}">
+            {% if log.level == log.LEVEL_INFO %}INFO
+            {% elif log.level == log.LEVEL_WARNING %}WARNING
+            {% elif log.level == log.LEVEL_ERROR %}ERROR
+            {% elif log.level == log.LEVEL_CRITICAL %}CRITICAL
+            {% endif %}
+        </span>
+    </td>
+    <td data-label="{% trans 'Utilisateur' %}">{{ log.user_display|default:"-" }}</td>
+    <td data-label="{% trans 'Methode' %}">{{ log.request_method|default:"-" }}</td>
+    <td data-label="{% trans 'URL' %}">{{ log.request_path|default:"-" }}</td>
+    <td data-label="{% trans 'ID erreur' %}">{{ log.error_id|default:"" }}</td>
+    <td data-label="{% trans 'Message' %}" class="log-message-cell">{{ log.message|mask_sensitive|truncatechars:100 }}</td>
+    <td data-label="{% trans 'Action' %}">
+        <a href="{% url 'administration:log_detail' log.id %}" class="btn-secondary btn-sm" title="{% trans 'Voir les details' %}">
+            <i class="bi bi-eye"></i>
+        </a>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="8" class="empty-state">
+        <i class="bi bi-info-circle"></i> {% trans 'Aucun log trouve.' %}
+    </td>
+</tr>
+{% endfor %}

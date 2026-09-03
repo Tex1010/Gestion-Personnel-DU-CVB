@@ -175,7 +175,7 @@ LOGGING = {
         'application_file': {
             'class': 'logging.handlers.RotatingFileHandler',
             'filename': str(LOGS_DIR / 'application.log'),
-            'maxBytes': 5 * 1024 * 1024,  # 5 MB
+            'maxBytes': 5 * 1024 * 1024,
             'backupCount': 5,
             'formatter': 'verbose',
             'encoding': 'utf-8',
@@ -188,15 +188,19 @@ LOGGING = {
             'formatter': 'detailed',
             'encoding': 'utf-8',
         },
+        'database': {
+            'class': 'apps.error_handling.log_handler.DatabaseLogHandler',
+            'formatter': 'verbose',
+        },
     },
     'loggers': {
         'application': {
-            'handlers': ['console', 'application_file', 'error_file'],
+            'handlers': ['console', 'application_file', 'error_file', 'database'],
             'level': 'DEBUG' if DEBUG else 'INFO',
             'propagate': False,
         },
         'application.notifications': {
-            'handlers': ['console', 'application_file'],
+            'handlers': ['console', 'application_file', 'database'],
             'level': 'INFO',
             'propagate': False,
         },

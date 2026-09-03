@@ -1,5 +1,6 @@
 from decimal import Decimal
 import base64
+import logging
 import mimetypes
 import os
 import shutil
@@ -29,6 +30,8 @@ from apps.requests_management.forms import (
 )
 from apps.requests_management.models import StaffRequest
 from django.template.loader import render_to_string
+
+logger = logging.getLogger("application")
 
 
 def _request_requires_hierarchy(request_item):
@@ -191,6 +194,10 @@ def _restore_request_balance(request_item):
     if request_item.status != StaffRequest.STATUS_APPROVED:
         return True, ""
 
+    # Exceptional absence with salary deduction - nothing to restore, balance was untouched.
+    if getattr(request_item, "is_exceptional_absence", False):
+        return True, "Absence exceptionnelle : aucun solde a restaurer."
+
     profile = request_item.employee
     amount = request_item.total_days or Decimal("0.0")
 
@@ -331,10 +338,53 @@ def _balance_request_view(request, request_type):
         balance_request.status = StaffRequest.STATUS_SUBMITTED
         if profile.role_code != EmployeeProfile.ROLE_USER:
             balance_request.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
+        # Persist exceptional absence info (separate from balance counters)
+        exceptional_days = form.cleaned_data.get("_exceptional_days", Decimal("0.0"))
+        available_balance = form.cleaned_data.get("_available_balance", Decimal("0.0"))
+        balance_request.available_balance_at_request = available_balance
+        balance_request.exceptional_days = exceptional_days
+        if exceptional_days > Decimal("0.0"):
+            # Server-side enforcement independent of form-level validation
+            if not form.cleaned_data.get("acknowledged_salary_deduction"):
+                messages.error(
+                    request,
+                    "Vous devez accepter la retenue salariale pour soumettre cette demande.",
+                )
+                return render(
+                    request,
+                    "requests_management/absence_form.html",
+                    {
+                        "form": form,
+                        "profile": profile,
+                        "request_type": request_type,
+                        "branding": branding,
+                        "is_edit_mode": False,
+                        **request_titles[request_type],
+                    },
+                )
+            balance_request.exceptional_acknowledged = True
+            balance_request.is_exceptional_absence = True
+        else:
+            balance_request.exceptional_acknowledged = False
+            balance_request.is_exceptional_absence = False
         balance_request.save()
         _send_request_email_alert(balance_request, branding=branding)
         from apps.administration.notifications_service import notify_request_created
         from apps.personnel.models import EmployeeProfile as EmpProfile
+
+        request_type_label = "conge" if request_type == StaffRequest.TYPE_LEAVE else "absence"
+        logger.info(
+            "Demande de %s creee par '%s' (ID=%s).",
+            request_type_label,
+            request.user.username,
+            balance_request.id,
+            extra={"extra_data": {
+                "event": "request_created",
+                "request_id": balance_request.id,
+                "request_type": request_type,
+                "employee": request.user.username,
+            }},
+        )
 
         validators = []
         for emp in EmpProfile.objects.filter(
@@ -460,6 +510,7 @@ def recovery_request_view(request):
         recovery_request.employee = profile
         recovery_request.request_type = StaffRequest.TYPE_RECOVERY
         recovery_request.status = StaffRequest.STATUS_SUBMITTED
+        recovery_request.available_balance_at_request = Decimal("0.0")
         recovery_request.save()
         formset.instance = recovery_request
         lines = formset.save(commit=False)
@@ -471,6 +522,17 @@ def recovery_request_view(request):
         recovery_request.total_days = total_hours
         recovery_request.save(update_fields=["total_days", "updated_at"])
         _send_request_email_alert(recovery_request, branding=branding)
+        logger.info(
+            "Demande de recuperation creee par '%s' (ID=%s).",
+            request.user.username,
+            recovery_request.id,
+            extra={"extra_data": {
+                "event": "request_created",
+                "request_id": recovery_request.id,
+                "request_type": StaffRequest.TYPE_RECOVERY,
+                "employee": request.user.username,
+            }},
+        )
         from apps.administration.notifications_service import notify_request_created
         from apps.personnel.models import EmployeeProfile as EmpProfile
 
@@ -564,7 +626,51 @@ def edit_request_view(request, request_id):
             updated_request.status = StaffRequest.STATUS_SUBMITTED
             if profile.role_code != EmployeeProfile.ROLE_USER:
                 updated_request.approval_stage = StaffRequest.APPROVAL_ADMINISTRATION
+            exceptional_days = form.cleaned_data.get("_exceptional_days", Decimal("0.0"))
+            available_balance = form.cleaned_data.get("_available_balance", Decimal("0.0"))
+            updated_request.available_balance_at_request = available_balance
+            updated_request.exceptional_days = exceptional_days
+            if exceptional_days > Decimal("0.0"):
+                if not form.cleaned_data.get("acknowledged_salary_deduction"):
+                    messages.error(
+                        request,
+                        "Vous devez accepter la retenue salariale pour soumettre cette demande.",
+                    )
+                    return render(
+                        request,
+                        "requests_management/absence_form.html",
+                        {
+                            "form": form,
+                            "profile": profile,
+                            "request_type": request_item.request_type,
+                            "branding": branding,
+                            "is_edit_mode": True,
+                            **request_titles[request_item.request_type],
+                        },
+                    )
+                updated_request.exceptional_acknowledged = True
+                updated_request.is_exceptional_absence = True
+            else:
+                updated_request.exceptional_acknowledged = False
+                updated_request.is_exceptional_absence = False
             updated_request.save()
+            request_type_label = {
+                StaffRequest.TYPE_LEAVE: "conge",
+                StaffRequest.TYPE_ABSENCE: "absence",
+                StaffRequest.TYPE_RECOVERY: "recuperation",
+            }.get(request_item.request_type, request_item.request_type)
+            logger.info(
+                "Demande de %s modifiee par '%s' (ID=%s).",
+                request_type_label,
+                request.user.username,
+                updated_request.id,
+                extra={"extra_data": {
+                    "event": "request_updated",
+                    "request_id": updated_request.id,
+                    "request_type": request_item.request_type,
+                    "actor": request.user.username,
+                }},
+            )
             messages.success(request, "La demande a ete mise a jour avec succes.")
             return redirect("personnel:dashboard")
 
@@ -638,6 +744,17 @@ def edit_request_view(request, request_id):
                 )
                 recovery_request.total_days = total_hours
                 recovery_request.save(update_fields=["total_days", "updated_at"])
+                logger.info(
+                    "Fiche de recuperation modifiee par '%s' (ID=%s).",
+                    request.user.username,
+                    recovery_request.id,
+                    extra={"extra_data": {
+                        "event": "request_updated",
+                        "request_id": recovery_request.id,
+                        "request_type": StaffRequest.TYPE_RECOVERY,
+                        "actor": request.user.username,
+                    }},
+                )
                 messages.success(request, "La fiche de recuperation a ete mise a jour avec succes.")
                 return redirect("personnel:dashboard")
 

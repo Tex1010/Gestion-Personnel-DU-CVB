@@ -1,0 +1,301 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans 'Logs' %}{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">{% trans 'Ressource Humaine' %}</span>
+            <h1>{% trans 'Logs systeme' %}</h1>
+            <p data-i18n="logsDescription">{% trans 'Console de journalisation pour consulter, rechercher et filtrer les evenements application.' %}</p>
+        </div>
+         <div class="header-actions">
+            <a href="{% url 'administration:logs' %}" class="btn-secondary" id="logs-refresh-btn">
+                <i class="bi bi-arrow-clockwise"></i> {% trans 'Actualiser' %}
+            </a>
+            <button type="button" class="btn-danger" id="logs-clear-btn" data-bs-toggle="modal" data-bs-target="#logsClearModal">
+                <i class="bi bi-trash"></i> {% trans 'Effacer les logs' %}
+            </button>
+            <a href="{% url 'administration:settings' %}?panel=human_resources" class="btn-secondary">
+                <i class="bi bi-arrow-left"></i> {% trans 'Retour aux parametres RH' %}
+            </a>
+        </div>
+    </div>
+
+    <div class="stats-scroll">
+        <div class="stats-grid fixed-four">
+            <article class="card stat-card accent-slate">
+                <span data-i18n="logsTotal">{% trans 'Total logs' %}</span>
+                <strong id="logs-total">{{ total_count }}</strong>
+                <small data-i18n="logsTotalHelper">{% trans 'Tous les evenements enregistres' %}</small>
+            </article>
+            <article class="card stat-card accent-blue">
+                <span data-i18n="logsInfo">INFO</span>
+                <strong id="logs-info-count">{{ info_count }}</strong>
+                <small data-i18n="logsInfoHelper">{% trans 'Evenements informations' %}</small>
+            </article>
+            <article class="card stat-card accent-amber">
+                <span data-i18n="logsWarning">WARNING</span>
+                <strong id="logs-warning-count">{{ warning_count }}</strong>
+                <small data-i18n="logsWarningHelper">{% trans 'Evenements avertissements' %}</small>
+            </article>
+            <article class="card stat-card accent-rose">
+                <span data-i18n="logsError">ERROR / CRITICAL</span>
+                <strong id="logs-error-count">{{ error_count|add:critical_count }}</strong>
+                <small data-i18n="logsErrorHelper">{% trans 'Erreurs et critiques' %}</small>
+            </article>
+        </div>
+    </div>
+
+    <article class="card">
+        <div class="card-head">
+            <div>
+                <h2 data-i18n="logsTableTitle">{% trans 'Journal des evenements' %}</h2>
+                <p class="helper" data-i18n="logsTableHeader">{% trans 'Liste chronologique des evenements systeme avec niveau, utilisateur et URL.' %}</p>
+            </div>
+        </div>
+
+        <div class="table-toolbar">
+            <label class="table-search-field">
+                <i class="bi bi-search"></i>
+                <input type="search" id="logs-search-input" placeholder="{% trans 'Rechercher dans les logs...' %}" value="{{ search_term }}" data-table-search="logs-table">
+            </label>
+
+            <div class="filter-group">
+                <label for="logs-level-filter" class="filter-label">{% trans 'Niveau' %}</label>
+                <select id="logs-level-filter" class="filter-select" data-logs-filter="level">
+                    <option value="" {% if not level_filter %}selected{% endif %}>{% trans 'Tous' %}</option>
+                    <option value="info" {% if level_filter == "info" %}selected{% endif %}>INFO</option>
+                    <option value="warning" {% if level_filter == "warning" %}selected{% endif %}>WARNING</option>
+                    <option value="error" {% if level_filter == "error" %}selected{% endif %}>ERROR</option>
+                    <option value="critical" {% if level_filter == "critical" %}selected{% endif %}>CRITICAL</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="logs-user-filter" class="filter-label">{% trans 'Utilisateur' %}</label>
+                <select id="logs-user-filter" class="filter-select" data-logs-filter="user">
+                    <option value="" {% if not user_filter %}selected{% endif %}>{% trans 'Tous' %}</option>
+                    {% for uid, username, first, last in users_with_logs %}
+                    <option value="{{ uid }}" {% if user_filter == uid|stringformat:"s" %}selected{% endif %}>{{ username }}{% if first or last %} ({{ first }} {{ last }}){% endif %}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="logs-method-filter" class="filter-label">{% trans 'Methode' %}</label>
+                <select id="logs-method-filter" class="filter-select" data-logs-filter="method">
+                    <option value="" {% if not method_filter %}selected{% endif %}>{% trans 'Toutes' %}</option>
+                    <option value="GET" {% if method_filter == "GET" %}selected{% endif %}>GET</option>
+                    <option value="POST" {% if method_filter == "POST" %}selected{% endif %}>POST</option>
+                    <option value="PUT" {% if method_filter == "PUT" %}selected{% endif %}>PUT</option>
+                    <option value="PATCH" {% if method_filter == "PATCH" %}selected{% endif %}>PATCH</option>
+                    <option value="DELETE" {% if method_filter == "DELETE" %}selected{% endif %}>DELETE</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="logs-period-filter" class="filter-label">{% trans 'Periode' %}</label>
+                <select id="logs-period-filter" class="filter-select" data-logs-filter="period">
+                    <option value="" {% if not period_filter %}selected{% endif %}>{% trans 'Toutes' %}</option>
+                    <option value="today" {% if period_filter == "today" %}selected{% endif %}>{% trans 'Aujourd hui' %}</option>
+                    <option value="7d" {% if period_filter == "7d" %}selected{% endif %}>{% trans '7 derniers jours' %}</option>
+                    <option value="30d" {% if period_filter == "30d" %}selected{% endif %}>{% trans '30 derniers jours' %}</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="table-shell">
+            <div class="table-wrap sticky-table">
+                <table id="logs-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="-created_at" data-i18n="colLogDate">{% trans 'Date/heure' %}</th>
+                            <th data-sort="level" data-i18n="colLogLevel">{% trans 'Niveau' %}</th>
+                            <th data-sort="user_display" data-i18n="colLogUser">{% trans 'Utilisateur' %}</th>
+                            <th data-sort="request_method" data-i18n="colLogMethod">{% trans 'Methode' %}</th>
+                            <th data-sort="request_path" data-i18n="colLogUrl">{% trans 'URL' %}</th>
+                            <th data-sort="error_id" data-i18n="colLogErrorId">{% trans 'ID erreur' %}</th>
+                            <th data-i18n="colLogMessage">{% trans 'Message' %}</th>
+                            <th data-i18n="colLogAction">{% trans 'Action' %}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-tbody">
+                        {% include "administration/includes/log_rows.html" with logs=logs %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% include "administration/includes/log_pagination.html" with page_obj=page_obj paginator=paginator search_term=search_term level_filter=level_filter user_filter=user_filter method_filter=method_filter period_filter=period_filter sort=sort %}
+    </article>
+</section>
+
+<div class="modal fade" id="logsClearModal" tabindex="-1" aria-labelledby="logsClearModalLabel" aria-hidden="true">
+    <div class="modal-dialog" role="modal">
+        <div class="modal-content">
+            <form id="logs-clear-form">
+                {% csrf_token %}
+                <div class="modal-header">
+                    <h5 class="modal-title" id="logsClearModalLabel">
+                        <i class="bi bi-exclamation-triangle text-danger"></i> {% trans 'Supprimer les logs ?' %}
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="{% trans 'Fermer' %}"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">{% trans "Cette action supprimera definitivement les logs selectionnes." %}</p>
+                    <p class="text-danger mb-3">{% trans "Cette operation est irreversible." %}</p>
+                    <div class="mb-3">
+                        <label for="logs-clear-strategy" class="form-label">{% trans 'Quoi supprimer ?' %}</label>
+                        <select id="logs-clear-strategy" name="strategy" class="form-select" required>
+                            <option value="older_than">{% trans 'Les logs plus anciens que' %}</option>
+                            <option value="all">{% trans 'Tous les logs' %}</option>
+                        </select>
+                    </div>
+                    <div class="mb-3" id="logs-clear-days-wrapper">
+                        <label for="logs-clear-days" class="form-label">{% trans 'Nombre de jours' %}</label>
+                        <input type="number" id="logs-clear-days" name="days" class="form-control" min="1" value="90" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn-secondary" data-bs-dismiss="modal">{% trans 'Annuler' %}</button>
+                    <button type="submit" class="btn-danger">{% trans 'Supprimer' %}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    const buildLogsParams = (overrides) => {
+        const params = new URLSearchParams(window.location.search);
+        Object.keys(overrides || {}).forEach((key) => {
+            if (overrides[key] === "") {
+                params.delete(key);
+            } else {
+                params.set(key, overrides[key]);
+            }
+        });
+        params.delete("page");
+        return params.toString();
+    };
+
+    const applyLogsFilters = () => {
+        const searchInput = document.getElementById("logs-search-input");
+        const levelSelect = document.getElementById("logs-level-filter");
+        const userSelect = document.getElementById("logs-user-filter");
+        const methodSelect = document.getElementById("logs-method-filter");
+        const periodSelect = document.getElementById("logs-period-filter");
+        const baseUrl = "{% url 'administration:logs' %}";
+        const query = buildLogsParams({
+            q: searchInput ? searchInput.value.trim() : "",
+            level: levelSelect ? levelSelect.value : "",
+            user: userSelect ? userSelect.value : "",
+            method: methodSelect ? methodSelect.value : "",
+            period: periodSelect ? periodSelect.value : "",
+        });
+        window.location.href = `${baseUrl}?${query}`;
+    };
+
+    document.getElementById("logs-search-input")?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            applyLogsFilters();
+        }
+    });
+
+    document.getElementById("logs-level-filter")?.addEventListener("change", applyLogsFilters);
+    document.getElementById("logs-user-filter")?.addEventListener("change", applyLogsFilters);
+    document.getElementById("logs-method-filter")?.addEventListener("change", applyLogsFilters);
+    document.getElementById("logs-period-filter")?.addEventListener("change", applyLogsFilters);
+
+    document.getElementById("logs-refresh-btn")?.addEventListener("click", (e) => {
+        e.preventDefault();
+        refreshLogsTable();
+    });
+
+    // --- Smart deletion modal logic ---
+    const strategySelect = document.getElementById("logs-clear-strategy");
+    const daysWrapper = document.getElementById("logs-clear-days-wrapper");
+    const daysInput = document.getElementById("logs-clear-days");
+
+    const toggleDaysField = () => {
+        if (strategySelect && daysWrapper) {
+            daysWrapper.style.display = strategySelect.value === "older_than" ? "block" : "none";
+            if (daysInput) daysInput.required = strategySelect.value === "older_than";
+        }
+    };
+
+    strategySelect?.addEventListener("change", toggleDaysField);
+
+    document.getElementById("logs-clear-form")?.addEventListener("submit", (e) => {
+        e.preventDefault();
+        const formData = new FormData(e.target);
+        fetch("{% url 'administration:logs_clear' %}", {
+            method: "POST",
+            body: formData,
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+        })
+            .then((r) => r.json())
+            .then((data) => {
+                if (data.success) {
+                    var modalEl = document.getElementById("logsClearModal");
+                    if (modalEl && window.bootstrap) {
+                        var modal = bootstrap.Modal.getInstance(modalEl);
+                        if (modal) modal.hide();
+                    }
+                    refreshLogsTable();
+                } else {
+                    alert(data.error || "Erreur lors de la suppression.");
+                }
+            })
+            .catch(() => alert("Erreur serveur."));
+    });
+
+    // --- Auto-refresh via AJAX polling (preserves filters and current page state) ---
+    const refreshLogsTable = () => {
+        const params = new URLSearchParams(window.location.search);
+        params.set("ajax", "1");
+        fetch(`{% url 'administration:logs' %}?${params.toString()}`, {
+            headers: { "X-Requested-With": "XMLHttpRequest" },
+        })
+            .then((r) => r.text())
+            .then((html) => {
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
+                const newTbody = doc.querySelector("#logs-tbody");
+                const currentTbody = document.getElementById("logs-tbody");
+                if (newTbody && currentTbody) {
+                    currentTbody.innerHTML = newTbody.innerHTML;
+                }
+                const newPagination = doc.querySelector("#logs-pagination");
+                const currentPagination = document.getElementById("logs-pagination");
+                if (newPagination && currentPagination) {
+                    currentPagination.innerHTML = newPagination.innerHTML;
+                }
+                const newTotal = doc.querySelector("#logs-total");
+                const currentTotal = document.getElementById("logs-total");
+                if (newTotal && currentTotal) {
+                    currentTotal.textContent = newTotal.textContent;
+                }
+                const newInfo = doc.querySelector("#logs-info-count");
+                const currentInfo = document.getElementById("logs-info-count");
+                if (newInfo && currentInfo) { currentInfo.textContent = newInfo.textContent; }
+                const newWarning = doc.querySelector("#logs-warning-count");
+                const currentWarning = document.getElementById("logs-warning-count");
+                if (newWarning && currentWarning) { currentWarning.textContent = newWarning.textContent; }
+                const newError = doc.querySelector("#logs-error-count");
+                const currentError = document.getElementById("logs-error-count");
+                if (newError && currentError) { currentError.textContent = newError.textContent; }
+            })
+            .catch(() => {});
+    };
+
+    // Start auto-refresh polling every 30 seconds
+    setInterval(refreshLogsTable, 30000);
+
+    toggleDaysField();
+</script>
+{% endblock %}

@@ -23,6 +23,12 @@ urlpatterns = [
     path("demandes/", views.requests_overview_view, name="requests"),
     path("demandes/donnees/", views.requests_overview_data_view, name="requests_overview_data"),
     path("demandes/export/<str:export_format>/", views.export_requests_view, name="export_requests"),
+    path("absences-exceptionnelles/", views.exceptional_absences_view, name="exceptional_absences"),
+    path("absences-exceptionnelles/donnees/", views.exceptional_absences_data_view, name="exceptional_absences_data"),
+    path("absences-exceptionnelles/<int:request_id>/", views.exceptional_absence_detail_view, name="exceptional_absence_detail"),
+    path("absences-exceptionnelles/<int:request_id>/imprimer/", views.exceptional_absence_print_view, name="exceptional_absence_print"),
+    path("absences-exceptionnelles/<int:request_id>/marquer-retenue/", views.mark_salary_deduction_view, name="mark_salary_deduction"),
+    path("absences-exceptionnelles/<int:request_id>/<str:action>/", views.request_action_view, name="exceptional_absence_action"),
     path("notifications/demandes/etat/", views.request_notifications_state_view, name="request_notifications_state"),
     path("notifications/demandes/retour/", views.acknowledge_request_notification_view, name="acknowledge_request_notification"),
     path(
@@ -40,9 +46,10 @@ urlpatterns = [
     path("notifications/<int:notification_id>/lue/", views.notification_mark_read_view, name="notification_mark_read"),
     path("notifications/toutes-lues/", views.notification_mark_all_read_view, name="notification_mark_all_read"),
     path("parametres/", views.settings_view, name="settings"),
-    path(
-        "parametres/historique-comptes/<int:entry_id>/supprimer/",
-        views.account_history_delete_view,
-        name="account_history_delete",
-    ),
+    path("parametres/historique-comptes/<int:entry_id>/supprimer/", views.account_history_delete_view, name="account_history_delete"),
+    path("logs/", views.logs_view, name="logs"),
+    path("logs/donnees/", views.logs_data_view, name="logs_data"),
+    path("logs/<int:log_id>/", views.log_detail_view, name="log_detail"),
+    path("logs/nettoyer/", views.log_clear_old_view, name="logs_clear_old"),
+    path("logs/supprimer/", views.logs_clear_view, name="logs_clear"),
 ]

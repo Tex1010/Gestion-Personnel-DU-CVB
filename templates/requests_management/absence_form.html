@@ -110,6 +110,42 @@
             {% for error in form.total_days.errors %}
                 <small class="error-text">{{ error }}</small>
             {% endfor %}
+            <div class="exceptional-alert" id="exceptionalAlert" role="alert" hidden>
+                <div class="exceptional-alert-header">
+                    <i class="bi bi-exclamation-triangle-fill" aria-hidden="true"></i>
+                    <strong data-i18n="exceptionalAlertTitle">Solde insuffisant</strong>
+                </div>
+                <ul class="exceptional-alert-list">
+                    <li>
+                        <span data-i18n="exceptionalAlertBalanceLabel">Solde disponible :</span>
+                        <strong id="exceptionalAlertBalance">0</strong>
+                        <span data-i18n="exceptionalAlertUnit">jour(s)</span>
+                    </li>
+                    <li>
+                        <span data-i18n="exceptionalAlertRequestedLabel">Nombre de jours demandes :</span>
+                        <strong id="exceptionalAlertRequested">0</strong>
+                        <span data-i18n="exceptionalAlertUnit">jour(s)</span>
+                    </li>
+                    <li>
+                        <span data-i18n="exceptionalAlertOverrunLabel">Nombre de jours excedentaires :</span>
+                        <strong id="exceptionalAlertOverrun">0</strong>
+                        <span data-i18n="exceptionalAlertUnit">jour(s)</span>
+                    </li>
+                    <li>
+                        <span data-i18n="exceptionalAlertMessage">Ces jours seront traites comme une absence exceptionnelle avec retenue salariale.</span>
+                    </li>
+                </ul>
+                <div class="exceptional-alert-consent">
+                    <label class="exceptional-consent-label">
+                        {{ form.acknowledged_salary_deduction }}
+                        <span data-i18n="exceptionalConsent">J'accepte que les jours excedant mon solde disponible soient deduits de mon salaire.</span>
+                    </label>
+                    <small class="error-text" id="exceptionalConsentError" hidden data-i18n="exceptionalConsentError">Vous devez accepter la retenue salariale pour envoyer la demande.</small>
+                    {% for error in form.acknowledged_salary_deduction.errors %}
+                        <small class="error-text">{{ error }}</small>
+                    {% endfor %}
+                </div>
+            </div>
             <div class="form-grid single">
                 {{ form.reason.label_tag }}
                 {{ form.reason }}
@@ -117,7 +153,7 @@
             {% if form.errors %}
                 <div class="error-box">{{ form.errors }}</div>
             {% endif %}
-            <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="{% if is_edit_mode %}{{ edit_confirm_title|default:confirm_title }}{% else %}{{ confirm_title }}{% endif %}" data-confirm-message="{% if is_edit_mode %}{{ edit_confirm_message|default:confirm_message }}{% else %}{{ confirm_message }}{% endif %}" data-confirm-label="{% if is_edit_mode %}Oui, mettre a jour{% else %}Oui, envoyer{% endif %}" data-confirm-class="btn-primary"><i class="bi {% if is_edit_mode %}bi-pencil-square{% else %}bi-send-check{% endif %}"></i>{% if is_edit_mode %}{{ edit_submit_label|default:submit_label }}{% else %}{{ submit_label }}{% endif %}</button>
+            <button type="submit" class="btn-primary" id="absenceSubmitButton" data-confirm-action="1" data-confirm-title="{% if is_edit_mode %}{{ edit_confirm_title|default:confirm_title }}{% else %}{{ confirm_title }}{% endif %}" data-confirm-message="{% if is_edit_mode %}{{ edit_confirm_message|default:confirm_message }}{% else %}{{ confirm_message }}{% endif %}" data-confirm-label="{% if is_edit_mode %}Oui, mettre a jour{% else %}Oui, envoyer{% endif %}" data-confirm-class="btn-primary"><i class="bi {% if is_edit_mode %}bi-pencil-square{% else %}bi-send-check{% endif %}"></i>{% if is_edit_mode %}{{ edit_submit_label|default:submit_label }}{% else %}{{ submit_label }}{% endif %}</button>
         </form>
     </article>
 </section>
@@ -137,6 +173,13 @@
         const remainingInput = document.querySelector("[data-remaining-balance]");
         const totalDaysDisplay = document.getElementById("totalDaysDisplay");
         const remainingDaysDisplay = document.getElementById("remainingDaysDisplay");
+        const exceptionalAlert = document.getElementById("exceptionalAlert");
+        const exceptionalAlertBalance = document.getElementById("exceptionalAlertBalance");
+        const exceptionalAlertRequested = document.getElementById("exceptionalAlertRequested");
+        const exceptionalAlertOverrun = document.getElementById("exceptionalAlertOverrun");
+        const acknowledgedCheckbox = document.querySelector("[data-exceptional-acknowledged]");
+        const consentError = document.getElementById("exceptionalConsentError");
+        const submitButton = document.getElementById("absenceSubmitButton");
         if (!startDateInput || !endDateInput || !totalDaysInput || !remainingInput) {
             return;
         }
@@ -226,6 +269,59 @@
             });
         };
 
+        const syncExceptionalAlert = (currentBalance, totalDays) => {
+            const deficit = totalDays - currentBalance;
+            const isExceptional = deficit > 0 && totalDays > 0;
+            if (exceptionalAlert) {
+                exceptionalAlert.hidden = !isExceptional;
+            }
+            if (isExceptional) {
+                if (exceptionalAlertBalance) {
+                    exceptionalAlertBalance.textContent = formatValue(currentBalance);
+                }
+                if (exceptionalAlertRequested) {
+                    exceptionalAlertRequested.textContent = formatValue(totalDays);
+                }
+                if (exceptionalAlertOverrun) {
+                    exceptionalAlertOverrun.textContent = formatValue(deficit);
+                }
+            }
+            syncSubmitAvailability(isExceptional);
+        };
+
+        const syncSubmitAvailability = (isExceptional) => {
+            if (!submitButton) {
+                return;
+            }
+            if (!isExceptional) {
+                submitButton.disabled = false;
+                submitButton.removeAttribute("aria-disabled");
+                submitButton.title = "";
+                if (consentError) {
+                    consentError.hidden = true;
+                }
+                return;
+            }
+            const acknowledged = Boolean(acknowledgedCheckbox?.checked);
+            if (!acknowledged) {
+                submitButton.disabled = true;
+                submitButton.setAttribute("aria-disabled", "true");
+                submitButton.title = (window.traeI18n && window.traeI18n.key)
+                    ? window.traeI18n.key("exceptionalConsentDisabledTitle")
+                    : "Veuillez accepter la retenue salariale pour envoyer la demande.";
+                if (consentError) {
+                    consentError.hidden = false;
+                }
+            } else {
+                submitButton.disabled = false;
+                submitButton.removeAttribute("aria-disabled");
+                submitButton.title = "";
+                if (consentError) {
+                    consentError.hidden = true;
+                }
+            }
+        };
+
         const updateDaysAndRemaining = () => {
             const startDate = startDateInput.value;
             const endDate = endDateInput.value;
@@ -265,6 +361,7 @@
             if (remainingDaysDisplay) {
                 remainingDaysDisplay.textContent = remainingInput.value;
             }
+            syncExceptionalAlert(currentBalance, totalDays);
         };
 
         [startDateInput, endDateInput].forEach((field) => field.addEventListener("change", updateDaysAndRemaining));
@@ -283,6 +380,21 @@
         });
         [startTimeInput, endTimeInput].forEach((field) => field?.addEventListener("change", updateDaysAndRemaining));
         [startTimeInput, endTimeInput].forEach((field) => field?.addEventListener("input", updateDaysAndRemaining));
+        acknowledgedCheckbox?.addEventListener("change", () => {
+            const currentBalance = parseValue(remainingInput.dataset.currentBalance);
+            const totalDays = parseValue(totalDaysInput.value);
+            syncExceptionalAlert(currentBalance, totalDays);
+        });
+        // Block submit click while disabled (extra safety)
+        submitButton?.addEventListener("click", (event) => {
+            if (submitButton.disabled) {
+                event.preventDefault();
+                event.stopImmediatePropagation();
+                if (consentError) {
+                    consentError.hidden = false;
+                }
+            }
+        }, true);
         syncWeekendToggleUI();
         updateDaysAndRemaining();
     });

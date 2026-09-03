@@ -1,0 +1,218 @@
+{% load i18n %}
+{% load static %}
+{% with req=request_item %}
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% trans 'Impression' %} - {{ req.employee.user.get_full_name|default:"Absence exceptionnelle" }}</title>
+    <link rel="stylesheet" href="{% static 'css/app.css' %}">
+    <style>
+        @media print {
+            body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+            .no-print { display: none; }
+            .page-break { page-break-after: always; }
+        }
+        .print-page {
+            max-width: 21cm;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .print-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        .print-logo {
+            font-size: 18px;
+            font-weight: bold;
+        }
+        .print-title {
+            text-align: center;
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+        }
+        .print-section {
+            margin-bottom: 15px;
+            page-break-inside: avoid;
+        }
+        .print-section h3 {
+            margin: 0 0 10px 0;
+            color: #555;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .print-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 5px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .print-row label {
+            font-weight: 600;
+            color: #666;
+        }
+        .print-row span {
+            text-align: right;
+        }
+        .print-footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 12px;
+            color: #999;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .status-pending { background: #fef3c7; color: #92400e; }
+        .status-approved { background: #dcfce7; color: #166534; }
+        .status-rejected { background: #fee2e2; color: #991b2b; }
+        .deduction-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        .deduction-pending { background: #ffedd5; color: #9a3412; }
+        .deduction-withdrawn { background: #d1fae5; color: #065f46; }
+        .btn-print {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .btn-back {
+            background: #6b7280;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="print-page">
+        <div class="no-print" style="margin-bottom: 20px;">
+            <a href="{% url 'administration:exceptional_absence_detail' req.id %}" class="btn-back">← {% trans 'Retour' %}</a>
+            <button class="btn-print" onclick="window.print()">🖨️ {% trans 'Imprimer' %}</button>
+        </div>
+
+        <div class="print-header">
+            <div class="print-logo">{% trans 'Gestion Personnel' %}</div>
+            <div style="text-align: right; font-size: 12px; color: #666;">
+                {{ req.created_at|date:"d/m/Y H:i" }}
+            </div>
+        </div>
+
+        <h2 class="print-title">{% trans 'Fiche d absence exceptionnelle' %}</h2>
+
+        <div class="print-section">
+            <h3>{% trans 'Informations de l employe' %}</h3>
+            <div class="print-row">
+                <label>{% trans 'Nom' %}</label>
+                <span>{{ req.employee.user.get_full_name|default:"-" }}</span>
+            </div>
+            <div class="print-row">
+                <label>{% trans 'Matricule' %}</label>
+                <span>{{ req.employee.employee_number|default:"-" }}</span>
+            </div>
+            <div class="print-row">
+                <label>{% trans 'Poste' %}</label>
+                <span>{{ req.employee.position|default:"-" }}</span>
+            </div>
+        </div>
+
+        <div class="print-section">
+            <h3>{% trans 'Details de la demande' %}</h3>
+            <div class="print-row">
+                <label>{% trans 'Date de debut' %}</label>
+                <span>{{ req.start_date|date:"d/m/Y" }}</span>
+            </div>
+            <div class="print-row">
+                <label>{% trans 'Date de fin' %}</label>
+                <span>{{ req.end_date|date:"d/m/Y" }}</span>
+            </div>
+            <div class="print-row">
+                <label>{% trans 'Jours demandes' %}</label>
+                <span>{{ req.total_days|floatformat:1 }}</span>
+            </div>
+            <div class="print-row">
+                <label>{% trans 'Jours excedentaires' %}</label>
+                <span>{{ req.exceptional_days|floatformat:1 }}</span>
+            </div>
+            <div class="print-row">
+                <label>{% trans 'Solde disponible au moment de la demande' %}</label>
+                <span>{{ req.available_balance_at_request|default:"-" }}</span>
+            </div>
+        </div>
+
+        <div class="print-section">
+            <h3>{% trans 'Retenue salariale' %}</h3>
+            <div class="print-row">
+                <label>{% trans 'Statut de la retenue' %}</label>
+                <span>
+                    {% if req.salary_deduction_status == "withdrawn" %}
+                        <span class="deduction-badge deduction-withdrawn">{% trans 'Deja retire' %}</span>
+                    {% else %}
+                        <span class="deduction-badge deduction-pending">{% trans 'A retirer' %}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="print-row">
+                <label>{% trans 'Acceptation employe' %}</label>
+                <span>
+                    {% if req.acknowledged_salary_deduction %}
+                        {% trans 'Oui' %}
+                    {% else %}
+                        {% trans 'Non' %}
+                    {% endif %}
+                </span>
+            </div>
+        </div>
+
+        <div class="print-section">
+            <h3>{% trans 'Statut de la demande' %}</h3>
+            <div class="print-row">
+                <label>{% trans 'Statut' %}</label>
+                <span>
+                    {% if req.status == "approved" %}
+                        <span class="status-badge status-approved">{% trans 'Approuvee' %}</span>
+                    {% elif req.status == "rejected" %}
+                        <span class="status-badge status-rejected">{% trans 'Rejetee' %}</span>
+                    {% else %}
+                        <span class="status-badge status-pending">{% trans 'En attente' %}</span>
+                    {% endif %}
+                </span>
+            </div>
+            <div class="print-row">
+                <label>{% trans 'Motif' %}</label>
+                <span>{{ req.reason|default:"-" }}</span>
+            </div>
+        </div>
+
+        <div class="print-footer">
+            {% trans 'Ce document est genere automatiquement par le systeme de gestion du personnel.' %}
+        </div>
+    </div>
+</body>
+</html>
+{% endwith %}
+

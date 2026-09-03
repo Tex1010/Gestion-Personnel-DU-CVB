@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% load i18n custom_filters %}
+
+{% block title %}{% trans 'Detail du log' %}{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">{% trans 'Ressource Humaine' %}</span>
+            <h1 data-i18n="logDetailTitle">{% trans 'Detail du log' %}</h1>
+            <p class="helper" data-i18n="logDetailDescription">{% trans 'Informations completes sur un evenement de log systeme.' %}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'administration:logs' %}" class="btn-secondary">
+                <i class="bi bi-arrow-left"></i> {% trans 'Retour aux logs' %}
+            </a>
+            <button onclick="window.print()" class="btn-secondary">
+                <i class="bi bi-printer"></i> {% trans 'Imprimer' %}
+            </button>
+        </div>
+    </div>
+
+    <article class="card">
+        <div class="card-head">
+            <div>
+                <h2 data-i18n="logDetailHeader">{% trans 'Informations du log' %}</h2>
+            </div>
+        </div>
+
+        <div class="detail-grid">
+            <div class="detail-row">
+                <label data-i18n="logDetailDate">{% trans 'Date/heure' %}</label>
+                <span>{{ log.created_at|date:"d/m/Y H:i:s" }}</span>
+            </div>
+            <div class="detail-row">
+                <label data-i18n="logDetailLevel">{% trans 'Niveau' %}</label>
+                <span class="log-badge {{ log.level_class }}">
+                    {% if log.level == log.LEVEL_INFO %}INFO{% elif log.level == log.LEVEL_WARNING %}WARNING{% elif log.level == log.LEVEL_ERROR %}ERROR{% elif log.level == log.LEVEL_CRITICAL %}CRITICAL{% endif %}
+                </span>
+            </div>
+            <div class="detail-row">
+                <label data-i18n="logDetailUser">{% trans 'Utilisateur' %}</label>
+                <span>{{ log.user_display|default:"-" }}</span>
+            </div>
+            <div class="detail-row">
+                <label data-i18n="logDetailUrl">{% trans 'URL' %}</label>
+                <span>{{ log.request_path|default:"-" }}</span>
+            </div>
+            <div class="detail-row">
+                <label data-i18n="logDetailMethod">{% trans 'Methode' %}</label>
+                <span>{{ log.request_method|default:"-" }}</span>
+            </div>
+            <div class="detail-row">
+                <label data-i18n="logDetailIp">{% trans 'Adresse IP' %}</label>
+                <span>{{ log.request_ip|default:"-" }}</span>
+            </div>
+            <div class="detail-row">
+                <label data-i18n="logDetailErrorId">{% trans 'ID erreur' %}</label>
+                <span class="mono">{{ log.error_id|default:"-" }}</span>
+            </div>
+            <div class="detail-row">
+                <label data-i18n="logDetailExceptionType">{% trans 'Type d exception' %}</label>
+                <span class="mono">{{ log.exception_type|default:"-" }}</span>
+            </div>
+            <div class="detail-row">
+                <label data-i18n="logDetailLogger">{% trans 'Logger' %}</label>
+                <span class="mono">{{ log.logger_name|default:"-" }}</span>
+            </div>
+        </div>
+
+        {% if log.message %}
+        <div class="card" style="margin-top: 16px;">
+            <div class="card-head">
+                <div>
+                    <h3 data-i18n="logDetailMessageTitle">{% trans 'Message' %}</h3>
+                </div>
+            </div>
+            <pre class="log-message-box mono">{{ log.message|mask_sensitive }}</pre>
+        </div>
+        {% endif %}
+
+        {% if log.traceback_data %}
+        <div class="card" style="margin-top: 16px;">
+            <div class="card-head">
+                <div>
+                    <h3 data-i18n="logDetailTracebackTitle">{% trans 'Traceback' %}</h3>
+                    <button onclick="copyTraceback()" class="btn-secondary btn-sm" style="float:right;">
+                        <i class="bi bi-clipboard"></i> {% trans 'Copier' %}
+                    </button>
+                </div>
+            </div>
+            <pre id="traceback-content" class="traceback-box mono">{{ log.traceback_data }}</pre>
+        </div>
+        {% endif %}
+    </article>
+</section>
+
+<script>
+    function copyTraceback() {
+        const el = document.getElementById('traceback-content');
+        if (el) {
+            navigator.clipboard.writeText(el.textContent).then(() => {
+                const btn = event.target.closest('button');
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="bi bi-check2"></i> {% trans "Copie !" %}';
+                setTimeout(() => {
+                    btn.innerHTML = originalText;
+                }, 2000);
+            });
+        }
+    }
+</script>
+{% endblock %}

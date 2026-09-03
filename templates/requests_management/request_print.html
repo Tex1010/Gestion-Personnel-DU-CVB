@@ -428,6 +428,20 @@
             <div class="reason-box">{{ request_item.reason|default:"-" }}</div>
         </section>
 
+        {% if request_item.is_exceptional_absence %}
+            <section class="section exceptional-print">
+                <h2>⚠️ Absence exceptionnelle — Retenue salariale</h2>
+                <div class="meta-list">
+                    <div><span>Solde disponible au moment de la demande</span><span>{{ request_item.available_balance_at_request }} jour(s)</span></div>
+                    <div><span>Duree demandee</span><span>{{ request_item.total_days }} jour(s)</span></div>
+                    <div><span>Nombre de jours excedentaires</span><span>{{ request_item.exceptional_days }} jour(s)</span></div>
+                    <div><span>Retenue salariale</span><span>{{ request_item.exceptional_days }} jour(s)</span></div>
+                    <div><span>Acceptation de l employe</span><span>{% if request_item.exceptional_acknowledged %}Oui{% else %}Non{% endif %}</span></div>
+                </div>
+                <p class="helper">Le solde de conge/recuperation n est pas modifie. Les jours excedentaires sont traites comme absence exceptionnelle avec retenue salariale.</p>
+            </section>
+        {% endif %}
+
         {% if recovery_lines %}
             <section class="section">
                 <h2>Details de recuperation</h2>

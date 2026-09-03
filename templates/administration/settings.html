@@ -23,6 +23,7 @@
         <a href="{% url 'administration:settings' %}?panel=projects" class="switch-pill {% if panel == 'projects' %}is-active{% endif %}"><i class="bi bi-folder2-open"></i>Projets</a>
         <a href="{% url 'administration:settings' %}?panel=branding" class="switch-pill {% if panel == 'branding' %}is-active{% endif %}"><i class="bi bi-palette"></i>Logo et identite</a>
         <a href="{% url 'administration:settings' %}?panel=human_resources" class="switch-pill {% if panel == 'human_resources' %}is-active{% endif %}"><i class="bi bi-heart-pulse"></i>Ressources Humaines</a>
+        <a href="{% url 'administration:logs' %}" class="switch-pill"><i class="bi bi-list-ul"></i>Logs</a>
     </div>
 
     {% if panel == "create" %}

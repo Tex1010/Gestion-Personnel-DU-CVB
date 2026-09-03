@@ -1,6 +1,7 @@
 from decimal import Decimal
 
 from django.contrib.auth.models import User
+from django.db.models import F as models_F
 from django.test import TestCase
 from django.urls import reverse
 
@@ -489,6 +490,286 @@ class RequestsTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, "Demande approuvee")
         self.assertContains(response, "Votre demande a ete approuvee.")
+
+
+class ExceptionalAbsenceTests(TestCase):
+    """Tests pour la nouvelle fonctionnalite : absence exceptionnelle avec retenue salariale."""
+
+    def setUp(self):
+        self.employee_role = Role.objects.create(
+            code=EmployeeProfile.ROLE_USER,
+            label_fr="Employe",
+            portal=Role.PORTAL_EMPLOYEE,
+        )
+        self.hierarchical_role = Role.objects.create(
+            code=EmployeeProfile.ROLE_HIERARCHICAL,
+            label_fr="Chef hierarchique",
+            portal=Role.PORTAL_ADMIN,
+            can_validate_hierarchy=True,
+        )
+        self.admin_role = Role.objects.create(
+            code=EmployeeProfile.ROLE_ADMIN,
+            label_fr="RH",
+            portal=Role.PORTAL_ADMIN,
+            can_validate_administration=True,
+            can_manage_settings=True,
+        )
+        self.direction_role = Role.objects.create(
+            code=EmployeeProfile.ROLE_DIRECTION,
+            label_fr="Direction",
+            portal=Role.PORTAL_ADMIN,
+            can_validate_direction=True,
+        )
+        self.user = User.objects.create_user(
+            username="agent",
+            password="TestPass123!",
+            first_name="Mamy",
+            last_name="Agent",
+        )
+        self.user.profile.role = self.employee_role
+        self.user.profile.save()
+        self.client.login(username="agent", password="TestPass123!")
+
+    def _ensure_zero_leave_balance(self):
+        ensure_leave_window(self.user.profile)
+        AnnualLeave.objects.filter(employee=self.user.profile).update(
+            consumed=models_F("quota")
+        )
+
+    def test_normal_request_with_sufficient_balance_unchanged(self):
+        ensure_leave_window(self.user.profile)
+        AnnualLeave.objects.filter(employee=self.user.profile).update(
+            consumed=Decimal("0.0")
+        )
+        response = self.client.post(
+            reverse("requests_management:leave_create"),
+            {
+                "start_date": "2026-07-13",
+                "end_date": "2026-07-14",
+                "total_days": "2",
+                "remaining_days_for_reason": "",
+                "reason": "Conge annuel",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(StaffRequest.objects.count(), 1)
+        request_item = StaffRequest.objects.first()
+        self.assertEqual(request_item.request_type, StaffRequest.TYPE_LEAVE)
+        self.assertEqual(request_item.exceptional_days, Decimal("0"))
+        self.assertFalse(request_item.is_exceptional_absence)
+        self.assertFalse(request_item.exceptional_acknowledged)
+
+    def test_deficit_request_without_acknowledgment_is_rejected(self):
+        self._ensure_zero_leave_balance()
+        response = self.client.post(
+            reverse("requests_management:leave_create"),
+            {
+                "start_date": "2026-07-13",
+                "end_date": "2026-07-15",
+                "total_days": "3",
+                "remaining_days_for_reason": "",
+                "reason": "Conge sans solde",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(StaffRequest.objects.count(), 0)
+
+    def test_deficit_request_with_acknowledgment_is_saved_as_exceptional(self):
+        self._ensure_zero_leave_balance()
+        response = self.client.post(
+            reverse("requests_management:leave_create"),
+            {
+                "start_date": "2026-07-13",
+                "end_date": "2026-07-15",
+                "total_days": "3",
+                "remaining_days_for_reason": "",
+                "reason": "Conge sans solde exceptionnel",
+                "acknowledged_salary_deduction": "on",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(StaffRequest.objects.count(), 1)
+        request_item = StaffRequest.objects.first()
+        self.assertEqual(request_item.exceptional_days, Decimal("3"))
+        self.assertTrue(request_item.is_exceptional_absence)
+        self.assertTrue(request_item.exceptional_acknowledged)
+        self.assertEqual(request_item.available_balance_at_request, Decimal("0"))
+        # Le solde reel reste 0.
+        self.assertEqual(self.user.profile.leave_balance, Decimal("0"))
+
+    def test_partial_deficit_marks_only_excess_as_exceptional(self):
+        ensure_leave_window(self.user.profile)
+        # Vider completement 2024 (N-2), garder 2 jours sur 2025 (N-1)
+        AnnualLeave.objects.filter(employee=self.user.profile, year=2024).update(
+            consumed=models_F("quota")
+        )
+        AnnualLeave.objects.filter(employee=self.user.profile, year=2025).update(
+            consumed=Decimal("28.0")
+        )
+        # 2026 (N) est bloque. Solde consommable = 0 + (30-28) = 2.
+        response = self.client.post(
+            reverse("requests_management:leave_create"),
+            {
+                "start_date": "2026-07-13",
+                "end_date": "2026-07-17",
+                "total_days": "5",
+                "remaining_days_for_reason": "",
+                "reason": "Conge partiellement exceptionnel",
+                "acknowledged_salary_deduction": "on",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        request_item = StaffRequest.objects.first()
+        self.assertIsNotNone(request_item, "La demande aurait du etre creee avec ack")
+        self.assertEqual(request_item.exceptional_days, Decimal("3"))
+        self.assertTrue(request_item.is_exceptional_absence)
+        self.assertEqual(request_item.available_balance_at_request, Decimal("2"))
+
+    def test_balance_unchanged_after_exceptional_approval(self):
+        self._ensure_zero_leave_balance()
+        response = self.client.post(
+            reverse("requests_management:leave_create"),
+            {
+                "start_date": "2026-07-13",
+                "end_date": "2026-07-15",
+                "total_days": "3",
+                "remaining_days_for_reason": "",
+                "reason": "Conge exceptionnel",
+                "acknowledged_salary_deduction": "on",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        request_item = StaffRequest.objects.first()
+        # Approuver a travers toute la chaine (hierarchy -> administration -> direction)
+        department = Department.objects.create(name="Informatique")
+        self.user.profile.department = department
+        self.user.profile.save()
+        chef = User.objects.create_user(username="chef", password="TestPass123!")
+        chef.profile.role = self.hierarchical_role
+        chef.profile.department = department
+        chef.profile.save()
+        rh = User.objects.create_user(username="rh", password="TestPass123!")
+        rh.profile.role = self.admin_role
+        rh.profile.save()
+        direction = User.objects.create_user(username="dir", password="TestPass123!")
+        direction.profile.role = self.direction_role
+        direction.profile.save()
+        balance_before = self.user.profile.leave_balance
+        for actor, action in [
+            (chef, "approve"),
+            (rh, "approve"),
+            (direction, "approve"),
+        ]:
+            self.client.logout()
+            self.client.login(username=actor.username, password="TestPass123!")
+            resp = self.client.post(
+                reverse("administration:request_action", args=[request_item.id, action]),
+                follow=True,
+            )
+            self.assertEqual(resp.status_code, 200)
+        request_item.refresh_from_db()
+        self.user.profile.refresh_from_db()
+        self.assertEqual(request_item.status, StaffRequest.STATUS_APPROVED)
+        # Le solde ne doit jamais devenir negatif.
+        self.assertGreaterEqual(self.user.profile.leave_balance, Decimal("0"))
+        self.assertEqual(self.user.profile.leave_balance, balance_before)
+
+    def test_rh_overview_shows_exceptional_info(self):
+        self._ensure_zero_leave_balance()
+        self.client.post(
+            reverse("requests_management:leave_create"),
+            {
+                "start_date": "2026-07-13",
+                "end_date": "2026-07-15",
+                "total_days": "3",
+                "remaining_days_for_reason": "",
+                "reason": "Conge exceptionnel",
+                "acknowledged_salary_deduction": "on",
+            },
+            follow=True,
+        )
+        request_item = StaffRequest.objects.first()
+        # Avancer jusqu'a l'etape RH pour qu'elle apparaisse dans la liste.
+        department = Department.objects.create(name="Informatique")
+        self.user.profile.department = department
+        self.user.profile.save()
+        chef = User.objects.create_user(username="chef", password="TestPass123!")
+        chef.profile.role = self.hierarchical_role
+        chef.profile.department = department
+        chef.profile.save()
+        self.client.logout()
+        self.client.login(username="chef", password="TestPass123!")
+        self.client.post(
+            reverse("administration:request_action", args=[request_item.id, "approve"]),
+            follow=True,
+        )
+        request_item.refresh_from_db()
+        self.assertEqual(request_item.approval_stage, StaffRequest.APPROVAL_ADMINISTRATION)
+        rh = User.objects.create_user(username="rh", password="TestPass123!")
+        rh.profile.role = self.admin_role
+        rh.profile.save()
+        self.client.logout()
+        self.client.login(username="rh", password="TestPass123!")
+        response = self.client.get(reverse("administration:requests"))
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Absence exceptionnelle")
+        self.assertContains(response, "Retenue salariale")
+        self.assertContains(response, "Solde disponible au moment de la demande")
+        self.assertContains(response, str(int(request_item.exceptional_days)))
+        # Message de confirmation specifique (HTML-escape apostrophe)
+        self.assertContains(response, "Confirmer l&#x27;approbation")
+
+    def test_recovery_balance_unchanged_when_exceptional(self):
+        ensure_recovery_window(self.user.profile)
+        AnnualRecovery.objects.filter(employee=self.user.profile).update(
+            balance=Decimal("0"), consumed=Decimal("0")
+        )
+        response = self.client.post(
+            reverse("requests_management:absence_create"),
+            {
+                "start_date": "2026-07-13",
+                "end_date": "2026-07-15",
+                "total_days": "3",
+                "remaining_days_for_reason": "",
+                "reason": "Absence exceptionnelle",
+                "acknowledged_salary_deduction": "on",
+            },
+            follow=True,
+        )
+        self.assertEqual(response.status_code, 200)
+        request_item = StaffRequest.objects.first()
+        self.assertTrue(request_item.is_exceptional_absence)
+        self.assertEqual(request_item.exceptional_days, Decimal("3"))
+        # Le solde recuperation reste a 0 (pas de consommation)
+        from apps.personnel.recovery_service import get_recovery_balance
+        self.assertEqual(get_recovery_balance(self.user.profile), Decimal("0"))
+
+    def test_recovery_limit_check_not_bypassed_for_exceptional(self):
+        """Un depassement de solde entraine 'exceptional' sans toucher au solde ;
+        la regle separee de limite annuelle de recuperation reste independante.
+        """
+        ensure_recovery_window(self.user.profile)
+        AnnualRecovery.objects.filter(employee=self.user.profile).update(
+            balance=Decimal("0"), consumed=Decimal("0")
+        )
+        # Sans ack : pas cree
+        self.client.post(
+            reverse("requests_management:absence_create"),
+            {
+                "start_date": "2026-07-13",
+                "end_date": "2026-07-14",
+                "total_days": "2",
+                "remaining_days_for_reason": "",
+                "reason": "Absence",
+            },
+            follow=True,
+        )
+        self.assertEqual(StaffRequest.objects.count(), 0)
 
 
 class RecoveryLimitTests(TestCase):

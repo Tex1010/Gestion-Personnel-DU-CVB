@@ -1,5 +1,5 @@
 {% for item in requests %}
-    <tr>
+    <tr{% if item.is_exceptional_absence %} class="request-row-exceptional"{% endif %}>
         <td data-label="Employe">{{ item.employee.display_name }}</td>
         <td data-label="Type">{{ item.type_label }}</td>
         <td data-label="Periode / date">{{ item.start_date|default:item.created_at|date:"d/m/Y" }}{% if item.end_date %} - {{ item.end_date|date:"d/m/Y" }}{% endif %}</td>
@@ -15,14 +15,39 @@
                 <a href="{% url 'requests_management:print' item.id %}" class="btn-secondary" target="_blank" rel="noopener" title="Voir le detail">
                     <i class="bi bi-eye"></i>
                 </a>
-                <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="Accepter cette demande" data-confirm-message="Cette demande sera approuvee et le solde sera mis a jour si necessaire." data-confirm-label="Oui, accepter" data-confirm-class="btn-primary"><i class="bi bi-check2-circle"></i></button>
+                <button type="submit" class="btn-primary" data-confirm-action="1"{% if item.is_exceptional_absence %} data-confirm-title="Absence exceptionnelle - Retenue salariale" data-confirm-message="Cette demande depasse le solde disponible de {{ item.exceptional_days }} jour(s). Ces {{ item.exceptional_days }} jour(s) seront traites comme des jours avec retenue salariale. L&#x27;employe a accepte cette condition. Confirmer l&#x27;approbation ?" data-confirm-label="Oui, confirmer l&#x27;approbation"{% else %} data-confirm-title="Accepter cette demande" data-confirm-message="Cette demande sera approuvee et le solde sera mis a jour si necessaire." data-confirm-label="Oui, accepter"{% endif %} data-confirm-class="btn-primary"><i class="bi bi-check2-circle"></i></button>
                 <button type="submit" formaction="{% url 'administration:request_action' item.id 'reject' %}" class="btn-danger" data-confirm-action="1" data-confirm-title="Refuser cette demande" data-confirm-message="Cette demande sera marquee comme rejetee dans l'historique." data-confirm-label="Oui, refuser" data-confirm-class="btn-danger"><i class="bi bi-x-circle"></i></button>
             </form>
         </td>
         <td data-label="Statut">
+            {% if item.is_exceptional_absence %}
+                <div class="exceptional-indicator">
+                    <span class="badge exceptional">{% if item.exceptional_acknowledged %}Absence exceptionnelle{% else %}Exceptionnelle en attente{% endif %}</span>
+                    <small class="exceptional-detail">Retenue salariale : {{ item.exceptional_days }} jour(s)</small>
+                </div>
+            {% endif %}
             <span class="badge {{ item.status }}">{{ item.status_label }}</span>
         </td>
     </tr>
+    {% if item.is_exceptional_absence %}
+        <tr class="request-row-exceptional-detail">
+            <td colspan="9">
+                <div class="exceptional-info-box" role="status">
+                    <strong>⚠️ Absence exceptionnelle — Retenue salariale</strong>
+                    <ul class="exceptional-info-list">
+                        <li><span>Employe :</span> {{ item.employee.display_name }}</li>
+                        <li><span>Date debut :</span> {{ item.start_date|date:"d/m/Y"|default:"-" }}</li>
+                        <li><span>Date fin :</span> {{ item.end_date|date:"d/m/Y"|default:"-" }}</li>
+                        <li><span>Duree demandee :</span> {{ item.total_days }} jour(s)</li>
+                        <li><span>Solde disponible au moment de la demande :</span> {{ item.available_balance_at_request }} jour(s)</li>
+                        <li><span>Nombre de jours excedentaires :</span> {{ item.exceptional_days }} jour(s)</li>
+                        <li><span>Retenue salariale :</span> {{ item.exceptional_days }} jour(s)</li>
+                        <li><span>Acceptation de l employe :</span> {% if item.exceptional_acknowledged %}Oui{% else %}Non{% endif %}</li>
+                    </ul>
+                </div>
+            </td>
+        </tr>
+    {% endif %}
 {% empty %}
     <tr>
         <td colspan="9">Aucune demande en attente pour le moment.</td>

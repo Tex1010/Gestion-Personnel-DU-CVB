@@ -1,0 +1,76 @@
+{% load i18n %}
+{% for item in requests %}
+<tr{% if item.is_exceptional_absence %} class="request-row-exceptional"{% endif %}>
+    <td data-label="{% trans 'Employe' %}">{{ item.employee.display_name }}</td>
+    <td data-label="{% trans 'Date debut' %}">{{ item.start_date|date:"d/m/Y"|default:"-" }}</td>
+    <td data-label="{% trans 'Date fin' %}">{{ item.end_date|date:"d/m/Y"|default:"-" }}</td>
+    <td data-label="{% trans 'Jours demandes' %}">{{ item.total_days|floatformat:1 }}</td>
+    <td data-label="{% trans 'Solde disponible' %}">{{ item.available_balance_at_request|floatformat:1 }}</td>
+    <td data-label="{% trans 'Jours excedentaires' %}"{% if item.is_exceptional_absence %} class="exceptional-highlight"{% endif %}>{{ item.exceptional_days|floatformat:1 }}</td>
+    <td data-label="{% trans 'Retenue salariale' %}" class="hidden-col">
+        <span class="badge {% if item.is_exceptional_absence %}exceptional{% else %}soft{% endif %}">
+            {{ item.is_exceptional_absence|yesno:"Oui,Non" }}
+        </span>
+    </td>
+    <td data-label="{% trans 'Acceptation employe' %}" class="hidden-col">
+        <span class="badge {% if item.exceptional_acknowledged %}approved{% else %}soft{% endif %}">
+            {{ item.exceptional_acknowledged|yesno:"Oui,Non" }}
+        </span>
+    </td>
+    <td data-label="{% trans 'Statut' %}" class="hidden-col">
+        <span class="badge {{ item.status }}">{{ item.status_label }}</span>
+    </td>
+    <td data-label="{% trans 'Statut retenue' %}" class="hidden-col">
+        {% if item.is_exceptional_absence %}
+            {% if item.salary_deduction_status == item.DEDUCTION_STATUS_PENDING %}
+                <span class="badge soft">🟠 {% trans 'A retirer' %}</span>
+            {% elif item.salary_deduction_status == item.DEDUCTION_STATUS_WITHDRAWN %}
+                <span class="badge approved">🟢 {% trans 'Deja retire' %}</span>
+            {% else %}
+                <span class="badge soft">-</span>
+            {% endif %}
+        {% else %}
+            <span class="badge soft">-</span>
+        {% endif %}
+    </td>
+    <td data-label="{% trans 'Date de demande' %}">{{ item.created_at|date:"d/m/Y" }}</td>
+    <td data-label="{% trans 'Action' %}">
+        <div class="action-cell compact-actions">
+            <a href="{% url 'administration:exceptional_absence_detail' item.id %}" class="btn-secondary btn-sm" title="{% trans 'Voir les details' %}">
+                <i class="bi bi-eye"></i>
+            </a>
+            <a href="{% url 'administration:exceptional_absence_print' item.id %}" class="btn-secondary btn-sm" title="{% trans 'Imprimer' %}" target="_blank">
+                <i class="bi bi-printer"></i>
+            </a>
+            {% if item.status == item.STATUS_SUBMITTED and can_approve %}
+                <form method="post" action="{% url 'administration:exceptional_absence_action' item.id 'approve' %}" class="inline-action-form inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'administration:exceptional_absences' %}">
+                    <button type="submit" class="btn-primary btn-sm" data-confirm-action="1" data-confirm-title="{% trans 'Confirmer l approbation' %}" data-confirm-message="{% trans 'Cette absence exceptionnelle sera approuvee.' %}" data-confirm-label="{% trans 'Oui confirmer l approbation' %}" data-confirm-class="btn-primary" title="{% trans 'Approuver' %}">
+                        <i class="bi bi-check2-circle"></i>
+                    </button>
+                </form>
+                <form method="post" action="{% url 'administration:exceptional_absence_action' item.id 'reject' %}" class="inline-action-form inline">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{% url 'administration:exceptional_absences' %}">
+                    <button type="submit" class="btn-danger btn-sm" data-confirm-action="1" data-confirm-title="{% trans 'Refuser cette absence' %}" data-confirm-message="{% trans 'Cette absence exceptionnelle sera marquee comme rejetee.' %}" data-confirm-label="{% trans 'Oui refuser' %}" data-confirm-class="btn-danger" title="{% trans 'Rejeter' %}">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                </form>
+            {% endif %}
+            {% if item.status == item.STATUS_APPROVED and item.is_exceptional_absence and item.salary_deduction_status == item.DEDUCTION_STATUS_PENDING and can_manage_deduction %}
+                <form method="post" action="{% url 'administration:mark_salary_deduction' item.id %}" class="inline-action-form inline">
+                    {% csrf_token %}
+                    <button type="submit" class="btn-warning btn-sm" data-confirm-action="1" data-confirm-title="{% trans 'Confirmer la retenue salariale' %}" data-confirm-message="{% trans 'Vous etes sur le point de confirmer que la retenue salariale de' %} {{ item.exceptional_days|floatformat:1 }} {% trans 'jours a ete effectuee pour cet employe.' %}" data-confirm-label="{% trans 'Oui confirmer' %}" data-confirm-class="btn-warning" title="{% trans 'Marquer comme retiré' %}">
+                        <i class="bi bi-check2-circle"></i>
+                    </button>
+                </form>
+            {% endif %}
+        </div>
+    </td>
+</tr>
+{% empty %}
+<tr>
+    <td colspan="12">{% trans 'Aucune absence exceptionnelle trouvee.' %}</td>
+</tr>
+{% endfor %}

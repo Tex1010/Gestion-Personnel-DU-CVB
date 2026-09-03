@@ -1,0 +1,32 @@
+{% load i18n %}
+{% with search_term=search_term level_filter=level_filter user_filter=user_filter method_filter=method_filter period_filter=period_filter sort=sort %}
+{% if paginator.num_pages > 1 %}
+<div id="logs-pagination">
+<nav class="pagination-bar" role="navigation" aria-label="{% trans 'Pagination' %}">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if search_term %}q={{ search_term }}&{% endif %}{% if level_filter %}level={{ level_filter }}&{% endif %}{% if user_filter %}user={{ user_filter }}&{% endif %}{% if method_filter %}method={{ method_filter }}&{% endif %}{% if period_filter %}period={{ period_filter }}&{% endif %}sort={{ sort }}&page={{ page_obj.previous_page_number }}">{% trans 'Precedent' %}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">{% trans 'Precedent' %}</span></li>
+        {% endif %}
+        {% for num in paginator.page_range %}
+        {% if page_obj.number == num %}
+        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+        {% else %}
+        <li class="page-item"><a class="page-link" href="?{% if search_term %}q={{ search_term }}&{% endif %}{% if level_filter %}level={{ level_filter }}&{% endif %}{% if user_filter %}user={{ user_filter }}&{% endif %}{% if method_filter %}method={{ method_filter }}&{% endif %}{% if period_filter %}period={{ period_filter }}&{% endif %}sort={{ sort }}&page={{ num }}">{{ num }}</a></li>
+        {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if search_term %}q={{ search_term }}&{% endif %}{% if level_filter %}level={{ level_filter }}&{% endif %}{% if user_filter %}user={{ user_filter }}&{% endif %}{% if method_filter %}method={{ method_filter }}&{% endif %}{% if period_filter %}period={{ period_filter }}&{% endif %}sort={{ sort }}&page={{ page_obj.next_page_number }}">{% trans 'Suivant' %}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">{% trans 'Suivant' %}</span></li>
+        {% endif %}
+    </ul>
+</nav>
+</div>
+{% endif %}
+{% endwith %}

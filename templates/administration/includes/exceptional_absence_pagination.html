@@ -1,0 +1,30 @@
+{% load i18n %}
+{% with search_term=search_term status_filter=status_filter year_filter=year_filter %}
+{% if paginator.num_pages > 1 %}
+<nav class="pagination-bar" role="navigation" aria-label="{% trans 'Pagination' %}">
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if search_term %}q={{ search_term }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if deduction_filter %}deduction={{ deduction_filter }}&{% endif %}{% if year_filter %}year={{ year_filter }}&{% endif %}page={{ page_obj.previous_page_number }}">{% trans 'Precedent' %}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">{% trans 'Precedent' %}</span></li>
+        {% endif %}
+        {% for num in paginator.page_range %}
+        {% if page_obj.number == num %}
+        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+        {% else %}
+        <li class="page-item"><a class="page-link" href="?{% if search_term %}q={{ search_term }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if deduction_filter %}deduction={{ deduction_filter }}&{% endif %}{% if year_filter %}year={{ year_filter }}&{% endif %}page={{ num }}">{{ num }}</a></li>
+        {% endif %}
+        {% endfor %}
+        {% if page_obj.has_next %}
+        <li class="page-item">
+            <a class="page-link" href="?{% if search_term %}q={{ search_term }}&{% endif %}{% if status_filter %}status={{ status_filter }}&{% endif %}{% if deduction_filter %}deduction={{ deduction_filter }}&{% endif %}{% if year_filter %}year={{ year_filter }}&{% endif %}page={{ page_obj.next_page_number }}">{% trans 'Suivant' %}</a>
+        </li>
+        {% else %}
+        <li class="page-item disabled"><span class="page-link">{% trans 'Suivant' %}</span></li>
+        {% endif %}
+    </ul>
+</nav>
+{% endif %}
+{% endwith %}

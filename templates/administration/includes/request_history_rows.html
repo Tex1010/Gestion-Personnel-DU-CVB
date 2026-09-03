@@ -1,8 +1,8 @@
 {% for item in history_requests %}
-    <tr>
+    <tr{% if item.request.is_exceptional_absence %} class="request-row-exceptional"{% endif %}>
         <td data-label="Date">{{ item.request.updated_at|date:"d/m/Y H:i" }}</td>
         <td data-label="Employe">{{ item.request.employee.display_name }}</td>
-        <td data-label="Type">{{ item.request.type_label }}</td>
+        <td data-label="Type">{{ item.request.type_label }}{% if item.request.is_exceptional_absence %} <span class="badge exceptional">Absence exceptionnelle</span>{% endif %}</td>
         <td data-label="Nombre de jours">{{ item.request.total_days }}</td>
         <td data-label="Chef hierarchique">
             <span class="badge {{ item.stage_statuses.0.badge_class }}">{{ item.stage_statuses.0.status }}</span>
@@ -43,6 +43,21 @@
             </td>
         {% endif %}
     </tr>
+    {% if item.request.is_exceptional_absence %}
+        <tr class="request-row-exceptional-detail">
+            <td colspan="{% if can_delete_history_requests and can_cancel_history_requests %}11{% elif can_delete_history_requests or can_cancel_history_requests %}10{% else %}9{% endif %}">
+                <div class="exceptional-info-box" role="status">
+                    <strong>⚠️ Absence exceptionnelle — Retenue salariale</strong>
+                    <ul class="exceptional-info-list">
+                        <li><span>Solde disponible au moment de la demande :</span> {{ item.request.available_balance_at_request }} jour(s)</li>
+                        <li><span>Nombre de jours excedentaires :</span> {{ item.request.exceptional_days }} jour(s)</li>
+                        <li><span>Retenue salariale :</span> {{ item.request.exceptional_days }} jour(s)</li>
+                        <li><span>Acceptation de l employe :</span> {% if item.request.exceptional_acknowledged %}Oui{% else %}Non{% endif %}</li>
+                    </ul>
+                </div>
+            </td>
+        </tr>
+    {% endif %}
 {% empty %}
     <tr>
         <td colspan="{% if can_delete_history_requests and can_cancel_history_requests %}11{% elif can_delete_history_requests or can_cancel_history_requests %}10{% else %}9{% endif %}">Aucune action enregistree.</td>

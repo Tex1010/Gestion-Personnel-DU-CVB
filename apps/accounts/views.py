@@ -1,3 +1,5 @@
+import logging
+
 from django.contrib import messages
 from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.contrib.auth.decorators import login_required
@@ -6,6 +8,8 @@ from django.shortcuts import redirect, render
 from apps.accounts.forms import LoginForm, StyledPasswordChangeForm
 from apps.accounts.utils import get_role_code, get_role_portal, get_user_profile, normalize_portal_role
 from apps.personnel.models import EmployeeProfile, Role
+
+logger = logging.getLogger("application")
 
 
 def login_view(request):
@@ -23,8 +27,19 @@ def login_view(request):
             password=form.cleaned_data["password"],
         )
         if not user:
+            logger.warning(
+                "Tentative de connexion echouee pour l'utilisateur '%s'.",
+                form.cleaned_data["username"],
+                extra={"extra_data": {"event": "login_failed", "username": form.cleaned_data["username"]}},
+            )
             messages.error(request, "Identifiants invalides.")
         else:
+            user_display = user.get_full_name() or user.username
+            logger.info(
+                "Connexion reussie pour l'utilisateur '%s'.",
+                user.username,
+                extra={"extra_data": {"event": "login_success", "username": user.username}},
+            )
             profile = get_user_profile(user)
             selected_role = form.cleaned_data["role"]
             profile_role_code = get_role_code(profile)
@@ -60,6 +75,11 @@ def login_view(request):
 def logout_view(request):
     if request.method != "POST":
         return redirect("personnel:dashboard")
+    logger.info(
+        "Deconnexion de l'utilisateur '%s'.",
+        request.user.username,
+        extra={"extra_data": {"event": "logout", "username": request.user.username}},
+    )
     logout(request)
     messages.info(request, "Vous avez ete deconnecte.")
     return redirect("accounts:login")

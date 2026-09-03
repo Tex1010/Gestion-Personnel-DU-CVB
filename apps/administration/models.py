@@ -257,3 +257,83 @@ class AccountActionHistory(models.Model):
 
     def __str__(self):
         return f"{self.target_username} - {self.get_action_display()}"
+
+
+class LogEntry(models.Model):
+    LEVEL_INFO = "info"
+    LEVEL_WARNING = "warning"
+    LEVEL_ERROR = "error"
+    LEVEL_CRITICAL = "critical"
+
+    LEVEL_CHOICES = [
+        (LEVEL_INFO, "INFO"),
+        (LEVEL_WARNING, "WARNING"),
+        (LEVEL_ERROR, "ERROR"),
+        (LEVEL_CRITICAL, "CRITICAL"),
+    ]
+
+    LEVELS_BY_SEVERITY = [LEVEL_INFO, LEVEL_WARNING, LEVEL_ERROR, LEVEL_CRITICAL]
+
+    level = models.CharField(
+        "Niveau", max_length=20, choices=LEVEL_CHOICES, default=LEVEL_INFO
+    )
+    logger_name = models.CharField("Logger", max_length=255, blank=True)
+    message = models.TextField("Message")
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="log_entries",
+        verbose_name="Utilisateur",
+    )
+    user_display = models.CharField(
+        "Nom utilisateur (affichage)", max_length=255, blank=True,
+        help_text="Nom d'utilisateur au moment du log (conservé meme si le compte est supprime).",
+    )
+    request_path = models.CharField("URL", max_length=500, blank=True)
+    request_method = models.CharField("Methode", max_length=10, blank=True)
+    request_ip = models.CharField("Adresse IP", max_length=45, blank=True)
+    error_id = models.CharField(
+        "ID erreur", max_length=50, blank=True,
+        help_text="Identifiant unique d'erreur (format ERR-YYYYMMDD-HEX).",
+    )
+    exception_type = models.CharField("Type d'exception", max_length=255, blank=True)
+    traceback_data = models.TextField("Traceback", blank=True)
+    extra_data = models.JSONField("Donnees supplementaires", default=dict, blank=True)
+    created_at = models.DateTimeField("Date/heure", auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "Entree de log"
+        verbose_name_plural = "Entrees de log"
+        indexes = [
+            models.Index(fields=["-created_at"]),
+            models.Index(fields=["level"]),
+            models.Index(fields=["logger_name"]),
+            models.Index(fields=["user_id"]),
+            models.Index(fields=["error_id"]),
+            models.Index(fields=["request_path"]),
+        ]
+
+    def __str__(self):
+        return f"[{self.get_level_display()}] {self.message[:100]}"
+
+    @property
+    def level_class(self):
+        """Return the CSS badge class matching the app's existing styles."""
+        classes = {
+            self.LEVEL_INFO: "info",
+            self.LEVEL_WARNING: "warning",
+            self.LEVEL_ERROR: "error",
+            self.LEVEL_CRITICAL: "critical",
+        }
+        return classes.get(self.level, "info")
+
+    @property
+    def severity_order(self):
+        """Numeric order for sorting severity: INFO=0, WARNING=1, ERROR=2, CRITICAL=3."""
+        try:
+            return self.LEVELS_BY_SEVERITY.index(self.level)
+        except ValueError:
+            return 0

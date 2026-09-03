@@ -1,4 +1,4 @@
-from decimal import Decimal
+﻿from decimal import Decimal
 
 from django.db import models
 
@@ -74,7 +74,44 @@ class StaffRequest(models.Model):
         default=dict,
         blank=True,
         verbose_name="Repartition recuperation par annee",
-        help_text="Exemple: {\"2024\": 5, \"2025\": 3} - utilise pour le restaur",
+        help_text='Exemple: {"2024": 5, "2025": 3} - utilise pour le restaur',
+    )
+    available_balance_at_request = models.DecimalField(
+        "Solde disponible au moment de la demande",
+        max_digits=6,
+        decimal_places=1,
+        default=0,
+        help_text="Solde (conge ou recuperation) disponible au moment de la soumission.",
+    )
+    exceptional_days = models.DecimalField(
+        "Jours excedentaires (absence exceptionnelle)",
+        max_digits=6,
+        decimal_places=1,
+        default=0,
+        help_text="Jours demandes au-dela du solde disponible. 0 si pas de depassement.",
+    )
+    exceptional_acknowledged = models.BooleanField(
+        "Acceptation retenue salariale",
+        default=False,
+        help_text="L'employe accepte que les jours excedentaires soient deduits de son salaire.",
+    )
+    is_exceptional_absence = models.BooleanField(
+        "Absence exceptionnelle avec retenue salariale",
+        default=False,
+        help_text="Vrai si la demande inclut un depassement du solde (absence exceptionnelle).",
+    )
+    DEDUCTION_STATUS_PENDING = "pending"
+    DEDUCTION_STATUS_WITHDRAWN = "withdrawn"
+    DEDUCTION_STATUS_CHOICES = [
+        (DEDUCTION_STATUS_PENDING, "A retirer"),
+        (DEDUCTION_STATUS_WITHDRAWN, "Deja retire"),
+    ]
+    salary_deduction_status = models.CharField(
+        "Statut de la retenue salariale",
+        max_length=20,
+        choices=DEDUCTION_STATUS_CHOICES,
+        default=DEDUCTION_STATUS_PENDING,
+        help_text="Statut de suivi de la retenue salariale. Pending = a retirer, Withdrawn = deja retire.",
     )
     reason = models.TextField("Motif", blank=True)
     admin_comment = models.TextField("Commentaire admin", blank=True)
@@ -95,6 +132,12 @@ class StaffRequest(models.Model):
     @property
     def type_label(self):
         return self.get_request_type_display()
+
+    @property
+    def salary_deduction_label(self):
+        if not self.is_exceptional_absence:
+            return "Non applicable"
+        return self.get_salary_deduction_status_display()
 
     @property
     def status_label(self):
@@ -276,6 +319,13 @@ class StaffRequest(models.Model):
     def compute_recovery_hours(self):
         total_hours = sum(line.duration_hours for line in self.recovery_lines.all())
         return round(total_hours, 2)
+
+    @property
+    def has_deficit(self):
+        return bool(
+            self.request_type in {self.TYPE_LEAVE, self.TYPE_ABSENCE}
+            and (self.exceptional_days or Decimal("0")) > Decimal("0")
+        )
 
 
 class RecoveryLine(models.Model):

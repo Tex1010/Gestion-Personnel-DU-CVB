@@ -18,6 +18,20 @@ class AbsenceRequestForm(forms.ModelForm):
     ]
     WEEKEND_EXCLUSION_LABEL = "Exclure samedi et dimanche"
 
+    acknowledged_salary_deduction = forms.BooleanField(
+        required=False,
+        widget=forms.CheckboxInput(
+            attrs={
+                "data-exceptional-acknowledged": "1",
+                "autocomplete": "off",
+            }
+        ),
+        label=(
+            "J'accepte que les jours excedant mon solde disponible soient "
+            "deduits de mon salaire."
+        ),
+    )
+
     duration_mode = forms.ChoiceField(
         label="Option pour une seule journee",
         required=False,
@@ -84,6 +98,16 @@ class AbsenceRequestForm(forms.ModelForm):
         self.initial["remaining_days_for_reason"] = max(
             Decimal("0.0"), current_balance - initial_total_days
         )
+        self.current_balance = current_balance
+        self.exceptional_days = Decimal("0.0")
+        # Restore values when editing an exceptional request
+        if self.instance and getattr(self.instance, "pk", None):
+            try:
+                self.initial["acknowledged_salary_deduction"] = bool(
+                    getattr(self.instance, "exceptional_acknowledged", False)
+                )
+            except Exception:
+                pass
 
     def _get_initial_duration_mode(self):
         raw_mode = self.data.get("duration_mode") if self.is_bound else None
@@ -133,6 +157,7 @@ class AbsenceRequestForm(forms.ModelForm):
             "total_days",
             "reason",
             "remaining_days_for_reason",
+            "acknowledged_salary_deduction",
         ]
         widgets = {
             "start_date": forms.DateInput(attrs={"type": "date"}),
@@ -238,17 +263,31 @@ class AbsenceRequestForm(forms.ModelForm):
 
         if total_days is not None:
             remaining = current_balance - total_days
+            deficit = Decimal("0.0")
             if remaining < Decimal("0.0"):
-                target_label = (
-                    "solde de conge"
-                    if self.request_type == StaffRequest.TYPE_LEAVE
-                    else "solde de recuperation"
-                )
-                self.add_error(
-                    "total_days",
-                    f"Le nombre demande depasse votre {target_label} disponible.",
-                )
+                deficit = -remaining
+                cleaned_data["_exceptional_days"] = deficit
+                cleaned_data["_available_balance"] = current_balance
+                if not cleaned_data.get("acknowledged_salary_deduction"):
+                    target_label = (
+                        "solde de conge"
+                        if self.request_type == StaffRequest.TYPE_LEAVE
+                        else "solde de recuperation"
+                    )
+                    self.add_error(
+                        "acknowledged_salary_deduction",
+                        (
+                            "Votre demande depasse votre "
+                            f"{target_label} disponible de {deficit} jour(s). "
+                            "Veuillez accepter la retenue saliariale pour soumettre "
+                            "cette demande comme absence exceptionnelle."
+                        ),
+                    )
                 remaining = Decimal("0.0")
+            else:
+                cleaned_data["_exceptional_days"] = Decimal("0.0")
+                cleaned_data["_available_balance"] = current_balance
+            self.exceptional_days = cleaned_data["_exceptional_days"]
             cleaned_data["remaining_days_for_reason"] = remaining
         return cleaned_data
 

@@ -1,0 +1,234 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% trans 'Absence exceptionnelle' %}{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">{% trans 'Ressource Humaine' %}</span>
+            <h1 data-i18n="exceptionalAbsenceDetailTitle">{% trans 'Absence exceptionnelle' %}</h1>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'administration:exceptional_absences' %}" class="btn-secondary">{% trans 'Retour' %}</a>
+        </div>
+    </div>
+
+    <div class="exceptional-detail-grid">
+        <article class="card">
+            <div class="card-head">
+                <h2 data-i18n="employeeInfoTitle">{% trans 'Informations de l employe' %}</h2>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Nom' %}</span>
+                    <span class="detail-value">{{ request_item.employee.user.last_name|default:"-" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Prenom' %}</span>
+                    <span class="detail-value">{{ request_item.employee.user.first_name|default:"-" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Matricule' %}</span>
+                    <span class="detail-value">{{ request_item.employee.employee_number|default:"-" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Service' %}</span>
+                    <span class="detail-value">{{ request_item.employee.department.name|default:"-" }}</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="card-head">
+                <h2 data-i18n="periodInfoTitle">{% trans 'Periode' %}</h2>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Date debut' %}</span>
+                    <span class="detail-value">{{ request_item.start_date|date:"d/m/Y"|default:"-" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Date fin' %}</span>
+                    <span class="detail-value">{{ request_item.end_date|date:"d/m/Y"|default:"-" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Jours demandes' %}</span>
+                    <span class="detail-value">{{ request_item.total_days|floatformat:1 }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Motif' %}</span>
+                    <span class="detail-value">{{ request_item.reason|default:request_item.project_name|default:"-" }}</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="card-head">
+                <h2 data-i18n="balanceInfoTitle">{% trans 'Situation du solde' %}</h2>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Solde disponible' %}</span>
+                    <span class="detail-value">{{ request_item.available_balance_at_request|floatformat:1 }}</span>
+                </div>
+                <div class="detail-row exceptional-detail-value">
+                    <span class="detail-label">{% trans 'Jours excedentaires' %}</span>
+                    <span class="detail-value">{{ request_item.exceptional_days|floatformat:1 }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Type de solde' %}</span>
+                    <span class="detail-value">{{ request_item.type_label }}</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="card-head">
+                <h2 data-i18n="salaryDeductionTitle">{% trans 'Retenue salariale' %}</h2>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Jours concernes' %}</span>
+                    <span class="detail-value exceptional-detail-value">{{ request_item.exceptional_days|floatformat:1 }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Acceptation employe' %}</span>
+                    <span class="detail-value">{% if request_item.exceptional_acknowledged %}{% trans 'Oui' %}{% else %}{% trans 'Non' %}{% endif %}</span>
+                </div>
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="card-head">
+                <h2 data-i18n="processingTitle">{% trans 'Traitement' %}</h2>
+            </div>
+            <div class="detail-grid">
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Date de demande' %}</span>
+                    <span class="detail-value">{{ request_item.created_at|date:"d/m/Y H:i" }}</span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Statut' %}</span>
+                    <span class="detail-value"><span class="badge {{ request_item.status }}">{{ request_item.status_label }}</span></span>
+                </div>
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Etape' %}</span>
+                    <span class="detail-value">{{ request_item.get_approval_stage_display }}</span>
+                </div>
+                {% if request_item.admin_comment %}
+                <div class="detail-row">
+                    <span class="detail-label">{% trans 'Commentaire admin' %}</span>
+                    <span class="detail-value">{{ request_item.admin_comment }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </article>
+
+        <article class="card">
+            <div class="card-head">
+                <h2 data-i18n="validationHistoryTitle">{% trans 'Historique de validation' %}</h2>
+            </div>
+            <div class="table-shell">
+                <div class="table-wrap">
+                    <table class="detail-history-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="historyStage">{% trans 'Etape' %}</th>
+                                <th data-i18n="historyStatus">{% trans 'Statut' %}</th>
+                                <th data-i18n="historyActor">{% trans 'Traite par' %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for stage in stage_statuses %}
+                            <tr>
+                                <td data-label="Etape">{{ stage.label }}</td>
+                                <td data-label="Statut"><span class="badge {{ stage.badge_class }}">{{ stage.status }}</span></td>
+                                <td data-label="Traite par">{{ stage.username }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+
+        {% if history %}
+        <article class="card">
+            <div class="card-head">
+                <h2 data-i18n="actionHistoryTitle">{% trans 'Journal des actions' %}</h2>
+            </div>
+            <div class="table-shell">
+                <div class="table-wrap">
+                    <table class="detail-history-table">
+                        <thead>
+                            <tr>
+                                <th data-i18n="historyDate">{% trans 'Date' %}</th>
+                                <th data-i18n="historyBy">{% trans 'Par' %}</th>
+                                <th data-i18n="historyAction">{% trans 'Action' %}</th>
+                                <th data-i18n="historyComment">{% trans 'Commentaire' %}</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in history %}
+                            <tr>
+                                <td data-label="Date">{{ entry.created_at|date:"d/m/Y H:i" }}</td>
+                                <td data-label="Par">{{ entry.actor.display_name|default:"-" }}</td>
+                                <td data-label="Action">{{ entry.get_action_display }}</td>
+                                <td data-label="Commentaire">{{ entry.comment|default:"-"|truncatechars:80 }}</td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="4">{% trans 'Aucune action enregistree.' %}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </article>
+        {% endif %}
+    </div>
+
+    {% if can_approve and request_item.status == request_item.STATUS_SUBMITTED %}
+    <article class="card">
+        <div class="card-head">
+            <h2 data-i18n="takeActionTitle">{% trans 'Prendre une action' %}</h2>
+        </div>
+        <form method="post" action="{% url 'administration:exceptional_absence_action' request_item.id 'approve' %}" class="action-form">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'administration:exceptional_absences' %}">
+            <textarea name="admin_comment" rows="2" placeholder="{% trans 'Commentaire optionnel' %}"></textarea>
+            <div class="form-actions">
+                <button type="submit" class="btn-primary" data-confirm-action="1" data-confirm-title="{% trans 'Confirmer l approbation' %}" data-confirm-message="{% trans 'Cette absence exceptionnelle sera approuvee et le solde ne sera pas modifie.' %}" data-confirm-label="{% trans 'Oui, confirmer l approbation' %}" data-confirm-class="btn-primary">
+                    <i class="bi bi-check2-circle"></i> {% trans 'Approuver' %}
+                </button>
+                <button type="button" class="btn-secondary" id="rejectBtn">{% trans 'Refuser' %}</button>
+            </div>
+        </form>
+        <form method="post" action="{% url 'administration:exceptional_absence_action' request_item.id 'reject' %}" class="action-form" id="rejectForm" style="display:none;">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{% url 'administration:exceptional_absences' %}">
+            <textarea name="admin_comment" rows="2" placeholder="{% trans 'Commentaire optionnel' %}"></textarea>
+            <div class="form-actions">
+                <button type="submit" class="btn-danger" data-confirm-action="1" data-confirm-title="{% trans 'Refuser cette absence' %}" data-confirm-message="{% trans 'Cette absence exceptionnelle sera marquee comme rejetee.' %}" data-confirm-label="{% trans 'Oui, refuser' %}" data-confirm-class="btn-danger">
+                    <i class="bi bi-x-circle"></i> {% trans 'Confirmer le rejet' %}
+                </button>
+                <button type="button" class="btn-secondary" id="cancelRejectBtn">{% trans 'Annuler' %}</button>
+            </div>
+        </form>
+    </article>
+
+    <script>
+        document.getElementById("rejectBtn")?.addEventListener("click", () => {
+            document.getElementById("rejectForm").style.display = "block";
+            document.querySelector(".action-form").style.display = "block";
+        });
+        document.getElementById("cancelRejectBtn")?.addEventListener("click", () => {
+            document.getElementById("rejectForm").style.display = "none";
+        });
+    </script>
+    {% endif %}
+</section>
+{% endblock %}

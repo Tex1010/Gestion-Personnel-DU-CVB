@@ -1,0 +1,176 @@
+{% extends "base.html" %}
+{% load i18n %}
+{% load static %}
+
+{% block title %}{% trans 'Absences exceptionnelles' %}{% endblock %}
+
+{% block content %}
+<section class="page-section">
+    <div class="section-header">
+        <div>
+            <span class="eyebrow">{% trans 'Ressource Humaine' %}</span>
+            <h1>{% trans 'Absences exceptionnelles' %}</h1>
+            <p data-i18n="exceptionalAbsencesDescription">{% trans 'Consultez et gerent les demandes d absence depassant le solde disponible et soumises a retenue salariale.' %}</p>
+        </div>
+        <div class="header-actions">
+            <a href="{% url 'administration:presence_overview' %}" class="btn-secondary">{% trans 'Retour aux absences' %}</a>
+        </div>
+    </div>
+
+    <div class="stats-scroll">
+        <div class="stats-grid fixed-four">
+            <article class="card stat-card accent-slate">
+                <span data-i18n="exceptionalAbsencesTotal">{% trans 'Total absences exceptionnelles' %}</span>
+                <strong id="exc-total-count">{{ total_count }}</strong>
+                <small data-i18n="exceptionalAbsencesTotalHelper">{% trans 'Toutes les demandes exceptionnelles' %}</small>
+            </article>
+            <article class="card stat-card accent-amber">
+                <span data-i18n="exceptionalAbsencesPending">{% trans 'En attente' %}</span>
+                <strong id="exc-pending-count">{{ pending_count }}</strong>
+                <small data-i18n="exceptionalAbsencesPendingHelper">{% trans 'Demandes en attente d approbation' %}</small>
+            </article>
+            <article class="card stat-card accent-green">
+                <span data-i18n="exceptionalAbsencesApproved">{% trans 'Approuvees' %}</span>
+                <strong id="exc-approved-count">{{ approved_count }}</strong>
+                <small data-i18n="exceptionalAbsencesApprovedHelper">{% trans 'Demandes approuvees' %}</small>
+            </article>
+            <article class="card stat-card accent-rose">
+                <span data-i18n="exceptionalAbsencesDeductionPending">🟠 {% trans 'A retirer' %}</span>
+                <strong id="exc-deduction-pending-count">{{ deduction_pending_count }}</strong>
+                <small data-i18n="exceptionalAbsencesDeductionPendingHelper">{% trans 'Renvoyez a traiter' %}</small>
+            </article>
+        </div>
+        <div class="stats-grid fixed-two" style="margin-top:12px">
+            <article class="card stat-card accent-teal">
+                <span data-i18n="exceptionalAbsencesDeductionWithdrawn">🟢 {% trans 'Deja retire' %}</span>
+                <strong id="exc-deduction-withdrawn-count">{{ deduction_withdrawn_count }}</strong>
+                <small data-i18n="exceptionalAbsencesDeductionWithdrawnHelper">{% trans 'Renvoyez deja effectuees' %}</small>
+            </article>
+            <article class="card stat-card accent-rose">
+                <span data-i18n="exceptionalAbsencesDays">{% trans 'Jours de retenue' %}</span>
+                <strong id="exc-total-days">{{ total_exceptional_days|floatformat:1 }}</strong>
+                <small data-i18n="exceptionalAbsencesDaysHelper">{% trans 'Total des jours avec retenue salariale' %}</small>
+            </article>
+        </div>
+    </div>
+
+    <article class="card">
+        <div class="card-head">
+            <div>
+                <h2 data-i18n="exceptionalAbsencesTableTitle">{% trans 'Liste des absences exceptionnelles' %}</h2>
+                <p class="helper" data-i18n="exceptionalAbsencesTableHeader">{% trans 'Tableau regroupant lensemble des demandes d absence exceptionnelle avec leur situation actuelle.' %}</p>
+            </div>
+        </div>
+
+        <div class="table-toolbar">
+            <label class="table-search-field">
+                <i class="bi bi-search"></i>
+                <input type="search" id="exc-search-input" placeholder="{% trans 'Rechercher un employe ou un matricule' %}" value="{{ search_term }}" data-table-search="exc-absences-table">
+            </label>
+
+            <div class="filter-group">
+                <label for="exc-status-filter" class="filter-label">{% trans 'Statut' %}</label>
+                <select id="exc-status-filter" class="filter-select" data-exc-filter="status">
+                    <option value="" {% if not status_filter %}selected{% endif %}>{% trans 'Tous' %}</option>
+                    {% for value, label in status_choices %}
+                    <option value="{{ value }}" {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="exc-deduction-filter" class="filter-label">{% trans 'Statut retenue' %}</label>
+                <select id="exc-deduction-filter" class="filter-select" data-exc-filter="deduction">
+                    <option value="" {% if not deduction_filter %}selected{% endif %}>{% trans 'Tous' %}</option>
+                    <option value="pending" {% if deduction_filter == "pending" %}selected{% endif %}>🟠 {% trans 'A retirer' %}</option>
+                    <option value="withdrawn" {% if deduction_filter == "withdrawn" %}selected{% endif %}>🟢 {% trans 'Deja retire' %}</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <label for="exc-year-filter" class="filter-label">{% trans 'Periode' %}</label>
+                <select id="exc-year-filter" class="filter-select" data-exc-filter="year">
+                    <option value="" {% if not year_filter %}selected{% endif %}>{% trans 'Toutes' %}</option>
+                    {% for year in year_range %}
+                    <option value="{{ year }}" {% if year_filter == year|stringformat:"s" %}selected{% endif %}>{{ year }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="table-shell">
+            <div class="table-wrap sticky-table">
+                <table id="exc-absences-table">
+                    <thead>
+                        <tr>
+                            <th data-sort="employee" data-i18n="colEmployee">{% trans 'Employe' %}</th>
+                            <th data-sort="start_date" data-i18n="colStartDate">{% trans 'Date de debut' %}</th>
+                            <th data-sort="end_date" data-i18n="colEndDate">{% trans 'Date de fin' %}</th>
+                            <th data-sort="total_days" data-i18n="colDaysRequested">{% trans 'Jours demandes' %}</th>
+                            <th data-sort="available_balance_at_request" data-i18n="colBalance">{% trans 'Solde disponible' %}</th>
+                            <th data-sort="exceptional_days" data-i18n="colExcessDays">{% trans 'Jours excedentaires' %}</th>
+                            <th data-i18n="colSalaryDeduction" class="hidden-col">{% trans 'Retenue salariale' %}</th>
+                            <th data-i18n="colEmployeeConsent" class="hidden-col">{% trans 'Acceptation employe' %}</th>
+                            <th data-sort="status" data-i18n="colStatus" class="hidden-col">{% trans 'Statut' %}</th>
+                            <th data-sort="salary_deduction_status" data-i18n="colDeductionStatus" class="hidden-col">{% trans 'Statut retenue' %}</th>
+                            <th data-sort="created_at" data-i18n="colRequestDate">{% trans 'Date de demande' %}</th>
+                            <th data-i18n="colAction">{% trans 'Action' %}</th>
+                        </tr>
+                    </thead>
+                    <tbody id="exc-absences-tbody">
+                        {% include "administration/includes/exceptional_absence_rows.html" with requests=requests can_approve=can_approve can_manage_deduction=can_manage_deduction %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% include "administration/includes/exceptional_absence_pagination.html" with search_term=search_term status_filter=status_filter deduction_filter=deduction_filter year_filter=year_filter %}
+    </article>
+</section>
+
+<script>
+    const buildExcParams = (overrides) => {
+        const params = new URLSearchParams(window.location.search);
+        Object.keys(overrides || {}).forEach((key) => {
+            if (overrides[key] === "") {
+                params.delete(key);
+            } else {
+                params.set(key, overrides[key]);
+            }
+        });
+        params.delete("page");
+        return params.toString();
+    };
+
+    const applyExcFilters = () => {
+        const searchInput = document.getElementById("exc-search-input");
+        const statusSelect = document.getElementById("exc-status-filter");
+        const deductionSelect = document.getElementById("exc-deduction-filter");
+        const yearSelect = document.getElementById("exc-year-filter");
+        const baseUrl = "{% url 'administration:exceptional_absences' %}";
+        const query = buildExcParams({
+            q: searchInput ? searchInput.value.trim() : "",
+            status: statusSelect ? statusSelect.value : "",
+            deduction: deductionSelect ? deductionSelect.value : "",
+            year: yearSelect ? yearSelect.value : "",
+        });
+        window.location.href = `${baseUrl}?${query}`;
+    };
+
+    document.getElementById("exc-search-input")?.addEventListener("input", (e) => {
+        if (e.key === "Enter" || e.type === "change") {
+            applyExcFilters();
+        }
+    });
+
+    document.getElementById("exc-search-input")?.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+            applyExcFilters();
+        }
+    });
+
+    document.getElementById("exc-status-filter")?.addEventListener("change", applyExcFilters);
+    document.getElementById("exc-deduction-filter")?.addEventListener("change", applyExcFilters);
+    document.getElementById("exc-year-filter")?.addEventListener("change", applyExcFilters);
+</script>
+{% endblock %}
